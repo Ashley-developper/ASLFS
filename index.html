@@ -633,7 +633,7 @@ function createDetailedPlane() {
             
             // 模型的默认缩放和旋转可能需要调整，以匹配原先的几何体大小和方向。
             // 假设模型需要缩小并旋转使其机头朝向 -Z
-            planeGroup.scale.set(1, 1, 1); // 示例缩放：根据您的模型调整
+            planeGroup.scale.set(0.2, 0.2, 0.2); // 示例缩放：根据您的模型调整
             // 确保模型及其子对象能够投射和接收阴影
             planeGroup.castShadow = true;
             planeGroup.traverse(c => { 
@@ -650,7 +650,7 @@ function createDetailedPlane() {
             shadowPlane = new THREE.Mesh(
 
             );
-            shadowPlane.rotation.x = -Math.PI / 2;
+            //shadowPlane.rotation.x = -Math.PI / 2;
             
             // 修正 3：影子初始位置设置为贴近地面 (0.05)
             shadowPlane.position.y = 0.05; 
