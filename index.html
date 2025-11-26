@@ -55,35 +55,178 @@
         }
 
         /* 启动画面 */
-        #splash {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, #1a2a3a, #000000);
-            z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white;
-        }
-        h1 { font-size: 64px; margin: 0; font-weight: 300; letter-spacing: 10px; text-transform: uppercase; }
-        h1 b { font-weight: 900; color: #00aaff; }
-        .controls-grid {
-            display: grid; grid-template-columns: auto auto; gap: 15px 30px; margin-top: 40px;
-            text-align: left; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .key-box { font-family: monospace; color: #00aaff; font-weight: bold; margin-right: 10px;}
-        button {
-            margin-top: 50px; padding: 16px 60px; font-size: 18px; font-weight: 600; border: 1px solid #00aaff;
-            background: rgba(0, 170, 255, 0.2); color: #fff; cursor: pointer; letter-spacing: 2px;
-            transition: all 0.3s; text-transform: uppercase;
-        }
-        button:hover { background: #00aaff; color: #000; box-shadow: 0 0 30px #00aaff; }
-        
-        .loader { font-size: 12px; color: #666; margin-top: 20px; }
+        /* 启动画面 */
+#splash {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    /* 🎨 天蓝色立体背景 */
+    background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+    z-index: 999; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: white;
+    /* 现代感：轻微模糊背景 */
+    backdrop-filter: blur(2px);
+}
+
+h1 { 
+    font-size: 32px; 
+    margin: 0; 
+    font-weight: 400; 
+    letter-spacing: 5px; 
+    text-transform: uppercase;
+    color: #fff;
+    /* 投影效果 */
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
+}
+
+/* 标题样式：Choose Your Plane */
+#plane-chooser-title {
+    font-size: 20px; 
+    margin-bottom: 20px; 
+    font-weight: 600; 
+    color: #f0f0f0; 
+    letter-spacing: 3px;
+}
+
+/* 3D 模型容器样式 */
+#plane-model-container {
+    width: 600px;
+    height: 300px;
+    margin: 20px 0 40px;
+    /* 现代边框和背景 */
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+}
+
+/* 模型切换按钮样式 */
+.model-nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.4);
+    border: none;
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 24px;
+    z-index: 10;
+    transition: background 0.2s;
+}
+
+.model-nav-button:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#prev-plane { left: 10px; border-radius: 50%; }
+#next-plane { right: 10px; border-radius: 50%; }
+
+
+/* 按钮和控制网格样式更新 */
+.controls-grid {
+    display: grid; grid-template-columns: auto auto; gap: 10px 20px; 
+    margin-top: 20px;
+    text-align: left; 
+    background: rgba(0,0,0,0.3); /* 深色透明背景 */
+    padding: 20px; 
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 14px;
+}
+
+.key-box { 
+    font-family: 'Consolas', monospace; 
+    color: #80D0C7; /* 匹配主题色 */
+    font-weight: bold; 
+    margin-right: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #80D0C7;
+}
+
+button#start-button {
+    margin-top: 40px; 
+    padding: 14px 50px; 
+    font-size: 16px; 
+    font-weight: 700; 
+    border: none; /* 移除边框 */
+    background: #0093E9; 
+    color: #fff; 
+    cursor: pointer; 
+    letter-spacing: 2px;
+    transition: all 0.3s; 
+    text-transform: uppercase;
+    border-radius: 30px; /* 圆角按钮 */
+    box-shadow: 0 6px 20px rgba(0, 147, 233, 0.6);
+}
+button#start-button:hover { 
+    background: #80D0C7; 
+    color: #000; 
+    box-shadow: 0 6px 25px rgba(128, 208, 199, 0.8); 
+}
+
+        /* 🚀 样式：画质选择面板 */
+#quality-selector {
+    position: absolute; 
+    right: 25px; 
+    bottom: 25px; 
+    z-index: 10;
+    pointer-events: all; /* 确保可以点击 */
+    background: rgba(10, 20, 30, 0.75); 
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-right: 4px solid #00aaff; /* 匹配仪表盘样式 */
+    backdrop-filter: blur(8px); 
+    padding: 10px 18px; 
+    color: #eee; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+#quality-selector .label {
+    display: block;
+    font-size: 10px; 
+    color: #88ccff; 
+    font-weight: 600; 
+    letter-spacing: 1px; 
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.button-group button {
+    /* 重置默认按钮样式 */
+    all: unset; 
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 10px;
+    margin-left: 5px;
+    border: 1px solid #00aaff;
+    color: #00aaff;
+    background-color: rgba(0, 170, 255, 0.1);
+    transition: all 0.2s;
+}
+
+.button-group button:first-child {
+    margin-left: 0;
+}
+
+/* 选中状态 */
+.button-group button.active,
+.button-group button:hover {
+    background-color: #00aaff;
+    color: #1a2a3a;
+    font-weight: bold;
+}
     </style>
 </head>
 <body>
 
     <div id="splash">
         <h1>ASL <b>FLIGHT SIMULATOR</b></h1>
-        <p style="color:#8899aa; letter-spacing: 2px;">BETA V 1.0</p>
+        <p id="plane-chooser-title">CHOOSE YOUR PLANE (Future Aircraft)</p>
+    
+        <div id="plane-model-container">
+            <button id="prev-plane" class="model-nav-button" onclick="changePlane(-1)">&#9664;</button> <button id="next-plane" class="model-nav-button" onclick="changePlane(1)">&#9658;</button> </div>
         
         <div class="controls-grid">
             <div><span class="key-box">SHIFT</span> Increase engine power/thrust.</div>
@@ -93,13 +236,13 @@
             <div><span class="key-box">Q / E</span> Steer left or right using the rudder. </div>
             <div><span class="key-box">V</span> Change camera view. </div>
         </div>
-
-        <div style="margin-top:20px; color:#aa8800; font-size:13px;">
+    
+        <div style="margin-top:20px; color:#c0e0f0; font-size:13px; opacity: 0.8;">
             ⚠ made by Zhanyi Zhou
             <br>This is a beta version
         </div>
-
-        <button onclick="startGame()">INITIALIZE SYSTEMS</button>
+    
+        <button id="start-button" onclick="startGame()">INITIALIZE SYSTEMS</button>
     </div>
 
     <div id="hud-layer">
@@ -122,6 +265,17 @@
             </div>
         </div>
 
+        <div id="hud-layer">
+        </div>
+    
+    <div id="quality-selector">
+        <span class="label">Graphics Quality</span>
+        <div class="button-group">
+            <button id="btn-sd" onclick="setQuality('SD')" class="active">SD (Smooth)</button>
+            <button id="btn-hd" onclick="setQuality('HD')">HD (High)</button>
+        </div>
+    </div>
+
         <div id="throttle-wrapper">
             <div id="throttle-fill"></div>
         </div>
@@ -136,6 +290,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script> 
+    
     <script>
         // --- 常量配置 (真实物理参数) ---
         const CONFIG = {
@@ -156,6 +312,34 @@
             rollSpeed: 2.0,
             yawSpeed: 0.8
         };
+
+        // --- 全局画质预设 ---
+const QUALITY_PRESETS = {
+    SD: {
+        shadowMapSize: 2048,
+        pixelRatio: 1.0, 
+        shadowFar: 20000,
+        dirLightIntensity: 1.2,
+        hemiLightIntensity: 0.5
+    },
+    HD: {
+        shadowMapSize: 8192,
+        pixelRatio: window.devicePixelRatio, 
+        shadowFar: 40000,
+        dirLightIntensity: 1.8,
+        hemiLightIntensity: 0.7
+    }
+};
+
+let currentQuality = 'SD'; // 默认设置为 SD
+
+let splashScene, splashCamera, splashRenderer, splashClock;
+let splashPlaneGroup;
+let planeModels = [];
+let currentPlaneIndex = 0;
+const planeModelPaths = [
+    'plane1.glb', 
+];
 
         // --- 全局变量 ---
         let scene, camera, renderer, clock;
@@ -194,43 +378,55 @@
         
         window.startGame = startGame; 
 
+        let dirLight, hemiLight; // ⚠️ 声明为全局变量或文件级变量，以便 setQuality 访问
+
         function init() {
             clock = new THREE.Clock();
 
-            // 渲染器设置 - 追求写实
+            // ... (渲染器设置) ...
             renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // ⚠️ 初始设置将在 setQuality 中覆盖，这里保留基础设置
+            // renderer.setPixelRatio(window.devicePixelRatio); // 移除，由 setQuality 控制
+
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.0;
+            renderer.toneMappingExposure = 1.0; 
             renderer.outputEncoding = THREE.sRGBEncoding;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             // 场景
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB); // 真实的天空蓝
-            scene.fog = new THREE.Fog(0x87CEEB, 2000, 15000); // 大气透视
+            scene.background = new THREE.Color(0x87CEEB); 
+            scene.fog = new THREE.Fog(0x87CEEB, 2000, 50000); 
 
             // 相机
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.5, 100000);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.5, 300000);
 
-            // 环境光 (冷色调阴影)
-            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.6); 
+            // 环境光
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.7); 
             scene.add(hemiLight);
 
-            // 太阳光 (暖色调直射)
-            const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.4);
+            // 太阳光
+            dirLight = new THREE.DirectionalLight(0xfff0dd, 1.8); 
             dirLight.position.set(3000, 5000, 2000);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 4096; // 高清阴影
-            dirLight.shadow.mapSize.height = 4096;
+            
+            // ⚠️ 移除硬编码的 mapSize 和 far，它们将由 setQuality 动态设置
+            // dirLight.shadow.mapSize.width = 8192; 
+            // dirLight.shadow.mapSize.height = 8192; 
             const d = 5000;
             dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
             dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
-            dirLight.shadow.camera.far = 15000;
+            // dirLight.shadow.camera.far = 40000;
+            
             dirLight.shadow.bias = -0.0001;
             scene.add(dirLight);
+            
+            // ⚠️ 初始调用 setQuality 来应用 HD 预设（或根据需要选择 SD）
+            setQuality('HD'); // 默认使用 HD (8192, devicePixelRatio, 1.8)
 
             // 构建世界
             createRealisticWorld();
@@ -247,7 +443,6 @@
             window.addEventListener('mouseup', onMouseUp);
             window.addEventListener('wheel', onMouseWheel);
         }
-
         // --- 物理引擎核心 (最终修正版 - 优化起飞平稳性) ---
         function updatePhysics(dt) {
             // 1. 输入处理
@@ -428,6 +623,175 @@
             }
         }
 
+        function initSplashModel() {
+    splashClock = new THREE.Clock();
+
+    // 1. 设置渲染器
+    splashRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    splashRenderer.setPixelRatio(window.devicePixelRatio);
+    const container = document.getElementById('plane-model-container');
+    splashRenderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(splashRenderer.domElement);
+    
+    // 2. 场景和相机
+    splashScene = new THREE.Scene();
+    // 相机放置在模型前方，并仰视一点
+    splashCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1, 1000);
+    splashCamera.position.set(0, 10, 50); 
+    splashCamera.lookAt(0, 0, 0);
+
+    // 3. 光照
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // 环境光
+    splashScene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0); // 方向光
+    dirLight.position.set(50, 50, 50);
+    splashScene.add(dirLight);
+
+    // 4. 加载所有模型
+    const loader = new THREE.GLTFLoader();
+    const dracoLoader = new THREE.DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+    loader.setDRACOLoader(dracoLoader);
+    
+    // 异步加载所有飞机模型
+    planeModelPaths.forEach((path, index) => {
+        loader.load(
+            path,
+            (gltf) => {
+                const model = gltf.scene;
+                // 确保模型大小合适，例如 5-10 倍
+                model.scale.set(0.8, 0.8, 0.8); 
+                model.rotation.set(0, Math.PI / 2, 0); // 侧飞角度
+                model.visible = (index === currentPlaneIndex); // 只有当前选中的模型可见
+                splashScene.add(model);
+                planeModels.push(model);
+                console.log(`Plane model ${path} loaded.`);
+            },
+            undefined,
+            (error) => {
+                console.error(`Error loading plane model ${path}:`, error);
+                // 加载失败时，使用一个简易的替代方块
+                const box = new THREE.Mesh(
+                    new THREE.BoxGeometry(10, 10, 30),
+                    new THREE.MeshStandardMaterial({ color: 0xaaaaaa })
+                );
+                box.visible = (index === currentPlaneIndex);
+                splashScene.add(box);
+                planeModels.push(box);
+            }
+        );
+    });
+    
+    // 开始模型动画循环
+    animateSplashModel();
+    window.addEventListener('resize', onSplashResize);
+}
+
+// 启动界面的动画循环
+function animateSplashModel() {
+    requestAnimationFrame(animateSplashModel);
+    
+    const dt = splashClock.getDelta();
+
+    // 旋转当前模型
+    if (planeModels.length > 0 && planeModels[currentPlaneIndex]) {
+        planeModels[currentPlaneIndex].rotation.y += 0.2 * dt; // 慢速旋转
+    }
+    
+    splashRenderer.render(splashScene, splashCamera);
+}
+
+// 切换飞机模型
+function changePlane(direction) {
+    if (planeModels.length === 0) return;
+    
+    // 隐藏当前模型
+    planeModels[currentPlaneIndex].visible = false;
+
+    // 计算新的索引
+    currentPlaneIndex = (currentPlaneIndex + direction + planeModels.length) % planeModels.length;
+
+    // 显示新模型
+    planeModels[currentPlaneIndex].visible = true;
+    
+    console.log(`Switched to Plane Index: ${currentPlaneIndex}`);
+}
+window.changePlane = changePlane; // 暴露给 HTML 的 onclick
+
+// 启动界面窗口大小调整
+function onSplashResize() {
+    const container = document.getElementById('plane-model-container');
+    splashCamera.aspect = container.clientWidth / container.clientHeight;
+    splashCamera.updateProjectionMatrix();
+    splashRenderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+// ⚠️ 重要：在页面加载时调用初始化函数
+document.addEventListener('DOMContentLoaded', initSplashModel);
+
+// ⚠️ 也要更新主游戏的 onResize 函数，以避免冲突
+function onResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // 确保在主游戏启动后，不再影响 splash 渲染器
+    if (document.getElementById('splash').style.display !== 'none') {
+        onSplashResize();
+    }
+}
+        // --- 核心画质控制函数 ---
+// --- 核心画质控制函数 (修订版) ---
+function setQuality(quality) {
+    if (currentQuality === quality) return; 
+
+    currentQuality = quality;
+    const settings = QUALITY_PRESETS[quality];
+
+    // 1. 更新渲染器设置 (依赖于 renderer 对象)
+    if (renderer) {
+        renderer.setPixelRatio(settings.pixelRatio);
+        
+        // 确保设置贴图尺寸的代码块位于这里，且只依赖 renderer 对象
+        // 假设错误发生在尝试设置 dirLight.shadow.mapSize.width 时
+        // 如果您在 setQuality 中像下面这样操作，它会报错：
+        // dirLight.shadow.mapSize.width = settings.shadowMapSize; 
+        
+        // 应该通过遍历场景中的光源来设置阴影参数
+        // 但为了简单，我们可以使用 scene.traverse
+        
+        renderer.shadowMap.needsUpdate = true; // 触发阴影贴图更新
+    }
+    
+    // 2. 更新光照参数 (依赖于场景中的对象)
+    scene.traverse(obj => {
+        if (obj.isDirectionalLight) {
+            // 🚀 错误修正：通过 obj (即 DirectionalLight 实例) 访问其阴影属性
+            obj.shadow.mapSize.width = settings.shadowMapSize; // 修复点
+            obj.shadow.mapSize.height = settings.shadowMapSize; // 修复点
+            
+            obj.intensity = settings.dirLightIntensity;
+            obj.shadow.camera.far = settings.shadowFar;
+            obj.shadow.camera.updateProjectionMatrix();
+        }
+        if (obj.isHemisphereLight) {
+            obj.intensity = settings.hemiLightIntensity;
+        }
+    });
+
+    // 3. 更新 UI 按钮样式
+    // ...
+
+    // 3. 更新 UI 按钮样式
+    document.getElementById('btn-sd').classList.remove('active');
+    document.getElementById('btn-hd').classList.remove('active');
+    document.getElementById(`btn-${quality.toLowerCase()}`).classList.add('active');
+    
+    console.log(`Quality set to: ${quality}`);
+}
+window.setQuality = setQuality; // 暴露给 HTML 的 onclick
+
         // --- 视觉构建：写实风格 ---
         function createRealisticWorld() {
             const simplex = new SimplexNoise();
@@ -439,9 +803,66 @@
 
             const cConcrete = new THREE.Color(0x606060); 
             const cGrass = new THREE.Color(0x3a5f0b);    
-            const cDirt = new THREE.Color(0x5a4d3b);     
+            // ... (在 createRealisticWorld 函数内部)
+            // ...
+            const cDirt = new THREE.Color(0x5a4d3b);
             
-            const flatRadius = 5000;
+            // 定义跑道/机场中心和城市核心的大致位置
+            const airportCenterX = CONFIG.runwayX; // 机场X坐标
+            const airportCenterZ = CONFIG.runwayZ - 2000; // 机场Z坐标附近
+            const cityCenterX = 3000; // 城市中心X坐标 (来自 createRealisticCity 的计算)
+            const cityCenterZ = 0; // 城市中心Z坐标 (来自 createRealisticCity 的计算)
+            
+            // 限制山脉的最小距离：10 km = 10000 单位
+            const MIN_MOUNTAIN_DISTANCE = 10000; 
+
+            for(let i=0; i<pos.count; i++){
+                let x = pos.getX(i);
+                let y = pos.getY(i); // 注意：这里 y 是世界的 Z 轴
+
+                let h = 0;
+                let col = cGrass; 
+
+                // 距离机场中心的水平距离
+                const distToAirport = Math.sqrt(Math.pow(x - airportCenterX, 2) + Math.pow(y - airportCenterZ, 2));
+                
+                // 距离城市中心的水平距离
+                const distToCity = Math.sqrt(Math.pow(x - cityCenterX, 2) + Math.pow(y - cityCenterZ, 2));
+                
+                // 取两者中较小的距离作为限制距离
+                const distToSafeZone = Math.min(distToAirport, distToCity);
+                
+                const inAirport = (Math.abs(x - CONFIG.runwayX) < 1000 && Math.abs(y) < 4500);
+                
+                if (inAirport) {
+                    h = 0;
+                    col = new THREE.Color(0x4a6f1b); 
+                } else if (distToSafeZone < MIN_MOUNTAIN_DISTANCE) {
+                    // 如果在安全区域内，保持地面平坦（或只进行轻微起伏）
+                    h = 0;
+                    if ((Math.sin(x*0.01) * Math.cos(y*0.01)) > 0) col = new THREE.Color(0x355515);
+                    
+                    // 平滑过渡到山脉
+                    if (distToSafeZone > MIN_MOUNTAIN_DISTANCE - 4000) {
+                        const transitionFactor = (distToSafeZone - (MIN_MOUNTAIN_DISTANCE - 4000)) / 4000;
+                        let n = simplex.noise2D(x*0.0001, y*0.0001);
+                        h = Math.max(0, n * 2500 * transitionFactor);
+                        if (h > 500) col = cDirt; else col = cGrass;
+                    }
+                    
+                } else {
+                    // 超过安全区域，正常生成山脉
+                    let n = simplex.noise2D(x*0.0001, y*0.0001);
+                    h = Math.max(0, n * 2500); // 最大高度 2500
+                    if (h > 500) col = cDirt;
+                    else col = cGrass;
+                }
+
+                pos.setZ(i, h);
+                colors.push(col.r, col.g, col.b);
+            }
+            
+            const flatRadius = 10000;
 
             for(let i=0; i<pos.count; i++){
                 let x = pos.getX(i);
@@ -505,7 +926,7 @@
                     const loadedRunway = gltf.scene;
 
                     // 示例：缩放、旋转和位置 (根据您的模型实际调整)
-                    loadedRunway.scale.set(0.1, 0.1, 0.1); 
+                    loadedRunway.scale.set(0.1, 0.12, 0.1); 
                     loadedRunway.position.set(-760, 1, 3800); 
                     //loadedRunway.rotation.y = Math.PI / 2; 
 
@@ -531,15 +952,36 @@
         }
 
         function createRealisticCity() {
-            const count = 6000;
-            const boxGeo = new THREE.BoxGeometry(1,1,1);
+            // 增加实例数量，让城市更密集 (从 6000 提高到 12000)
+            const count = 22000;
+            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+            // 将中心点设为底部中心，方便缩放
             boxGeo.translate(0, 0.5, 0); 
             
-            const matConcrete = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8 });
-            const matGlass = new THREE.MeshStandardMaterial({ color: 0x5588aa, roughness: 0.2, metalness: 0.8 });
+            // 1. 材质增强：引入自发光 (Emissive) 模拟夜间灯光
+            const matConcrete = new THREE.MeshStandardMaterial({ 
+                color: 0x888888, // 略微深色的混凝土
+                roughness: 0.7, 
+                metalness: 0.1,
+                // 增加少量自发光，模拟低层建筑的内部照明
+                emissive: new THREE.Color(0x101010),
+                emissiveIntensity: 0.5 
+            });
+            
+            const matGlass = new THREE.MeshStandardMaterial({ 
+                color: 0x5588aa, 
+                roughness: 0.1, 
+                metalness: 0.9,
+                transparent: true, 
+                opacity: 0.9,
+                // 模拟摩天大楼的玻璃幕墙灯光
+                emissive: new THREE.Color(0xffeeaa),
+                emissiveIntensity: 0.3 
+            });
 
-            const meshConcrete = new THREE.InstancedMesh(boxGeo, matConcrete, count/2);
-            const meshGlass = new THREE.InstancedMesh(boxGeo, matGlass, count/2);
+            // 使用更多实例
+            const meshConcrete = new THREE.InstancedMesh(boxGeo, matConcrete, count);
+            const meshGlass = new THREE.InstancedMesh(boxGeo, matGlass, count);
             
             meshConcrete.castShadow = true; meshConcrete.receiveShadow = true;
             meshGlass.castShadow = true; meshGlass.receiveShadow = true;
@@ -547,57 +989,118 @@
             const dummy = new THREE.Object3D();
             let idxC = 0, idxG = 0;
 
-            const blockSize = 250; 
-            
+            const blockSize = 250; // 块/网格大小保持不变
+            const roadWidth = 15;  // 道路宽度保持不变
+            const padding = 10;    // 建筑离道路的最小间距
+
+            // 道路位置数组 (用于判断是否在道路上)
+            const roadXPositions = [];
+            for(let x = 0; x < 30; x++) {
+                roadXPositions.push(1000 + x * blockSize);
+            }
+
+            const cityCenterX = 3000;
+            const cityCenterZ = 0;
+
+            // 循环遍历建筑网格
             for (let x = 0; x < 30; x++) {
                 for (let z = -20; z < 20; z++) {
-                    const px = 1000 + x * blockSize; 
-                    const pz = z * blockSize;
-                    const distCenter = Math.sqrt(Math.pow(px - 3000, 2) + Math.pow(pz - 0, 2));
+                    const blockCenterX = 1000 + x * blockSize; 
+                    const blockCenterZ = z * blockSize;
+
+                    const distCenter = Math.sqrt(Math.pow(blockCenterX - cityCenterX, 2) + Math.pow(blockCenterZ - cityCenterZ, 2));
                     const isDowntown = distCenter < 2000;
 
-                    const buildingsInBlock = 2 + Math.floor(Math.random()*3);
+                    // 建筑数量基于中心距离
+                    const densityFactor = isDowntown ? 1.0 : Math.max(0.2, 1 - (distCenter - 2000) / 4000);
+                    const buildingsInBlock = 1 + Math.floor(Math.random() * 4 * densityFactor);
                     
                     for(let k=0; k<buildingsInBlock; k++) {
-                        const offX = (Math.random()-0.5) * (blockSize - 20);
-                        const offZ = (Math.random()-0.5) * (blockSize - 20);
                         
-                        const finalX = px + offX;
-                        const finalZ = pz + offZ;
+                        // 2. 布局隔离：确保建筑不放在道路上
+                        
+                        // 计算建筑在块内的随机偏移
+                        // X轴偏移：必须避开块中心线上的道路
+                        let offX, offZ;
 
-                        let w = 30 + Math.random() * 30;
+                        do {
+                            // 随机选择块内的一个位置
+                            offX = (Math.random() - 0.5) * blockSize;
+                            offZ = (Math.random() - 0.5) * blockSize;
+                            
+                            // 检查X轴是否落在道路上 (道路在 blockCenterX 上)
+                            const currentX = blockCenterX + offX;
+                            const distToRoad = Math.abs(currentX - blockCenterX);
+                            
+                            // 如果建筑宽度 W 加上间距 Padding 超过了道路宽度的一半，则认为它离开了道路
+                            // 我们确保建筑中心离道路中心线至少 (roadWidth/2 + padding) 
+                            if (distToRoad > (roadWidth / 2 + padding)) {
+                                break; // 建筑位置合格
+                            }
+                        } while (true); // 直到找到一个不占用道路的位置
+
+                        const finalX = blockCenterX + offX;
+                        const finalZ = blockCenterZ + offZ;
+
+                        let w = 20 + Math.random() * 20; // 建筑宽度
                         let h; 
                         
                         if (isDowntown) {
-                            h = 100 + Math.random() * 300;
+                            // 摩天大楼，最高 500
+                            h = 100 + Math.random() * 400 * densityFactor; 
                             w += 10;
                         } else {
+                            // 郊区低层建筑
                             h = 15 + Math.random() * 40;
                         }
+                        // 最小高度过滤
+                        if (h < 15) continue; 
 
                         dummy.position.set(finalX, 0, finalZ);
                         dummy.scale.set(w, h, w);
                         dummy.updateMatrix();
 
-                        if (isDowntown && Math.random() > 0.3) {
-                            if(idxG < count/2) meshGlass.setMatrixAt(idxG++, dummy.matrix);
+                        // 玻璃幕墙比例更高
+                        if (isDowntown && Math.random() > 0.4) {
+                            if(idxG < count) meshGlass.setMatrixAt(idxG++, dummy.matrix);
                         } else {
-                            if(idxC < count/2) meshConcrete.setMatrixAt(idxC++, dummy.matrix);
+                            if(idxC < count) meshConcrete.setMatrixAt(idxC++, dummy.matrix);
                         }
                     }
                 }
             }
 
+            // 更新 InstancedMesh 的实际计数
+            meshConcrete.count = idxC;
+            meshGlass.count = idxG;
+
             scene.add(meshConcrete);
             scene.add(meshGlass);
 
+            // 3. 道路优化：使用 MeshStandardMaterial 来接收阴影
             const roads = new THREE.Group();
-            const roadMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+            const roadMat = new THREE.MeshStandardMaterial({ 
+                color: 0x181818, // 深灰色沥青
+                roughness: 0.9,
+                metalness: 0.05
+            });
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // 黄色中心线
+
             for(let x = 0; x < 30; x++) {
-                const r = new THREE.Mesh(new THREE.PlaneGeometry(15, 10000), roadMat);
+                const roadCenterX = 1000 + x * blockSize;
+                
+                // 主路面
+                const r = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 10000), roadMat);
                 r.rotation.x = -Math.PI/2;
-                r.position.set(1000 + x * blockSize, 0.05, 0);
+                r.position.set(roadCenterX, 0.05, 0);
+                r.receiveShadow = true;
                 roads.add(r);
+
+                // 增加道路中心线
+                const line = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 10000), lineMat);
+                line.rotation.x = -Math.PI/2;
+                line.position.set(roadCenterX, 0.06, 0); // 略微抬高，防止 Z-fighting
+                roads.add(line);
             }
             scene.add(roads);
         }
