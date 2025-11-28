@@ -630,165 +630,181 @@ button#start-button:active {
         }
 
         // --- 实际的物理计算函数 (已应用 dynamicGroundHeight 修复) ---
-        function performPhysicsStep(dt) {
-             // 1. 输入处理
-            if (input.shift) physics.throttle = Math.min(1.0, physics.throttle + dt * 0.4);
-            if (input.space) physics.throttle = Math.max(0.0, physics.throttle - dt * 1.5);
-            
-            // 2. 基础矢量获取
-            const pos = physics.pos;
-            const vel = physics.vel;
-            const rot = physics.quat;
-            
-            let speed = vel.length();
+function performPhysicsStep(dt) {
+     // 1. 输入处理
+    if (input.shift) physics.throttle = Math.min(1.0, physics.throttle + dt * 0.4);
+    if (input.space) physics.throttle = Math.max(0.0, physics.throttle - dt * 1.5);
+    
+    // 2. 基础矢量获取
+    const pos = physics.pos;
+    const vel = physics.vel;
+    const rot = physics.quat;
+    
+    let speed = vel.length();
 
-            // 机身坐标系方向
-            const vForward = new THREE.Vector3(0, 0, -1).applyQuaternion(rot).normalize();
-            const vUp = new THREE.Vector3(0, 1, 0).applyQuaternion(rot).normalize();
-            
-            // 3. 速度和迎角计算
-            // 🚀 FIX: 使用动态离地高度 dynamicGroundHeight:
-            physics.grounded = (pos.y <= dynamicGroundHeight + 0.1); 
+    // 机身坐标系方向
+    const vForward = new THREE.Vector3(0, 0, -1).applyQuaternion(rot).normalize();
+    const vUp = new THREE.Vector3(0, 1, 0).applyQuaternion(rot).normalize();
+    
+    // 3. 速度和迎角计算
+    physics.grounded = (pos.y <= dynamicGroundHeight + 0.1); 
 
-            // 计算前向空速 (投影到机头方向的速度)
-            const forwardSpeed = vel.dot(vForward); 
-            
-            // ******** 修正 1：计算迎角（Angle of Attack, AoA） ********
-            const velDir = vel.clone().normalize();
-            let aoa = Math.acos(vForward.dot(velDir));
-            
-            if (velDir.dot(vUp) > 0) { 
-                aoa = -aoa;
-            }
-            
-            aoa = THREE.MathUtils.clamp(aoa, -0.26, 0.26); 
-            
-            let liftFactor = aoa * 3.0; 
-            liftFactor = Math.max(liftFactor, 0.1); 
+    // 计算前向空速 (投影到机头方向的速度)
+    const forwardSpeed = vel.dot(vForward); 
+    
+    // 计算迎角（Angle of Attack, AoA）
+    const velDir = vel.clone().normalize();
+    let aoa = Math.acos(vForward.dot(velDir));
+    
+    if (velDir.dot(vUp) > 0) { 
+        aoa = -aoa;
+    }
+    
+    aoa = THREE.MathUtils.clamp(aoa, -0.26, 0.26); 
+    
+    let liftFactor = aoa * 3.0; 
+    liftFactor = Math.max(liftFactor, 0.1); 
 
-            // VR 速度阈值：140 KTS (约 72 m/s)
-            const V_R_SPEED = 72; 
+    // VR 速度阈值：140 KTS (约 72 m/s)
+    const V_R_SPEED = 72; 
 
-            // --- 核心修复：消除漂移 (气动稳定性) ---
-            if (!physics.grounded && speed > 1.0) {
-                const targetVel = vForward.clone().multiplyScalar(speed);
-                const stability = Math.min(speed / 300, 1.0) * 0.15;
-                vel.lerp(targetVel, stability);
-            }
+    // --- 核心修复：消除漂移 (气动稳定性) ---
+    if (!physics.grounded && speed > 1.0) {
+        const targetVel = vForward.clone().multiplyScalar(speed);
+        const stability = Math.min(speed / 300, 1.0) * 0.15;
+        vel.lerp(targetVel, stability);
+    }
 
-            // --- 力学累加 ---
-            const force = new THREE.Vector3(0, 0, 0);
-            const airDensity = 1.225;
+    // --- 力学累加 ---
+    const force = new THREE.Vector3(0, 0, 0);
+    const airDensity = 1.225;
 
-            // A. 重力
-            force.add(new THREE.Vector3(0, -CONFIG.gravity * CONFIG.mass, 0));
+    // A. 重力
+    force.add(new THREE.Vector3(0, -CONFIG.gravity * CONFIG.mass, 0));
 
-            // B. 推力
-            const thrust = vForward.clone().multiplyScalar(physics.throttle * CONFIG.maxThrust);
-            force.add(thrust);
+    // B. 推力
+    const thrust = vForward.clone().multiplyScalar(physics.throttle * CONFIG.maxThrust);
+    force.add(thrust);
 
-            // C. 升力 (Lift) - 垂直于机翼
-            const speedSq = forwardSpeed * forwardSpeed;
-            let liftForce = 0;
-            if (forwardSpeed > 0) {
-                liftForce = 0.5 * airDensity * speedSq * CONFIG.liftCoeff * CONFIG.wingArea * liftFactor;
-            }
-            
-            const liftVec = vUp.clone().multiplyScalar(liftForce);
-            force.add(liftVec);
-
-
-            // D. 阻力 (Drag)
-            const dragMag = 0.5 * airDensity * (speed * speed) * CONFIG.dragCoeff * CONFIG.wingArea;
-            if (speed > 0) {
-                const dragDir = vel.clone().normalize().negate();
-                const brakeDrag = input.space ? 5.0 : 1.0; 
-                force.add(dragDir.multiplyScalar(dragMag * brakeDrag));
-            }
-
-            // ******** 修正 2：地面接触反作用力（消除“粘地”和“弹射”） ********
-            const groundDelta = pos.y - dynamicGroundHeight; // 🚀 FIX: 使用动态高度
-            if (groundDelta <= 0.1) { // 检查是否接近地面或在地面以下
-                const springForce = CONFIG.mass * CONFIG.gravity * 3.0 * (0.1 - groundDelta); 
-                const dampForce = -vel.y * CONFIG.mass * 0.5; 
-                
-                const reactionForce = new THREE.Vector3(0, springForce + dampForce, 0);
-                force.add(reactionForce);
-
-                // 地面摩擦
-                const friction = vel.clone().multiplyScalar(-2000);
-                friction.y = 0; // 只影响水平速度
-                force.add(friction);
-                
-                // 确保不穿透地面
-                if (pos.y < dynamicGroundHeight) { // 🚀 FIX: 使用动态高度
-                    pos.y = dynamicGroundHeight;
-                }
-            }
+    // C. 升力 (Lift) - 垂直于机翼
+    const speedSq = forwardSpeed * forwardSpeed;
+    let liftForce = 0;
+    if (forwardSpeed > 0) {
+        liftForce = 0.5 * airDensity * speedSq * CONFIG.liftCoeff * CONFIG.wingArea * liftFactor;
+    }
+    
+    const liftVec = vUp.clone().multiplyScalar(liftForce);
+    force.add(liftVec);
 
 
-            // --- 积分计算 (F=ma) ---
-            physics.acc.copy(force.divideScalar(CONFIG.mass));
-            physics.vel.add(physics.acc.clone().multiplyScalar(dt));
-            physics.pos.add(physics.vel.clone().multiplyScalar(dt));
-            
-            // --- 旋转控制 ---
-            const aeroFactor = Math.min(Math.max((forwardSpeed / 100), 0.5), 1.0); 
+    // D. 阻力 (Drag)
+    const dragMag = 0.5 * airDensity * (speed * speed) * CONFIG.dragCoeff * CONFIG.wingArea;
+    if (speed > 0) {
+        const dragDir = vel.clone().normalize().negate();
+        const brakeDrag = input.space ? 5.0 : 1.0; 
+        force.add(dragDir.multiplyScalar(dragMag * brakeDrag));
+    }
 
-            let targetRoll = (input.a - input.d) * CONFIG.rollSpeed * aeroFactor;
-            let targetYaw = (input.q - input.e) * CONFIG.yawSpeed * aeroFactor;
+    // 地面接触反作用力
+    const groundDelta = pos.y - dynamicGroundHeight; 
+    if (groundDelta <= 0.1) { 
+        const springForce = CONFIG.mass * CONFIG.gravity * 3.0 * (0.1 - groundDelta); 
+        const dampForce = -vel.y * CONFIG.mass * 0.5; 
+        
+        const reactionForce = new THREE.Vector3(0, springForce + dampForce, 0);
+        force.add(reactionForce);
 
-            if (physics.grounded && forwardSpeed < V_R_SPEED) {
-                targetRoll = 0; 
-                targetYaw = (input.q - input.e) * 0.5;
-            } else if (physics.grounded) {
-                targetYaw = (input.q - input.e + (input.a - input.d) * 0.5); 
-            }
-            
-
-            const targetRot = new THREE.Vector3(
-                (input.s - input.w) * CONFIG.pitchSpeed * aeroFactor, 
-                targetYaw,   
-                targetRoll   
-            );
-
-            physics.rotVel.lerp(targetRot, dt * CONFIG.rotDamping);
-
-            const deltaRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
-                physics.rotVel.x * dt,
-                physics.rotVel.y * dt,
-                physics.rotVel.z * dt,
-                'XYZ'
-            ));
-            physics.quat.multiply(deltaRot).normalize();
-
-
-            // --- UI 逻辑 & 坠毁判定 (这里逻辑不变，但在主循环中更新 UI 更合适) ---
-            const centerWarn = document.getElementById('center-warning');
-            const speedKnots = Math.floor(speed * 1.94); 
-
-            // 🚀 FIX: 使用动态高度
-            const inRunwayArea = (pos.x > CONFIG.runwayX - 1000 && pos.x < CONFIG.runwayX + 1000 && pos.y < dynamicGroundHeight + 1.0); 
-            
-            if (physics.crashed) {
-                // 如果已经坠毁，保持警告状态
-            }
-            else if (physics.grounded && speedKnots > 20 && !inRunwayArea) {
-                centerWarn.style.display = 'block';
-                centerWarn.innerText = "CRASH: OFF-RUNWAY LANDING";
-                
-                physics.vel.set(0, 0, 0);
-                physics.throttle = 0;
-                physics.crashed = true;
-            } 
-            else if (!physics.grounded && speedKnots < 135 && speedKnots > 20) {
-                centerWarn.style.display = 'block';
-                centerWarn.innerText = `STALL WARNING (V=${speedKnots} KTS)`;
-                
-            } else {
-                centerWarn.style.display = 'none';
-            }
+        // 地面摩擦
+        const friction = vel.clone().multiplyScalar(-2000);
+        friction.y = 0; // 只影响水平速度
+        force.add(friction);
+        
+        // 确保不穿透地面
+        if (pos.y < dynamicGroundHeight) { 
+            pos.y = dynamicGroundHeight;
         }
+    }
+
+
+    // --- 积分计算 (F=ma) ---
+    physics.acc.copy(force.divideScalar(CONFIG.mass));
+    physics.vel.add(physics.acc.clone().multiplyScalar(dt));
+    physics.pos.add(physics.vel.clone().multiplyScalar(dt));
+    
+    // ⭐ 新增逻辑：飞机在地面且速度 < 50 knots 时禁用wsadqe
+    const V_50_KTS_MPS = 25.7; // 50 节 ≈ 25.7 m/s
+
+    if (physics.grounded && speed < V_50_KTS_MPS) {
+        // 禁用俯仰、滚转和偏航输入
+        input.w = 0;
+        input.s = 0;
+        input.a = 0;
+        input.d = 0;
+        input.q = 0;
+        input.e = 0;
+    }
+    // ⭐ 新增逻辑结束
+
+    // --- 旋转控制 ---
+    const aeroFactor = Math.min(Math.max((forwardSpeed / 100), 0.5), 1.0); 
+
+    let targetRoll = (input.a - input.d) * CONFIG.rollSpeed * aeroFactor;
+    let targetYaw = (input.q - input.e) * CONFIG.yawSpeed * aeroFactor;
+
+    if (physics.grounded && forwardSpeed < V_R_SPEED) {
+        // 如果低于 VR 速度，仍然允许鼻轮转向，但禁用滚转
+        targetRoll = 0; 
+        // 注意：因为上面已经将 input.q/e 置零，所以这行代码如果速度低于 50kts 也不会生效
+        targetYaw = (input.q - input.e) * 0.5; 
+    } else if (physics.grounded) {
+        // 如果高于 VR 速度，混合转向，但仍禁用滚转
+        targetRoll = 0; 
+        targetYaw = (input.q - input.e + (input.a - input.d) * 0.5); 
+    }
+    
+
+    const targetRot = new THREE.Vector3(
+        (input.s - input.w) * CONFIG.pitchSpeed * aeroFactor, 
+        targetYaw,   
+        targetRoll   
+    );
+
+    physics.rotVel.lerp(targetRot, dt * CONFIG.rotDamping);
+
+    const deltaRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        physics.rotVel.x * dt,
+        physics.rotVel.y * dt,
+        physics.rotVel.z * dt,
+        'XYZ'
+    ));
+    physics.quat.multiply(deltaRot).normalize();
+
+
+    // --- UI 逻辑 & 坠毁判定 ---
+    const centerWarn = document.getElementById('center-warning');
+    const speedKnots = Math.floor(speed * 1.94); 
+
+    const inRunwayArea = (pos.x > CONFIG.runwayX - 1000 && pos.x < CONFIG.runwayX + 1000 && pos.y < dynamicGroundHeight + 1.0); 
+    
+    if (physics.crashed) {
+        // 如果已经坠毁，保持警告状态
+    }
+    else if (physics.grounded && speedKnots > 20 && !inRunwayArea) {
+        centerWarn.style.display = 'block';
+        centerWarn.innerText = "CRASH: OFF-RUNWAY LANDING";
+        
+        physics.vel.set(0, 0, 0);
+        physics.throttle = 0;
+        physics.crashed = true;
+    } 
+    else if (!physics.grounded && speedKnots < 135 && speedKnots > 20) {
+        centerWarn.style.display = 'block';
+        centerWarn.innerText = `STALL WARNING (V=${speedKnots} KTS)`;
+        
+    } else {
+        centerWarn.style.display = 'none';
+    }
+}
 
         function initSplashModel() {
             splashClock = new THREE.Clock();
