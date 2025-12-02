@@ -405,7 +405,7 @@ const inputState = {
 // 引擎和转向参数
 const maxEngineForce = 12000; 
 const brakeForce = 40;
-const maxSteerVal = 0.8;
+const maxSteerVal = 1.2;
 
 // 仪表盘元素
 const speedEl = document.getElementById('hud-spd');
@@ -542,7 +542,7 @@ function loadCarModel() {
         'car1.glb',
         (gltf) => {
             carMesh = gltf.scene;
-            carMesh.scale.set(1.5, 1.5, 1.5); 
+            carMesh.scale.set(1.7, 1.7, 1.7); 
             carMesh.rotation.y = Math.PI; 
             carMesh.position.y = -0.5; 
             
@@ -725,7 +725,7 @@ function initVehicle() {
   chassisBody = new CANNON.Body({
     mass: 1500,
     shape: chassisShape,
-    position: new CANNON.Vec3(0, 1.0, 0) 
+    position: new CANNON.Vec3(1000, 1.0, 0) 
   });
   chassisBody.angularDamping = 0.3;  // ✅ 降低角阻尼，让转向更灵敏
   chassisBody.linearDamping = 0.05;  // ✅ 降低线性阻尼
