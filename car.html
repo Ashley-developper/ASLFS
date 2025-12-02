@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Car Simulator</title>
+    <style>
+        /* ========================================================
+        🚀 样式：来自 index.html 的现代、科幻风格 UI 样式
+        ======================================================== 
+        */
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; }
+        
+        /* 仪表盘布局 */
+        #hud-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
+            padding: 25px; box-sizing: border-box; z-index: 10;
+        }
+
+        .hud-top-left { display: flex; gap: 20px; }
+        
+        .instrument {
+            background: rgba(10, 20, 30, 0.75); 
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 4px solid #00aaff;
+            backdrop-filter: blur(8px); 
+            padding: 10px 18px; 
+            color: #eee; 
+            min-width: 100px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        
+        .label { font-size: 10px; color: #88ccff; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px; display:block; text-transform: uppercase;}
+        .value { font-size: 26px; font-weight: 700; font-family: 'Consolas', monospace; letter-spacing: -1px; }
+        .unit { font-size: 12px; color: #888; margin-left: 4px; font-weight: 400;}
+
+        /* 警告信息 */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        #center-warning {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ff3333; font-size: 24px; font-weight: bold; border: 2px solid #ff3333;
+            padding: 10px 30px; background: rgba(0,0,0,0.7); display: none;
+            animation: blink 0.5s step-end infinite;
+        }
+
+        /* 启动画面 (Splash Screen) */
+        #splash {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            /* 🎨 天蓝色立体背景 */
+            background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+            z-index: 999; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white;
+            /* 投影效果 */
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
+        }
+        /* 新增：THREE.js 容器在启动画面中 */
+        #splash-three-container {
+            width: 300px; /* 3D 模型区域宽度 */
+            height: 150px; /* 3D 模型区域高度 */
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        h1 { 
+            font-size: 32px; 
+            margin: 0; 
+            font-weight: 400; 
+            letter-spacing: 5px; 
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
+        }
+
+        /* 标题样式：Choose Your Plane -> City Drive Mode */
+        #plane-chooser-title {
+            font-size: 20px; 
+            margin-bottom: 20px; 
+            font-weight: 600; 
+            color: #f0f0f0; 
+            letter-spacing: 3px;
+        }
+
+        /* 飞机参数展示区样式 (Car Stats Display) */
+        #plane-info-display {
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            min-width: 450px;
+        }
+
+        .plane-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 20px;
+            font-size: 13px;
+            color: #c0e0f0;
+        }
+
+        .stat-value {
+            font-family: 'Consolas', monospace;
+            font-weight: bold;
+            color: #80D0C7;
+            margin-left: 5px;
+        }
+
+        /* 按钮和控制网格样式更新 */
+        .controls-grid {
+            display: grid; grid-template-columns: auto auto; gap: 10px 20px; 
+            margin-top: 20px;
+            text-align: left; 
+            background: rgba(0,0,0,0.3); /* 深色透明背景 */
+            padding: 20px; 
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 14px;
+        }
+
+        .key-box { 
+            font-family: 'Consolas', monospace; 
+            color: #80D0C7; /* 匹配主题色 */
+            font-weight: bold; 
+            margin-right: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #80D0C7;
+        }
+
+        button#start-button {
+            margin-top: 40px; 
+            padding: 14px 50px; 
+            font-size: 16px; 
+            font-weight: 700; 
+            border: none; /* 移除边框 */
+            background: #0093E9; 
+            color: #fff; 
+            cursor: pointer; 
+            letter-spacing: 2px;
+            transition: all 0.3s; 
+            text-transform: uppercase;
+            border-radius: 30px; /* 圆角按钮 */
+            box-shadow: 0 6px 20px rgba(0, 147, 233, 0.6);
+        }
+        button#start-button:hover { 
+            background: #80D0C7; 
+            color: #000; 
+            box-shadow: 0 6px 25px rgba(128, 208, 199, 0.8); 
+        }
+        button#start-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 3px 10px rgba(0, 147, 233, 0.6);
+        }
+
+        /* Loading 界面样式 */
+        #loading-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000; 
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        #loading-progress-bar {
+            width: 300px;
+            height: 10px;
+            margin-top: 20px;
+            background: #555;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        #loading-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #00aaff;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="splash">
+        <h1>ASL <b>CAR SIMULATOR</b></h1>
+        <p id="plane-chooser-title">CITY DRIVE MODE</p>
+        
+        <div id="splash-three-container"></div> 
+    
+        <div id="plane-info-display" style="min-width:350px;">
+            <p class="plane-title" id="plane-name">SPORTS CAR R‑1</p>
+            <div class="stats-grid">
+                <div>Mass: <span id="stat-mass" class="stat-value">1500</span> KG</div>
+                <div>Power: <span id="stat-thrust" class="stat-value">300</span> HP</div>
+                <div>Torque: <span id="stat-lift" class="stat-value">900</span> Nm</div>
+                <div>Redline: <span id="stat-height" class="stat-value">7500</span> RPM</div>
+            </div>
+        </div>
+
+        <div class="controls-grid">
+            <div><span class="key-box">W</span> Accelerate</div>
+            <div><span class="key-box">S</span> Brake / Reverse</div>
+            <div><span class="key-box">A / D</span> Steer Left / Right</div>
+            <div><span class="key-box">SPACE</span> Handbrake (Rear-wheel drift)</div>
+            <div><span class="key-box">V</span> Change camera view</div>
+        </div>
+    
+        <div style="margin-top:20px; color:#c0e0f0; font-size:13px; opacity: 0.8;">
+            © 2025 Zhanyi Zhou (ASL) All rights reserved
+        </div>
+    
+        <button id="start-button" onclick="startGame()">START DRIVING</button>
+    </div>
+    
+    <div id="loading-screen">
+        <p>Loading City and Assets...</p>
+        <div id="loading-progress-bar">
+            <div id="loading-progress-fill"></div>
+        </div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
+    </div>
+
+    <div id="hud-layer" style="display:none;">
+        <div class="hud-top-left">
+            <div class="instrument">
+                <span class="label">Speed</span>
+                <span class="value" id="hud-spd">0</span> <span class="unit">KM/H</span>
+            </div>
+            <div class="instrument">
+                <span class="label">Altitude</span>
+                <span class="value" id="hud-alt">0</span> <span class="unit">M</span>
+            </div>
+            <div class="instrument">
+                <span class="label">Heading</span>
+                <span class="value" id="hud-hdg">000</span> <span class="unit">DEG</span>
+            </div>
+            <div class="instrument" style="border-left-color: #ffcc00;">
+                <span class="label" style="color:#ffcc00">RPM</span>
+                <span class="value" id="hud-rpm">0</span> <span class="unit">x100</span>
+            </div>
+            <div class="instrument" style="border-left-color: #ff9900;">
+                <span class="label" style="color:#ff9900">Gear</span>
+                <span class="value" id="hud-gear">P</span> <span class="unit">MODE</span>
+            </div>
+        </div>
+    
+        <div id="center-warning">⚠ WARNING: SLIPPAGE</div>
+    </div>
+    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script> 
+
+<script>
+// =========================================================================================
+// ** 初始 Splash Screen 3D 场景变量 **
+// =========================================================================================
+let splashScene, splashCamera, splashRenderer;
+let splashCarModel = null;
+let splashAnimationId; // 用于存储动画ID，以便停止
+
+// =========================================================================================
+// ** 主游戏 3D 场景变量 **
+// =========================================================================================
+let scene, renderer;
+// 移除 cameraFree，新增 cameraCockpit
+let cameraChase, cameraCockpit, activeCamera; 
+let world, vehicle, chassisBody;
+let wheelMeshes = [];
+let wheelGeometries = []; 
+let lastTime = undefined;
+
+// ** 关键的状态变量 **
+let cityLoaded = false;
+let carModelLoaded = false; 
+let tireModelLoaded = false; 
+let carMesh = null; // <-- 汽车的 THREE.Mesh 视觉模型
+let tireMeshPrototype = null; 
+let gltfLoader = null; 
+let dracoLoader = null; 
+
+const inputState = {
+  keyW: false,
+  keyS: false,
+  keyA: false,
+  keyD: false,
+  keySpace: false
+};
+
+// 速度调高：将最大引擎力从 7000 提高到 12000
+const maxEngineForce = 12000; 
+const brakeForce = 40;
+// 转向灵敏度提升：从 0.5 提高到 0.8，并确保恒定 (新修改)
+const maxSteerVal = 0.8; // 最大转向角（弧度）
+
+// 仪表盘元素
+const speedEl = document.getElementById('hud-spd');
+const altitudeEl = document.getElementById('hud-alt');
+const headingEl = document.getElementById('hud-hdg');
+const rpmEl = document.getElementById('hud-rpm');
+const gearEl = document.getElementById('hud-gear');
+const warningEl = document.getElementById('center-warning'); 
+
+let engineForce = 0;
+let steeringValue = 0;
+
+// =========================================================================================
+// ** THREE.js/GLTF Loader 初始化 **
+// =========================================================================================
+function initLoaders() {
+    dracoLoader = new THREE.DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+    
+    gltfLoader = new THREE.GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+}
+
+
+// =========================================================================================
+// ** 启动画面 3D 场景逻辑 **
+// =========================================================================================
+function initSplashThree() {
+    const container = document.getElementById('splash-three-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    splashScene = new THREE.Scene();
+    // 使用透明背景
+    splashRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    splashRenderer.setClearColor(0x000000, 0); // 透明背景
+    splashRenderer.setSize(width, height);
+    container.appendChild(splashRenderer.domElement);
+
+    splashCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
+    splashCamera.position.set(0, 1, 3);
+    splashCamera.lookAt(0, 0, 0);
+
+    // 灯光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    splashScene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 1.5);
+    pointLight.position.set(5, 5, 5);
+    splashScene.add(pointLight);
+    const pointLight2 = new THREE.PointLight(0xffffff, 0.5);
+    pointLight2.position.set(-5, 0, -5);
+    splashScene.add(pointLight2);
+}
+
+function loadSplashCarModel() {
+    if (!gltfLoader) return;
+    
+    // 加载和主场景相同的汽车模型
+    gltfLoader.load(
+        'car1.glb', 
+        (gltf) => {
+            splashCarModel = gltf.scene;
+            // 调整启动画面模型的缩放 (Scale 调大)
+            splashCarModel.scale.set(1.2, 1.2, 1.2); 
+            splashCarModel.rotation.y = Math.PI; 
+            splashCarModel.position.y = -1; // 调整位置使其在视野中央
+            
+            splashScene.add(splashCarModel);
+            
+            // 模型加载成功后开始动画
+            splashAnimate(); 
+        },
+        undefined, // onProgress
+        (error) => {
+            console.error('Failed to load splash car model', error);
+        }
+    );
+}
+
+function splashAnimate() {
+    splashAnimationId = requestAnimationFrame(splashAnimate);
+
+    if (splashCarModel) {
+        // 让汽车模型围绕 Y 轴旋转
+        splashCarModel.rotation.y += 0.005; 
+    }
+
+    if (splashRenderer && splashScene && splashCamera) {
+        splashRenderer.render(splashScene, splashCamera);
+    }
+}
+// =========================================================================================
+// ** 游戏启动和加载逻辑 **
+// =========================================================================================
+function checkGameReady() {
+    if (cityLoaded && carModelLoaded && tireModelLoaded) {
+        // 停止启动画面的动画
+        cancelAnimationFrame(splashAnimationId);
+        
+        // 关闭加载界面，显示 HUD
+        document.getElementById('loading-screen').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('hud-layer').style.display = 'flex'; 
+        }, 500);
+
+        // 所有组件都准备好了，才初始化车辆和动画
+        initVehicle(); 
+        requestAnimationFrame(animate);
+    }
+}
+
+// 处理启动画面到加载画面的过渡
+function startGame() {
+    // 1. 隐藏启动画面
+    document.getElementById('splash').style.display = 'none';
+    // 2. 显示加载画面
+    document.getElementById('loading-screen').style.display = 'flex'; 
+
+    // 3. 开始游戏初始化和资产加载
+    setupGame();
+}
+window.startGame = startGame; 
+
+function setupGame() {
+    initThree();
+    initCannon();
+    initGround();
+    initCameraAndLights(); 
+    
+    // 开始加载汽车模型、轮胎模型和城市模型
+    loadCarModel(); 
+    loadTireModel(); 
+    loadCity();
+}
+
+// =========================================================================================
+// ** 模型加载函数 **
+// =========================================================================================
+/**************** 汽车 3D 模型加载 ****************/
+function loadCarModel() {
+    if (!gltfLoader) {
+        console.error("GLTFLoader is not initialized!");
+        return;
+    }
+
+    gltfLoader.load(
+        'car1.glb', // 您的汽车模型路径
+        (gltf) => {
+            carMesh = gltf.scene;
+            // 车子 scale 调高 (Scale 调大)
+            carMesh.scale.set(1.2, 1.2, 1.2); 
+            carMesh.rotation.y = Math.PI; 
+            // 初始位置调整，使其在物理底盘上方
+            carMesh.position.y = -0.5; 
+            
+            carMesh.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                }
+            });
+            // 立即添加到场景，以便在 initVehicle 不添加底盘时也能显示
+            scene.add(carMesh); 
+            
+            carModelLoaded = true; 
+            checkGameReady();      
+        },
+        (xhr) => {
+        },
+        (error) => {
+            console.error('Failed to load car1.glb', error);
+            carMesh = null; 
+            carModelLoaded = true;
+            checkGameReady();
+        }
+    );
+}
+
+/**************** 轮胎 3D 模型加载 ****************/
+function loadTireModel() {
+    if (!gltfLoader) {
+        console.error("GLTFLoader is not initialized!");
+        return;
+    }
+
+    gltfLoader.load(
+        'tire1.glb', // 轮胎模型路径
+        (gltf) => {
+            tireMeshPrototype = gltf.scene;
+            // 调整轮胎原型模型的大小、旋转等以匹配物理尺寸
+            tireMeshPrototype.scale.set(0.5, 0.5, 0.5); 
+            tireMeshPrototype.rotation.x = Math.PI / 2; // 默认 Three.js 轮子可能需要旋转
+            
+            tireMeshPrototype.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                }
+            });
+            console.log("Tire model loaded successfully: tire1.glb");
+
+            tireModelLoaded = true;
+            checkGameReady();
+        },
+        (xhr) => {
+        },
+        (error) => {
+            console.error('Failed to load tire1.glb', error);
+            tireMeshPrototype = null;
+            tireModelLoaded = true;
+            checkGameReady();
+        }
+    );
+}
+
+/**************** 城市 glb ****************/
+function loadCity() {
+  const progressFill = document.getElementById('loading-progress-fill');
+  const loadingStatus = document.getElementById('loading-status');
+
+  if (!gltfLoader) {
+    console.error("GLTFLoader is not initialized!");
+    return;
+  }
+    
+  gltfLoader.load(
+    'city.glb', 
+    (gltf) => {
+      const city = gltf.scene;
+      city.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+      scene.add(city);
+      city.scale.set (4, 4, 4)
+      
+      cityLoaded = true; 
+      checkGameReady();
+    },
+    (xhr) => {
+      if (xhr.total) {
+        const percent = Math.floor(xhr.loaded / xhr.total * 100);
+        progressFill.style.width = percent + '%';
+        // 确保 loadingStatus 更新了
+        loadingStatus.innerText = `(${percent}%) Loading City Assets...`; 
+      }
+    },
+    (err) => {
+      console.error('Failed to load city.glb', err);
+      cityLoaded = true;
+      checkGameReady();
+    }
+  );
+}
+
+
+// =========================================================================================
+// ** THREE.js/Cannon.js 基础设置 **
+// =========================================================================================
+function initThree() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87CEEB);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.BasicShadowMap; 
+  
+  // 确保主游戏画布附加到 body
+  document.body.appendChild(renderer.domElement); 
+}
+
+function initCannon() {
+  world = new CANNON.World();
+  world.gravity.set(0, -9.82, 0);
+  world.broadphase = new CANNON.SAPBroadphase(world);
+  world.allowSleep = true;
+
+  const defaultMaterial = new CANNON.Material('default');
+  const contactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial,
+    {
+      friction: 0.6,
+      restitution: 0.0
+    }
+  );
+  world.defaultContactMaterial = contactMaterial;
+  world.addContactMaterial(contactMaterial);
+}
+
+/**************** 地面 ****************/
+function initGround() {
+  const groundShape = new CANNON.Plane();
+  const groundBody = new CANNON.Body({
+    mass: 0,
+    material: world.defaultContactMaterial.material
+  });
+  groundBody.addShape(groundShape);
+  groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+  world.addBody(groundBody);
+
+  const groundGeo = new THREE.PlaneGeometry(500, 500, 10, 10);
+  const groundMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+  const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+  groundMesh.rotation.x = -Math.PI / 2;
+  groundMesh.position.y = -0.05;
+  groundMesh.receiveShadow = true;
+  scene.add(groundMesh);
+}
+
+/**************** 相机和灯光 ****************/
+function initCameraAndLights() {
+  cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  // 移除 cameraFree，新增 cameraCockpit
+  cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); 
+  
+  // 初始设置
+  activeCamera = cameraChase;
+  
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.8);
+  scene.add(hemiLight);
+
+  const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
+  dirLight.position.set(50, 100, 50);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 4096;
+  dirLight.shadow.mapSize.height = 4096;
+  dirLight.shadow.camera.near = 0.5;
+  dirLight.shadow.camera.far = 500;
+  dirLight.shadow.camera.left = -100;
+  dirLight.shadow.camera.right = 100;
+  dirLight.shadow.camera.top = 100;
+  dirLight.shadow.camera.bottom = -100;
+  scene.add(dirLight);
+}
+
+/**************** 车辆模型和物理设置 ****************/
+function initVehicle() {
+  // 物理碰撞体保持不变 (2x1x4 米)
+  const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2)); 
+  chassisBody = new CANNON.Body({
+    mass: 1500,
+    shape: chassisShape,
+    // 保持重心高度为 1.0，防止过度侧翻
+    position: new CANNON.Vec3(0, 1.0, 0) 
+  });
+  chassisBody.angularDamping = 0.8;
+  chassisBody.linearDamping = 0.1;
+  world.addBody(chassisBody);
+  
+  // 视觉模型 (carMesh) 在 loadCarModel 中已添加到场景并单独管理 (底盘不可见)
+
+  vehicle = new CANNON.RaycastVehicle({
+    chassisBody: chassisBody,
+    indexRightAxis: 0,
+    indexUpAxis: 1,
+    indexForwardAxis: 2
+  });
+
+  const axleWidth = 1.0;
+  const wheelBase = 1.5;
+
+  function makeWheelOptions(x, y, z) {
+    return {
+      radius: 0.5, // 物理半径
+      directionLocal: new CANNON.Vec3(0, -1, 0),
+      suspensionStiffness: 30,
+      suspensionRestLength: 0.3,
+      // 降低摩擦力，增加漂移和侧滑感 (新修改)
+      frictionSlip: 3, 
+      dampingRelaxation: 2.3,
+      dampingCompression: 4.4,
+      maxSuspensionForce: 100000,
+      // 保持较低的 rollInfluence，让重心变化为主导
+      rollInfluence: 0.01, 
+      maxSuspensionTravel: 0.3,
+      customSlidingRotationalSpeed: -30,
+      useCustomSlidingRotationalSpeed: true,
+      axleLocal: new CANNON.Vec3(1, 0, 0),
+      chassisConnectionPointLocal: new CANNON.Vec3(x, y, z)
+    };
+  }
+
+  // 四轮对称布局
+  vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 0: FL (前左)
+  vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 1: FR (前右)
+  vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // 2: RL (后左)
+  vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // 3: RR (后右)
+
+  vehicle.addToWorld(world);
+
+  // 创建轮子 mesh (移除 scene.add(wheelMesh) 使轮子不可见)
+  wheelMeshes = [];
+  
+  if (tireMeshPrototype) {
+        // 使用加载的 tire1.glb 模型作为轮子
+        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+            const wheelMesh = tireMeshPrototype.clone();
+            // 移除 scene.add(wheelMesh); 使轮子不可见 (已实现)
+            wheelMeshes.push(wheelMesh);
+        }
+  } else {
+        // 回退到默认圆柱体轮子
+        console.warn("Tire model not loaded, using fallback cylinder mesh.");
+        const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+            const wheel = vehicle.wheelInfos[i];
+            const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2, 32);
+            cylinderGeometry.rotateZ(Math.PI / 2); // 旋转以匹配 CANNON.js 轮子方向
+            const wheelMesh = new THREE.Mesh(cylinderGeometry, wheelMat);
+            // 移除 scene.add(wheelMesh); 使轮子不可见 (已实现)
+            wheelMeshes.push(wheelMesh);
+        }
+  }
+}
+
+// =========================================================================================
+// ** 游戏循环逻辑 **
+// =========================================================================================
+
+/**************** 键盘控制 ****************/
+window.addEventListener('keydown', (event) => {
+  switch (event.key.toLowerCase()) {
+    case 'w':
+      inputState.keyW = true;
+      break;
+    case 's':
+      inputState.keyS = true;
+      break;
+    case 'a':
+      inputState.keyA = true;
+      break;
+    case 'd':
+      inputState.keyD = true;
+      break;
+    case ' ':
+      inputState.keySpace = true;
+      event.preventDefault(); // 阻止空格键滚动页面
+      break;
+    case 'v':
+      toggleCamera();
+      break;
+  }
+});
+
+window.addEventListener('keyup', (event) => {
+  switch (event.key.toLowerCase()) {
+    case 'w':
+      inputState.keyW = false;
+      break;
+    case 's':
+      inputState.keyS = false;
+      break;
+    case 'a':
+      inputState.keyA = false;
+      break;
+    case 'd':
+      inputState.keyD = false;
+      break;
+    case ' ':
+      inputState.keySpace = false;
+      break;
+  }
+});
+
+function toggleCamera() {
+  if (activeCamera === cameraChase) {
+    activeCamera = cameraCockpit; // 切换到驾驶舱视角
+  } else {
+    activeCamera = cameraChase; // 切换到追逐视角
+  }
+}
+
+function updateControls() {
+  if (!chassisBody) return; 
+
+  // 重置
+  engineForce = 0;
+  steeringValue = 0;
+  let brake = 0; // W/S 产生的正常刹车力
+  
+  const v = chassisBody.velocity;
+  const currentSpeed = v.length() * 3.6; // m/s to km/h
+  // 使用 Three.js 向量来计算方向
+  const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
+  const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
+  const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
+  const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
+  const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
+
+  // 核心修复：移除速度对转向角的动态影响，始终使用最大转向角 (maxSteerVal)
+  // let currentMaxSteer = maxSteerVal;
+  // if (currentSpeed > 60) {
+  //   currentMaxSteer *= 0.3;
+  // } else if (currentSpeed > 30) {
+  //   currentMaxSteer *= 0.6;
+  // }
+  // if (inputState.keyA) steeringValue = currentMaxSteer;
+  // else if (inputState.keyD) steeringValue = -currentMaxSteer;
+  
+  if (inputState.keyA) steeringValue = maxSteerVal;
+  else if (inputState.keyD) steeringValue = -maxSteerVal;
+
+  if (inputState.keyW) {
+    if (isMovingBackward) {
+      brake = maxEngineForce * 0.5;
+    } else {
+      // W (加速) 驱动后轮
+      engineForce = -maxEngineForce;
+      gearEl.textContent = 'D';
+    }
+  } else if (inputState.keyS) {
+    if (isMovingForward) {
+      brake = maxEngineForce * 0.5;
+    } else {
+      // S (倒车) 驱动后轮
+      engineForce = maxEngineForce * 0.5;
+      gearEl.textContent = 'R';
+    }
+  } else if (!inputState.keySpace) { 
+    // 自动轻微刹车/驻车 (手刹按下时，不判断 P/N 档)
+    if (currentSpeed < 1) {
+      gearEl.textContent = 'P';
+    } else {
+      gearEl.textContent = 'N';
+    }
+  }
+
+  // 转向应用于前轮
+  vehicle.setSteeringValue(steeringValue, 0); // FL
+  vehicle.setSteeringValue(steeringValue, 1); // FR
+
+  // 驱动力应用于后轮
+  vehicle.applyEngineForce(engineForce, 2); // RL
+  vehicle.applyEngineForce(engineForce, 3); // RR
+
+  // === 统一应用刹车逻辑 (W/S 刹车和 手刹) ===
+  let finalBrakeFL = brake;
+  let finalBrakeFR = brake;
+  let finalBrakeRL = brake;
+  let finalBrakeRR = brake;
+
+  // 手刹逻辑：仅应用于后轮 
+  if (inputState.keySpace) {
+      // 手刹：对后轮施加极高刹车力（手刹），前轮只受 W/S 正常刹车力的影响
+      const handbrakeStrength = maxEngineForce * 0.8; 
+      finalBrakeRL = handbrakeStrength; 
+      finalBrakeRR = handbrakeStrength; 
+      gearEl.textContent = 'E'; // E for Emergency/Handbrake
+  }
+
+  // 最终刹车应用
+  vehicle.setBrake(finalBrakeFL, 0); // FL
+  vehicle.setBrake(finalBrakeFR, 1); // FR
+  vehicle.setBrake(finalBrakeRL, 2); // RL
+  vehicle.setBrake(finalBrakeRR, 3); // RR
+
+  // 优化：如果所有刹车力为零，且没有按手刹，则显式移除刹车，确保不留残余力。
+  if (finalBrakeFL === 0 && finalBrakeRL === 0 && !inputState.keySpace) {
+    vehicle.setBrake(0, 0);
+    vehicle.setBrake(0, 1);
+    vehicle.setBrake(0, 2);
+    vehicle.setBrake(0, 3);
+  }
+}
+
+/**************** 摄像机 ****************/
+function updateCamera() {
+  if (!chassisBody) return;
+  const chassisPos = chassisBody.position;
+  const q = chassisBody.quaternion;
+
+  if (activeCamera === cameraChase) {
+    // 追逐视角: 调整为更靠近车身
+    const offset = new THREE.Vector3(0, 3, -7); 
+    offset.applyQuaternion(q);
+    offset.add(chassisPos);
+
+    cameraChase.position.lerp(offset, 0.1);
+    cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
+  } else if (activeCamera === cameraCockpit) {
+    // 驾驶舱视角: 修正位置和方向
+    const offset = new THREE.Vector3(0, 0.8, 1.5); 
+    offset.applyQuaternion(q);
+    offset.add(chassisPos);
+
+    cameraCockpit.position.copy(offset);
+    
+    // 设置旋转与底盘一致
+    cameraCockpit.quaternion.copy(q);
+    
+    // 新增：将驾驶舱视角围绕 Y 轴旋转 180 度 (π 弧度)
+    const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    cameraCockpit.quaternion.multiply(rotation180);
+  }
+}
+
+function updateWheelMeshes() {
+  for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+    vehicle.updateWheelTransform(i);
+    const t = vehicle.wheelInfos[i].worldTransform;
+    // 尽管我们不再渲染轮子 Mesh，但为了一致性，仍更新它们的变换
+    if (wheelMeshes[i]) { 
+        wheelMeshes[i].position.copy(t.position);
+        wheelMeshes[i].quaternion.copy(t.quaternion);
+    }
+  }
+}
+
+// 只负责更新视觉 carMesh 的位置
+function updateCarMesh() { 
+    if (chassisBody && carMesh) {
+        // 1. 将 Three.js Mesh 的位置设置为 Cannon.js Body 的位置
+        carMesh.position.copy(chassisBody.position);
+        // 2. 将 Three.js Mesh 的旋转设置为 Cannon.js Body 的旋转
+        carMesh.quaternion.copy(chassisBody.quaternion);
+    }
+}
+
+/**************** HUD ****************/
+function updateHUD() {
+  if (!chassisBody) return;
+
+  const v = chassisBody.velocity;
+  const speed = v.length() * 3.6; // m/s to km/h
+  speedEl.textContent = speed.toFixed(0);
+
+  altitudeEl.textContent = chassisBody.position.y.toFixed(0);
+
+  const forward = new THREE.Vector3(0, 0, 1);
+  forward.applyQuaternion(chassisBody.quaternion);
+  const heading = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
+  let h = (heading + 360) % 360;
+  headingEl.textContent = h.toFixed(0).padStart(3, '0');
+
+  // 模拟 RPM (系数从 1.5 提高到 2.0，以匹配更高的速度)
+  const rpm = Math.min(75, Math.floor(speed * 2.0));
+  rpmEl.textContent = rpm;
+
+  // 速度超过 100km/h 显示警告
+  warningEl.style.display = speed > 100 ? 'block' : 'none';
+  warningEl.innerText = "⚠ WARNING: SLIPPAGE"; 
+}
+
+/**************** 动画 ****************/
+function animate(time) {
+  requestAnimationFrame(animate);
+  // 仅在 chassisBody 存在时才运行 physics 和 controls
+  if (!chassisBody || !world) return; 
+
+  const fixedTimeStep = 1 / 60;
+  const maxSubSteps = 1; 
+
+  if (lastTime !== undefined) {
+    const dt = (time - lastTime) / 1000;
+    world.step(fixedTimeStep, dt, maxSubSteps);
+  } else {
+    world.step(fixedTimeStep);
+  }
+  lastTime = time;
+
+  updateControls();
+  updateCarMesh(); // 调用更新 carMesh 的新函数
+  updateWheelMeshes();
+  updateCamera();
+  updateHUD();
+
+  renderer.render(scene, activeCamera);
+}
+
+// =========================================================================================
+// ** 启动逻辑 **
+// =========================================================================================
+window.addEventListener('resize', () => {
+  // 主游戏场景的 resize 逻辑
+  if (renderer && cameraChase && cameraCockpit) { 
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    const aspect = window.innerWidth / window.innerHeight;
+    cameraChase.aspect = aspect;
+    cameraChase.updateProjectionMatrix();
+    cameraCockpit.aspect = aspect; 
+    cameraCockpit.updateProjectionMatrix();
+  }
+  // 启动画面的 resize 逻辑
+  if (splashRenderer && splashCamera) {
+    const container = document.getElementById('splash-three-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    splashRenderer.setSize(width, height);
+    splashCamera.aspect = width / height;
+    splashCamera.updateProjectionMatrix();
+  }
+});
+
+// 在页面加载后执行：初始化加载器、启动画面 3D 场景并加载模型
+document.addEventListener('DOMContentLoaded', () => {
+    initLoaders();
+    initSplashThree();
+    loadSplashCarModel(); // 加载并开始旋转动画
+});
+
+</script>
+</body>
+</html>
