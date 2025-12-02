@@ -360,12 +360,12 @@ const inputState = {
 // 提速 + 线性油门
 const maxEngineForce = 22000;   // 提高最高速度
 const brakeForce = 40;
-const maxSteerVal = 0.8;
+const maxSteerVal = 1.2;
 
 // 线性油门变量
 let targetThrottle = 0;      // -1 ~ 1
 let currentThrottle = 0;     // -1 ~ 1
-const throttleStep = 2.5;    // 每秒变化量，可调
+const throttleStep = 1.0;    // 每秒变化量，可调
 
 // HUD 元素
 const speedEl = document.getElementById('hud-spd');
