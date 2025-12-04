@@ -548,19 +548,23 @@ function updateControls() {
     const desiredSteer = maxSteer * steerInput;
     steeringValue += (desiredSteer - steeringValue) * 0.1;
 
-    // 加速/刹车逻辑
+    // 加速/刹车逻辑 ✅ 修复：W键正确前进，S键正确后退
     if (inputState.keyW) {
         if (v.dot(forwardVector) < 0) {
+            // 如果车子在后退，先刹车停止
             brake = maxEngineForce * 0.5;
         } else {
-            engineForce = -maxEngineForce;
+            // 前进：施加正向动力
+            engineForce = maxEngineForce;  // ✅ 改为正值（之前是 -maxEngineForce）
             gearEl.textContent = 'D';
         }
     } else if (inputState.keyS) {
         if (v.dot(forwardVector) > 0) {
+            // 如果车子在前进，先刹车停止
             brake = maxEngineForce * 0.5;
         } else {
-            engineForce = maxEngineForce * 0.5;
+            // 后退：施加反向动力
+            engineForce = -maxEngineForce * 0.5;  // ✅ 确保是负值（后退）
             gearEl.textContent = 'R';
         }
     } else if (!inputState.keySpace) {
