@@ -3,15 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Car Simulator (Fixed)</title>
+    <title>ASL Car Simulator</title>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background: #000; 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            user-select: none; 
-        }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; }
         
         /* 仪表盘布局 */
         #hud-layer {
@@ -19,112 +13,166 @@
             pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
             padding: 25px; box-sizing: border-box; z-index: 10;
         }
+
         .hud-top-left { display: flex; gap: 20px; flex-wrap: wrap; }
+        
         .instrument {
-            background: rgba(10, 20, 30, 0.75); 
+            background: rgba(10, 20, 30, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-left: 4px solid #00aaff;
-            backdrop-filter: blur(8px); padding: 10px 18px; color: #eee; 
-            min-width: 100px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-radius: 4px;
+            backdrop-filter: blur(8px);
+            padding: 10px 18px;
+            color: #eee;
+            min-width: 100px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            border-radius: 4px;
         }
-        .label { font-size: 10px; color: #88ccff; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px; display:block; text-transform: uppercase; }
-        .value { font-size: 26px; font-weight: 700; font-family: 'Consolas', monospace; letter-spacing: -1px; }
-        .unit { font-size: 12px; color: #888; margin-left: 4px; font-weight: 400; }
+        
+        .label {
+            font-size: 10px; color: #88ccff; font-weight: 600; letter-spacing: 1px;
+            margin-bottom: 4px; display:block; text-transform: uppercase;
+        }
+        
+        .value {
+            font-size: 26px; font-weight: 700; font-family: 'Consolas', monospace; letter-spacing: -1px;
+        }
+        
+        .unit {
+            font-size: 12px; color: #888; margin-left: 4px; font-weight: 400;
+        }
+
+        /* 控制提示 */
+        #control-hints {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 20, 30, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 4px solid #00ff00;
+            backdrop-filter: blur(8px);
+            padding: 15px 20px;
+            color: #eee;
+            font-size: 12px;
+            border-radius: 4px;
+            max-width: 200px;
+            line-height: 1.6;
+        }
+
+        .hint-title {
+            color: #00ff00;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
 
         /* 启动画面 (Splash Screen) */
         #splash {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
-            z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
+            z-index: 999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
         }
+        
         #splash-three-container {
-            width: 300px; height: 150px; margin-bottom: 20px; position: relative;
+            width: 300px;
+            height: 150px;
+            margin-bottom: 20px;
+            position: relative;
         }
-        h1 { font-size: 32px; margin: 0; font-weight: 400; letter-spacing: 5px; text-transform: uppercase; color: #fff; text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); }
-        #plane-chooser-title { font-size: 20px; margin-bottom: 20px; font-weight: 600; color: #f0f0f0; letter-spacing: 3px; }
+
+        h1 {
+            font-size: 32px;
+            margin: 0;
+            font-weight: 400;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 新增版权信息样式 */
+        #copyright-info {
+            position: absolute;
+            bottom: 10px;
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        /* 启动画面中原有的不相关样式已移除，保留核心结构 */
+        #plane-chooser-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            color: #f0f0f0;
+            letter-spacing: 3px;
+        }
+
         #plane-info-display {
-            text-align: center; margin-top: 15px; padding: 15px 30px;
-            background: rgba(255, 255, 255, 0.1); border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             min-width: 450px;
         }
-        .plane-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; font-size: 13px; color: #c0e0f0; }
-        .controls-grid { display: grid; grid-template-columns: auto auto; gap: 10px 20px; margin-top: 20px; text-align: left; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; }
-        .key-box { font-family: 'Consolas', monospace; color: #80D0C7; font-weight: bold; margin-right: 8px; }
 
-        /* 按钮样式 */
-        #start-button {
-            margin-top: 40px; padding: 14px 50px; font-size: 16px; font-weight: 700;
-            border: none; background: #0093E9; color: #fff; cursor: pointer; letter-spacing: 2px;
-            transition: all 0.3s; text-transform: uppercase; border-radius: 30px;
-            box-shadow: 0 6px 20px rgba(0, 147, 233, 0.6);
-        }
-        #start-button:hover { background: #80D0C7; color: #000; box-shadow: 0 6px 25px rgba(128, 208, 199, 0.8); }
-        #start-button:active { transform: translateY(2px); box-shadow: 0 3px 10px rgba(0, 147, 233, 0.6); }
-
-        /* Loading 界面样式 */
-        #loading-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center;
-            color: white; font-size: 20px;
-        }
-        #loading-progress-bar {
-            width: 300px; height: 10px; margin-top: 20px; background: #555; border-radius: 5px; overflow: hidden;
-        }
-        #loading-progress-fill {
-            height: 100%; width: 0%; background: #00aaff; transition: width 0.3s;
+        .plane-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
-        /* HUD 底部信息 */
-        .hud-bottom {
-            display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 20px;
+            font-size: 13px;
+            color: #c0e0f0;
         }
-        .hud-bottom-right {
-            display: flex; gap: 20px; flex-wrap: wrap; justify-content: flex-end;
+
+        .stat-value {
+            font-family: 'Consolas', monospace;
+            font-weight: bold;
+            color: #80D0C7;
+            margin-left: 5px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: auto auto;
+            gap: 10px 20px;
+            margin-top: 20px;
+            text-align: left;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 14px;
+        }
+
+        .key-box {
+            font-family: 'Consolas', monospace;
+            color: #80D0C7;
+            font-weight: bold;
+            margin-right: 8px;
         }
     </style>
 </head>
 <body>
-
     <div id="splash">
-        <h1>ASL <b>CAR SIMULATOR</b></h1>
-        <p id="plane-chooser-title">CITY DRIVE MODE</p>
-        
-        <div id="splash-three-container"></div> 
-    
-        <div id="plane-info-display" style="min-width:350px;">
-            <p class="plane-title" id="plane-name">SPORTS CAR R‑1</p>
-            <div class="stats-grid">
-                <div>Mass: <span id="stat-mass" class="stat-value">1500</span> KG</div>
-                <div>Power: <span id="stat-thrust" class="stat-value">300</span> HP</div>
-                <div>Torque: <span id="stat-lift" class="stat-value">900</span> Nm</div>
-                <div>Redline: <span id="stat-height" class="stat-value">7500</span> RPM</div>
-            </div>
-        </div>
-
-        <div class="controls-grid">
-            <div><span class="key-box">W</span> Accelerate</div>
-            <div><span class="key-box">S</span> Brake / Reverse</div>
-            <div><span class="key-box">A / D</span> Steer Left / Right</div>
-            <div><span class="key-box">SPACE</span> Handbrake (Rear-wheel drift)</div>
-            <div><span class="key-box">V</span> Change camera view</div>
-        </div>
-    
-        <div style="margin-top:20px; color:#c0e0f0; font-size:13px; opacity: 0.8;">
-            © 2025 Zhanyi Zhou & ChatGPT (ASL) All rights reserved
-        </div>
-    
+        <div id="splash-three-container"></div>
+        <h1>ASL CAR SIMULATOR</h1>
+        <p style="opacity:0.8; margin-top:15px;">Press Start to Play</p>
         <button id="start-button" onclick="startGame()">START DRIVING</button>
-    </div>
-    
-    <div id="loading-screen">
-        <p>Loading City and Assets...</p>
-        <div id="loading-progress-bar">
-            <div id="loading-progress-fill"></div>
-        </div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
+        <p id="copyright-info">© 2025 Zhanyi Zhou & Gemini AI</p>
     </div>
 
     <div id="hud-layer" style="display:none;">
@@ -156,6 +204,12 @@
         </div>
 
         <div class="hud-bottom">
+            <div id="control-hints">
+                <div class="hint-title">💡 Tips</div>
+                <div>Press Shift for Boost</div>
+                <div>SPACE for handbrake drift</div>
+                <div>V to switch camera</div>
+            </div>
             <div class="hud-bottom-right">
                 <div class="instrument" style="border-left-color: #00ff00;">
                     <span class="label" style="color:#00ff00">Throttle</span>
@@ -164,594 +218,659 @@
             </div>
         </div>
     </div>
-    
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script> 
 
-<script>
-let splashScene, splashCamera, splashRenderer;
-let splashCarModel = null;
-let splashAnimationId;
+    <div id="loading-screen" style="display:none; flex-direction:column; align-items:center; justify-content:center; position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8); color:#fff; z-index:1000;">
+        <p>Loading City and Assets...</p>
+        <div id="loading-progress-bar" style="width:300px; height:10px; background:#333; margin-top:10px;">
+            <div id="loading-progress-fill" style="height:100%; width:0%; background:#00aaff;"></div>
+        </div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
+    </div>
 
-// ** 主游戏 3D 场景变量 **
-let scene, renderer;
-let cameraChase, cameraCockpit, activeCamera;
-let world, vehicle, chassisBody;
-let wheelMeshes = [];
-let wheelGeometries = [];
-let flameMesh = null;
-let lastTime = undefined;
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 
-// ** 关键的状态变量 **
-let cityLoaded = false;
-let carModelLoaded = false;
-let tireModelLoaded = false;
-let carMesh = null;
-let tireMeshPrototype = null;
-let gltfLoader = null;
-let dracoLoader = null;
+    <script>
+    // =============================================================================
+    // ** 主游戏 3D 场景变量 **
+    // =============================================================================
+    let scene, renderer;
+    let cameraChase, cameraCockpit, activeCamera;
+    let world, vehicle, chassisBody;
+    let wheelMeshes = [];
+    let lastTime = undefined;
 
-const inputState = {
-  keyW: false,
-  keyS: false,
-  keyA: false,
-  keyD: false,
-  keySpace: false,
-  keyBoost: false
-};
+    // ** 环境光/日夜切换变量 (已移除日夜切换逻辑，仅保留白天设置) **
+    const daySkyColor = new THREE.Color(0x87CEEB);
+    const dayHemiSky = new THREE.Color(0xffffff);
+    const dayHemiGround = new THREE.Color(0x3b4c5a);
+    let hemiLight, dirLight;
 
-// 引擎和转向参数
-const maxEngineForce = 12000;
-const brakeForce = 40;
-const maxSteerVal = 0.8; // Reduced slightly for stability
 
-const speedEl = document.getElementById('hud-spd');
-const altitudeEl = document.getElementById('hud-alt');
-const headingEl = document.getElementById('hud-hdg');
-const rpmEl = document.getElementById('hud-rpm');
-const gearEl = document.getElementById('hud-gear');
-const steerEl = document.getElementById('hud-steer');
-const throttleEl = document.getElementById('hud-throttle');
+    // ** 关键的状态变量 **
+    let staticBodies = [];
+    let carMesh = null;
+    let tireMeshPrototype = null;
+    let flameMesh = null;
+    let gltfLoader = null;
+    let dracoLoader = null;
 
-let engineForce = 0;
-let steeringValue = 0;
+    const inputState = {
+      keyW: false,
+      keyS: false,
+      keyA: false,
+      keyD: false,
+      keySpace: false,
+      keyShift: false
+    };
 
-function initLoaders() {
-    dracoLoader = new THREE.DRACOLoader();
-    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-    gltfLoader = new THREE.GLTFLoader();
-    gltfLoader.setDRACOLoader(dracoLoader);
-}
+    // 引擎和转向参数
+    const maxEngineForce = 12000;
+    // const brakeForce = 40; // 忽略原始的brakeForce，直接使用逻辑中的值
+    const maxSteerVal = 1.2;
+    // 转向平滑因子 (新增)
+    const steeringSmoothFactor = 0.08; 
 
-function initSplashThree() {
-    const container = document.getElementById('splash-three-container');
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    // 仪表盘元素
+    const speedEl = document.getElementById('hud-spd');
+    const altitudeEl = document.getElementById('hud-alt');
+    const headingEl = document.getElementById('hud-hdg');
+    const rpmEl = document.getElementById('hud-rpm');
+    const gearEl = document.getElementById('hud-gear');
+    const steerEl = document.getElementById('hud-steer');
+    const throttleEl = document.getElementById('hud-throttle');
 
-    splashScene = new THREE.Scene();
-    splashRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    splashRenderer.setClearColor(0x000000, 0);
-    splashRenderer.setSize(width, height);
-    container.appendChild(splashRenderer.domElement);
+    let engineForce = 0;
+    let steeringValue = 0;
+    let targetSteeringValue = 0; // 新增：平滑转向的目标值
 
-    splashCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
-    splashCamera.position.set(0, 1, 3);
-    splashCamera.lookAt(0, 0, 0);
+    // =============================================================================
+    // ** THREE.js/GLTF Loader 初始化 **
+    // =============================================================================
+    function initLoaders() {
+        dracoLoader = new THREE.DRACOLoader();
+        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-    splashScene.add(ambientLight);
-    const pointLight = new THREE.PointLight(0xffffff, 1.5);
-    pointLight.position.set(5, 5, 5);
-    splashScene.add(pointLight);
-    const pointLight2 = new THREE.PointLight(0xffffff, 0.5);
-    pointLight2.position.set(-5, 0, -5);
-    splashScene.add(pointLight2);
-}
+        // 使用 LoadingManager 进行统一加载管理
+        const loadingManager = new THREE.LoadingManager();
+        const progressFill = document.getElementById('loading-progress-fill');
+        const loadingStatus = document.getElementById('loading-status');
+        loadingManager.onProgress = function(itemUrl, itemsLoaded, itemsTotal) {
+            const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
+            progressFill.style.width = percent + '%';
+            loadingStatus.innerText = `(${percent}%) Loading Assets...`;
+        };
+        loadingManager.onLoad = function() {
+            // 所有资源加载完成，启动游戏
+            cancelAnimationFrame(splashAnimationId);
+            document.getElementById('loading-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('hud-layer').style.display = 'flex';
+            }, 500);
+            initVehicle();
+            requestAnimationFrame(animate);
+        };
 
-function loadSplashCarModel() {
-    if (!gltfLoader) return;
-    gltfLoader.load('car1.glb', (gltf) => {
-        splashCarModel = gltf.scene;
-        splashCarModel.scale.set(3, 3, 3);
-        splashCarModel.rotation.y = Math.PI;
-        splashCarModel.position.y = -1;
-        splashScene.add(splashCarModel);
-        splashAnimate();
-    }, undefined, (error) => {
-        console.error('Failed to load splash car model', error);
-        // Fallback cube for splash if car fails
-        const geometry = new THREE.BoxGeometry(2, 1, 4);
-        const material = new THREE.MeshNormalMaterial();
-        splashCarModel = new THREE.Mesh(geometry, material);
-        splashScene.add(splashCarModel);
-        splashAnimate();
-    });
-}
-
-function splashAnimate() {
-    splashAnimationId = requestAnimationFrame(splashAnimate);
-    if (splashCarModel) {
-        splashCarModel.rotation.y += 0.005;
+        gltfLoader = new THREE.GLTFLoader(loadingManager);
+        gltfLoader.setDRACOLoader(dracoLoader);
     }
-    if (splashRenderer && splashScene && splashCamera) {
-        splashRenderer.render(splashScene, splashCamera);
+
+    // =============================================================================
+    // ** 启动画面 3D 场景逻辑 **
+    // =============================================================================
+    let splashScene, splashCamera, splashRenderer, splashAnimationId, splashCarModel;
+    function initSplashThree() {
+        const container = document.getElementById('splash-three-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        splashScene = new THREE.Scene();
+        splashCamera = new THREE.PerspectiveCamera(60, width/height, 0.1, 1000);
+        splashRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        splashRenderer.setSize(width, height);
+        splashRenderer.setClearColor(0x000000, 0);
+        container.appendChild(splashRenderer.domElement);
+
+        // 添加旋转的汽车模型
+        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+        splashScene.add(ambient);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+        dir.position.set(5,10,7.5);
+        splashScene.add(dir);
+
+        splashCamera.position.set(0, 1, 3);
+        splashCamera.lookAt(0, 0.5, 0);
+
+        // 旋转动画
+        function animateSplash() {
+            splashAnimationId = requestAnimationFrame(animateSplash);
+            if (splashCarModel) {
+                splashCarModel.rotation.y += 0.01;
+            }
+            splashRenderer.render(splashScene, splashCamera);
+        }
+        animateSplash();
     }
-}
 
-function checkGameReady() {
-    if (cityLoaded && carModelLoaded && tireModelLoaded) {
-        cancelAnimationFrame(splashAnimationId);
-        document.getElementById('loading-screen').style.opacity = '0';
-        setTimeout(() => {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('hud-layer').style.display = 'flex';
-        }, 500);
-        initVehicle();
-        requestAnimationFrame(animate);
-    }
-}
-
-function startGame() {
-    document.getElementById('splash').style.display = 'none';
-    document.getElementById('loading-screen').style.display = 'flex';
-    setupGame();
-}
-window.startGame = startGame;
-
-function setupGame() {
-    initThree();
-    initCannon();
-    initGround();
-    initCameraAndLights();
-    loadCarModel();
-    loadTireModel();
-    loadCity();
-}
-
-function loadCarModel() {
-    if (!gltfLoader) return;
-    gltfLoader.load('car1.glb', (gltf) => {
-        carMesh = gltf.scene;
-        carMesh.scale.set(3, 3, 3);
-        carMesh.rotation.y = Math.PI;
-        carMesh.position.y = -0.5;
-        carMesh.traverse((node) => {
-            if (node.isMesh) node.castShadow = true;
+    function loadSplashCarModel() {
+        if (!gltfLoader) return;
+        gltfLoader.load('car1.glb', (gltf) => {
+            splashCarModel = gltf.scene;
+            splashCarModel.scale.set(1.7,1.7,1.7);
+            splashCarModel.position.set(0,-0.5,0);
+            splashScene.add(splashCarModel);
         });
-        scene.add(carMesh);
-        carModelLoaded = true;
-        checkGameReady();
-    }, (xhr) => {}, (error) => {
-        console.warn('Failed to load car1.glb, using fallback box');
-        const geom = new THREE.BoxGeometry(1.5, 0.5, 3);
-        const mat = new THREE.MeshPhongMaterial({color:0xff0000});
-        carMesh = new THREE.Mesh(geom, mat);
-        scene.add(carMesh);
-        carModelLoaded = true;
-        checkGameReady();
-    });
-}
+    }
 
-function loadTireModel() {
-    if (!gltfLoader) return;
-    gltfLoader.load('tire1.glb', (gltf) => {
-        tireMeshPrototype = gltf.scene;
-        tireMeshPrototype.scale.set(1.5, 1.5, 1.5);
-        tireMeshPrototype.rotation.x = Math.PI / 2;
-        tireMeshPrototype.traverse((node) => {
-            if (node.isMesh) node.castShadow = true;
+    // =============================================================================
+    // ** 游戏资源加载 **
+    // =============================================================================
+    function loadCarModel() {
+        gltfLoader.load('car1.glb', (gltf) => {
+            carMesh = gltf.scene;
+            // 3. 车身再增大：从 1.7 增加到 2.5
+            carMesh.scale.set(2.5, 2.5, 2.5);
+            carMesh.rotation.y = Math.PI;
+            carMesh.position.y = -0.7; // 调整位置以适应新的底盘高度
+            carMesh.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                }
+            });
+            scene.add(carMesh);
+
+            // 添加尾部火焰特效
+            const flameGeometry = new THREE.ConeGeometry(0.3, 1, 16);
+            const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500 });
+            flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
+            flameMesh.rotation.x = -Math.PI / 2; // 火焰朝后
+            flameMesh.position.set(0, 0, 2.5); // 在车尾后方
+            flameMesh.visible = false;
+            carMesh.add(flameMesh);
         });
-        tireModelLoaded = true;
-        checkGameReady();
-    }, (xhr) => {}, (error) => {
-        console.warn('Failed to load tire1.glb, using fallback');
-        tireMeshPrototype = null;
-        tireModelLoaded = true;
-        checkGameReady();
-    });
-}
+    }
 
-function loadCity() {
-    const progressFill = document.getElementById('loading-progress-fill');
-    const loadingStatus = document.getElementById('loading-status');
-    if (!gltfLoader) return;
-    gltfLoader.load('city.glb', (gltf) => {
-        const city = gltf.scene;
-        city.traverse((node) => {
-            if (node.isMesh) {
-                node.castShadow = true;
-                node.receiveShadow = true;
-                node.material.emissive = new THREE.Color(0xffffff);
-                node.material.emissiveIntensity = 0.5;
+    function loadTireModel() {
+        gltfLoader.load('tire1.glb', (gltf) => {
+            tireMeshPrototype = gltf.scene;
+            tireMeshPrototype.scale.set(0.75, 0.75, 0.75);
+            tireMeshPrototype.rotation.x = Math.PI / 2;
+            tireMeshPrototype.traverse((node) => {
+                if (node.isMesh) node.castShadow = true;
+            });
+        });
+    }
+
+    function loadCity() {
+        gltfLoader.load('city.glb', (gltf) => {
+            const city = gltf.scene;
+            city.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+                }
+            });
+            city.scale.set(4,4,4);
+            scene.add(city);
+
+            // 将city模型转换为Cannon Trimesh用于精确碰撞
+            city.updateMatrixWorld(true);
+            city.traverse((node) => {
+                if (node.isMesh) {
+                    const geometry = node.geometry.clone();
+                    geometry.applyMatrix4(node.matrixWorld);
+                    geometry.computeBoundingSphere();
+                    const vertices = Array.from(geometry.attributes.position.array);
+                    let indices = [];
+                    if (geometry.index) {
+                        indices = Array.from(geometry.index.array);
+                    } else {
+                        for (let i = 0; i < vertices.length/3; i++) indices.push(i);
+                    }
+                    const shape = new CANNON.Trimesh(vertices, indices);
+                    const body = new CANNON.Body({ mass: 0 });
+                    body.addShape(shape);
+                    staticBodies.push({
+                        body: body,
+                        center: new THREE.Vector3().copy(geometry.boundingSphere.center),
+                        radius: geometry.boundingSphere.radius,
+                        added: false
+                    });
+                }
+            });
+        });
+    }
+
+    // =============================================================================
+    // ** THREE.js/Cannon.js 基础设置 **
+    // =============================================================================
+    function initThree() {
+        scene = new THREE.Scene();
+        // 5. 去除日夜：固定背景为白天
+        scene.background = daySkyColor.clone();
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.BasicShadowMap;
+        document.body.appendChild(renderer.domElement);
+    }
+
+    function initCannon() {
+        world = new CANNON.World();
+        world.gravity.set(0, -9.82, 0);
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        world.allowSleep = true;
+
+        const defaultMaterial = new CANNON.Material('default');
+        const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
+            // 提高摩擦力以改善转向
+            friction: 2.5,
+            restitution: 0.0
+        });
+        world.defaultContactMaterial = contactMaterial;
+        world.addContactMaterial(contactMaterial);
+    }
+
+    function initGround() {
+        const groundShape = new CANNON.Plane();
+        const groundBody = new CANNON.Body({
+            mass: 0,
+            material: world.defaultContactMaterial.material
+        });
+        groundBody.addShape(groundShape);
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(groundBody);
+
+        const groundGeo = new THREE.PlaneGeometry(500, 500, 10, 10);
+        const groundMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.position.y = -0.05;
+        groundMesh.receiveShadow = true;
+        scene.add(groundMesh);
+    }
+
+    function initCameraAndLights() {
+        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+        cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
+        activeCamera = cameraChase;
+
+        // 5. 去除日夜：固定光照为白天
+        hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
+        scene.add(hemiLight);
+
+        dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
+        dirLight.position.set(50,100,50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 4096;
+        dirLight.shadow.mapSize.height = 4096;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 500;
+        dirLight.shadow.camera.left = -100;
+        dirLight.shadow.camera.right = 100;
+        dirLight.shadow.camera.top = 100;
+        dirLight.shadow.camera.bottom = -100;
+        scene.add(dirLight);
+    }
+
+    // 1. 底盘降低，伸长，符合f1赛车。
+    // ✅ 修复转向问题的关键：调整轮子物理参数
+    function initVehicle() {
+        // 底盘：宽度1，高度0.3 (降低)，长度3 (伸长) -> 原为 1, 0.5, 2
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.3, 3));
+        chassisBody = new CANNON.Body({
+            mass: 1500,
+            shape: chassisShape,
+            // 降低底盘：从 1.0 降低到 0.8
+            position: new CANNON.Vec3(0, 0.8, 0)
+        });
+        chassisBody.angularDamping = 0.3;
+        chassisBody.linearDamping = 0.05;
+        world.addBody(chassisBody);
+
+        vehicle = new CANNON.RaycastVehicle({
+            chassisBody: chassisBody,
+            indexRightAxis: 0,
+            indexUpAxis: 1,
+            indexForwardAxis: 2
+        });
+
+        // 调整轴距和轮距以适应新底盘
+        const axleWidth = 1.0;
+        const wheelBase = 2.5; // 增加轴距
+        function makeWheelOptions(x,y,z) {
+            return {
+                radius: 0.5,
+                directionLocal: new CANNON.Vec3(0, -1, 0),
+                suspensionStiffness: 50,
+                suspensionRestLength: 0.3,
+                frictionSlip: 2.5, // 提高摩擦力以改善转弯
+                dampingRelaxation: 1.5,
+                dampingCompression: 2.5,
+                maxSuspensionForce: 100000,
+                rollInfluence: 0.5, // 提高横向影响力以减少侧滑
+                maxSuspensionTravel: 0.3,
+                customSlidingRotationalSpeed: -30,
+                useCustomSlidingRotationalSpeed: true,
+                axleLocal: new CANNON.Vec3(1, 0, 0),
+                chassisConnectionPointLocal: new CANNON.Vec3(x, y, z)
+            };
+        }
+
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 前左
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 前右
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // 后左
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // 后右
+
+        vehicle.addToWorld(world);
+
+        wheelMeshes = [];
+        if (tireMeshPrototype) {
+            for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+                const wheelMesh = tireMeshPrototype.clone();
+                wheelMeshes.push(wheelMesh);
+                scene.add(wheelMesh);
+            }
+        } else {
+            console.warn("Tire model not loaded, using fallback cylinder.");
+            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+                const wheel = vehicle.wheelInfos[i];
+                const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2, 32);
+                cylinderGeometry.rotateZ(Math.PI / 2);
+                const wheelMesh = new THREE.Mesh(cylinderGeometry, wheelMat);
+                wheelMeshes.push(wheelMesh);
+                scene.add(wheelMesh);
+            }
+        }
+    }
+
+    // =============================================================================
+    // ** 游戏控制 与 HUD 更新 **
+    // =============================================================================
+    window.addEventListener('keydown', (event) => {
+        switch(event.key.toLowerCase()) {
+            case 'w': inputState.keyW = true; break;
+            case 's': inputState.keyS = true; break;
+            case 'a': inputState.keyA = true; break;
+            case 'd': inputState.keyD = true; break;
+            case ' ': inputState.keySpace = true; event.preventDefault(); break;
+            case 'shift': inputState.keyShift = true; break;
+            case 'v': toggleCamera(); break;
+        }
+    });
+    window.addEventListener('keyup', (event) => {
+        switch(event.key.toLowerCase()) {
+            case 'w': inputState.keyW = false; break;
+            case 's': inputState.keyS = false; break;
+            case 'a': inputState.keyA = false; break;
+            case 'd': inputState.keyD = false; break;
+            case ' ': inputState.keySpace = false; break;
+            case 'shift': inputState.keyShift = false; break;
+        }
+    });
+    function toggleCamera() {
+        if (activeCamera === cameraChase) {
+            activeCamera = cameraCockpit;
+        } else {
+            activeCamera = cameraChase;
+        }
+    }
+
+    function updateControls() {
+        if (!chassisBody) return;
+        engineForce = 0;
+        let brake = 0;
+
+        const v = chassisBody.velocity;
+        const currentSpeed = v.length() * 3.6;
+        const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
+        const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
+        const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
+        const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
+        const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
+
+        // 4. 平滑转向输入（渐变）
+        if (inputState.keyA) {
+            targetSteeringValue = maxSteerVal;
+        } else if (inputState.keyD) {
+            targetSteeringValue = -maxSteerVal;
+        } else {
+            targetSteeringValue = 0;
+        }
+        // 使用 lerp (线性插值) 来平滑转向值
+        steeringValue = steeringValue + (targetSteeringValue - steeringValue) * steeringSmoothFactor;
+
+
+        // 加速 / 倒车
+        if (inputState.keyW) {
+            if (isMovingBackward) {
+                brake = maxEngineForce * 0.5;
+            } else {
+                engineForce = -maxEngineForce;
+                gearEl.textContent = 'D';
+            }
+        } else if (inputState.keyS) {
+            if (isMovingForward) {
+                brake = maxEngineForce * 0.5;
+            } else {
+                engineForce = maxEngineForce * 0.5;
+                gearEl.textContent = 'R';
+            }
+        } else if (!inputState.keySpace) {
+            if (currentSpeed < 1) {
+                gearEl.textContent = 'P';
+            } else {
+                gearEl.textContent = 'N';
+            }
+        }
+
+        // 转向值应用
+        vehicle.setSteeringValue(steeringValue, 0); // 前左轮
+        vehicle.setSteeringValue(steeringValue, 1); // 前右轮
+        // 后轮不转向，保持为 0
+        vehicle.setSteeringValue(0, 2); 
+        vehicle.setSteeringValue(0, 3); 
+
+
+        // 2. 二驱改四驱
+        // 驱动力应用于所有四个轮子 (0, 1, 2, 3)
+        vehicle.applyEngineForce(engineForce, 0);
+        vehicle.applyEngineForce(engineForce, 1);
+        vehicle.applyEngineForce(engineForce, 2);
+        vehicle.applyEngineForce(engineForce, 3);
+
+        // 刹车
+        let finalBrakeFL = brake, finalBrakeFR = brake, finalBrakeRL = brake, finalBrakeRR = brake;
+        if (inputState.keySpace) {
+            const handbrakeStrength = maxEngineForce * 0.8;
+            finalBrakeRL = handbrakeStrength;
+            finalBrakeRR = handbrakeStrength;
+            gearEl.textContent = 'E';
+        }
+        
+        // 应用刹车
+        vehicle.setBrake(finalBrakeFL, 0);
+        vehicle.setBrake(finalBrakeFR, 1);
+        vehicle.setBrake(finalBrakeRL, 2);
+        vehicle.setBrake(finalBrakeRR, 3);
+
+        // 清除刹车，防止误刹
+        if (finalBrakeFL === 0 && finalBrakeRL === 0 && !inputState.keySpace) {
+             vehicle.setBrake(0, 0);
+             vehicle.setBrake(0, 1);
+             vehicle.setBrake(0, 2);
+             vehicle.setBrake(0, 3);
+        }
+
+        // 增强功能：Shift 键加速
+        if (inputState.keyShift && engineForce !== 0) {
+            engineForce *= 3;
+            if (flameMesh) flameMesh.visible = true;
+        } else {
+            if (flameMesh) flameMesh.visible = false;
+        }
+    }
+
+    function updateCamera() {
+        if (!chassisBody) return;
+        const chassisPos = new THREE.Vector3().copy(chassisBody.position);
+        const q = chassisBody.quaternion;
+        if (activeCamera === cameraChase) {
+            const offset = new THREE.Vector3(0, 3, -7);
+            offset.applyQuaternion(q);
+            offset.add(chassisPos);
+            cameraChase.position.lerp(offset, 0.1);
+            cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
+        } else {
+            const offset = new THREE.Vector3(0, 0.8, 1.5);
+            offset.applyQuaternion(q);
+            offset.add(chassisPos);
+            cameraCockpit.position.copy(offset);
+            cameraCockpit.quaternion.copy(q);
+            const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI);
+            cameraCockpit.quaternion.multiply(rotation180);
+        }
+    }
+
+    function updateWheelMeshes() {
+        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+            vehicle.updateWheelTransform(i);
+            const t = vehicle.wheelInfos[i].worldTransform;
+            if (wheelMeshes[i]) {
+                wheelMeshes[i].position.copy(t.position);
+                wheelMeshes[i].quaternion.copy(t.quaternion);
+            }
+        }
+    }
+
+    function updateCarMesh() {
+        if (chassisBody && carMesh) {
+            carMesh.position.copy(chassisBody.position);
+            carMesh.quaternion.copy(chassisBody.quaternion);
+        }
+    }
+
+    function updateHUD() {
+        if (!chassisBody) return;
+        const v = chassisBody.velocity;
+        const speed = v.length() * 3.6;
+        speedEl.textContent = speed.toFixed(0);
+        altitudeEl.textContent = chassisBody.position.y.toFixed(0);
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
+        const heading = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
+        let h = (heading + 360) % 360;
+        headingEl.textContent = h.toFixed(0).padStart(3, '0');
+        const rpm = Math.min(75, Math.floor(speed * 2.0));
+        rpmEl.textContent = rpm;
+        // 使用平滑后的 steeringValue 来计算角度
+        const steerDegrees = (steeringValue / maxSteerVal * 30).toFixed(0); 
+        steerEl.textContent = steerDegrees + '°';
+        let throttlePercent = 0;
+        if (engineForce !== 0) {
+            // 注意：因为是四驱，这里需要用 maxEngineForce * 4，但显示时用原始 maxEngineForce * 1 即可
+            throttlePercent = Math.abs((engineForce / maxEngineForce) * 100).toFixed(0);
+        }
+        throttleEl.textContent = throttlePercent + '%';
+    }
+
+    // 5. 去除日夜：删除 updateDayNight 函数，并移除调用
+    /*
+    function updateDayNight(time) {
+        // ... (原函数内容已移除)
+    }
+    */
+
+    function updateColliders() {
+        if (!chassisBody) return;
+        const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
+        staticBodies.forEach(obj => {
+            const d = chassisPos.distanceTo(obj.center);
+            // 扩大加载范围
+            if (!obj.added && d <= obj.radius + 10) { 
+                world.addBody(obj.body);
+                obj.added = true;
+            } else if (obj.added && d > obj.radius + 15) {
+                world.removeBody(obj.body);
+                obj.added = false;
             }
         });
-        scene.add(city);
-        city.scale.set(4, 4, 4);
-        cityLoaded = true;
-        checkGameReady();
-    }, (xhr) => {
-        if (xhr.total) {
-            const percent = Math.floor(xhr.loaded / xhr.total * 100);
-            progressFill.style.width = percent + '%';
-            loadingStatus.innerText = `(${percent}%) Loading City Assets...`;
-        }
-    }, (err) => {
-        console.warn('Failed to load city.glb, continuing with plane only');
-        cityLoaded = true;
-        checkGameReady();
-    });
-}
-
-function initThree() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 150); // Added fog for depth
-    
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(renderer.domElement);
-}
-
-function initCannon() {
-    world = new CANNON.World();
-    world.gravity.set(0, -9.82, 0);
-    world.broadphase = new CANNON.SAPBroadphase(world);
-    world.allowSleep = true;
-    
-    // Increased friction for better grip
-    const defaultMaterial = new CANNON.Material('default');
-    const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, { 
-        friction: 0.8, // Increased from 0.6
-        restitution: 0.1 
-    });
-    world.defaultContactMaterial = contactMaterial;
-    world.addContactMaterial(contactMaterial);
-}
-
-function initGround() {
-    const groundShape = new CANNON.Plane();
-    const groundBody = new CANNON.Body({ mass: 0, material: world.defaultContactMaterial.material });
-    groundBody.addShape(groundShape);
-    groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
-    world.addBody(groundBody);
-    
-    // Visual Grid for ground reference if city fails
-    const groundGeo = new THREE.PlaneGeometry(1000, 1000, 50, 50);
-    const groundMat = new THREE.MeshPhongMaterial({ 
-        color: 0x222222, 
-        wireframe: false,
-        shininess: 0
-    });
-    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-    groundMesh.rotation.x = -Math.PI/2;
-    groundMesh.receiveShadow = true;
-    scene.add(groundMesh);
-
-    // Add grid helper
-    const gridHelper = new THREE.GridHelper(1000, 100, 0x444444, 0x222222);
-    scene.add(gridHelper);
-}
-
-function initCameraAndLights() {
-    cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-    cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
-    activeCamera = cameraChase;
-    
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.8);
-    scene.add(hemiLight);
-    
-    const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.2);
-    dirLight.position.set(50, 100, 50);
-    dirLight.castShadow = true;
-    
-    // Optimized shadow properties
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 200;
-    dirLight.shadow.camera.left = -50;
-    dirLight.shadow.camera.right = 50;
-    dirLight.shadow.camera.top = 50;
-    dirLight.shadow.camera.bottom = -50;
-    scene.add(dirLight);
-}
-
-// ** 修复: 调整出生位置和物理参数 **
-function initVehicle() {
-    const chassisShape = new CANNON.Box(new CANNON.Vec3(1.5, 0.3, 3)); // Slightly taller box for stability
-    // FIX: Spawn at (0, 4, 0) instead of (1000, 0.8, 0) so it drops onto the visible map
-    chassisBody = new CANNON.Body({ mass: 1500, shape: chassisShape, position: new CANNON.Vec3(0, 4, 0) });
-    chassisBody.angularDamping = 0.5;
-    chassisBody.linearDamping = 0.05;
-    world.addBody(chassisBody);
-
-    vehicle = new CANNON.RaycastVehicle({ chassisBody: chassisBody, indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2 });
-
-    const axleWidth = 1.6;
-    const wheelBase = 3.2;
-
-    function makeWheelOptions(x, y, z) {
-        return {
-            radius: 0.5,
-            directionLocal: new CANNON.Vec3(0, -1, 0),
-            suspensionStiffness: 45, // Adjusted stiffness
-            suspensionRestLength: 0.5, // FIX: Increased rest length to prevent bottoming out
-            frictionSlip: 3.0, // FIX: Higher friction for acceleration
-            dampingRelaxation: 2.3,
-            dampingCompression: 4.5,
-            maxSuspensionForce: 200000,
-            rollInfluence: 0.1,
-            maxSuspensionTravel: 0.5, // FIX: More travel
-            customSlidingRotationalSpeed: -30,
-            useCustomSlidingRotationalSpeed: true,
-            axleLocal: new CANNON.Vec3(1, 0, 0),
-            chassisConnectionPointLocal: new CANNON.Vec3(x, y, z)
-        };
     }
 
-    // Slightly lower Y connection point (-0.1) for better stance
-    vehicle.addWheel(makeWheelOptions(-axleWidth, -0.1, wheelBase));
-    vehicle.addWheel(makeWheelOptions(axleWidth, -0.1, wheelBase));
-    vehicle.addWheel(makeWheelOptions(-axleWidth, -0.1, -wheelBase));
-    vehicle.addWheel(makeWheelOptions(axleWidth, -0.1, -wheelBase));
-
-    vehicle.addToWorld(world);
-
-    wheelMeshes = [];
-    if (tireMeshPrototype) {
-        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-            const wheelMesh = tireMeshPrototype.clone();
-            wheelMeshes.push(wheelMesh);
-            scene.add(wheelMesh); // Ensure wheels are added to scene
-        }
-    } else {
-        const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-        const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24);
-        wheelGeom.rotateZ(Math.PI / 2);
-        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-            const wheelMesh = new THREE.Mesh(wheelGeom, wheelMat);
-            wheelMeshes.push(wheelMesh);
-            scene.add(wheelMesh);
-        }
-    }
-}
-
-// 游戏循环逻辑
-window.addEventListener('keydown', (event) => {
-    switch (event.key.toLowerCase()) {
-        case 'w': inputState.keyW = true; break;
-        case 's': inputState.keyS = true; break;
-        case 'a': inputState.keyA = true; break;
-        case 'd': inputState.keyD = true; break;
-        case ' ': inputState.keySpace = true; event.preventDefault(); break;
-        case 'v': toggleCamera(); break;
-        case 'shift': inputState.keyBoost = true; break;
-    }
-});
-window.addEventListener('keyup', (event) => {
-    switch (event.key.toLowerCase()) {
-        case 'w': inputState.keyW = false; break;
-        case 's': inputState.keyS = false; break;
-        case 'a': inputState.keyA = false; break;
-        case 'd': inputState.keyD = false; break;
-        case 'shift': inputState.keyBoost = false; break;
-        case ' ': inputState.keySpace = false; break;
-    }
-});
-
-function toggleCamera() {
-    activeCamera = (activeCamera === cameraChase) ? cameraCockpit : cameraChase;
-}
-
-function updateControls() {
-    if (!chassisBody) return;
-    engineForce = 0;
-    let brake = 0;
-
-    const v = chassisBody.velocity;
-    const currentSpeed = v.length() * 3.6;
-    // Fix: Local Z is forward
-    const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
-
-    // 速度敏感型渐变转向
-    let steerInput = 0;
-    if (inputState.keyA) steerInput = 1;
-    else if (inputState.keyD) steerInput = -1;
-    
-    // Limit steering at high speed to prevent flipping
-    const maxSteer = maxSteerVal * Math.max(0.1, 1 - (currentSpeed / 150));
-    const desiredSteer = maxSteer * steerInput;
-    steeringValue += (desiredSteer - steeringValue) * 0.1;
-
-    // Fix: Better threshold for Stop/Go logic
-    const movingForward = v.dot(forwardVector) < -0.5; // Threshold
-    const movingBackward = v.dot(forwardVector) > 0.5;
-
-    if (inputState.keyW) {
-        if (movingBackward) {
-            brake = maxEngineForce * 0.5;
-            gearEl.textContent = 'R';
+    function animate(time) {
+        requestAnimationFrame(animate);
+        if (!chassisBody || !world) return;
+        const fixedTimeStep = 1/60;
+        const maxSubSteps = 1;
+        if (lastTime !== undefined) {
+            const dt = (time - lastTime) / 1000;
+            world.step(fixedTimeStep, dt, maxSubSteps);
         } else {
-            engineForce = -maxEngineForce; // Negative Z is forward usually
-            gearEl.textContent = 'D';
+            world.step(fixedTimeStep);
         }
-    } else if (inputState.keyS) {
-        if (movingForward) {
-            brake = maxEngineForce * 0.5;
-            gearEl.textContent = 'D';
-        } else {
-            engineForce = maxEngineForce * 0.6; // Reverse force
-            gearEl.textContent = 'R';
+        lastTime = time;
+
+        updateControls();
+        updateWheelMeshes();
+        updateCarMesh();
+        updateCamera();
+        updateHUD();
+        // updateDayNight(time); // 移除日夜调用
+        updateColliders();
+
+        renderer.render(scene, activeCamera);
+    }
+
+    // =============================================================================
+    // ** 启动逻辑 **
+    // =============================================================================
+    function startGame() {
+        document.getElementById('splash').style.display = 'none';
+        document.getElementById('loading-screen').style.display = 'flex';
+        setupGame();
+    }
+    window.startGame = startGame;
+
+    function setupGame() {
+        initThree();
+        initCannon();
+        initGround();
+        initCameraAndLights();
+        initLoaders();
+        loadCarModel();
+        loadTireModel();
+        loadCity();
+    }
+
+    window.addEventListener('resize', () => {
+        if (renderer && cameraChase && cameraCockpit) {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const aspect = window.innerWidth / window.innerHeight;
+            cameraChase.aspect = aspect;
+            cameraChase.updateProjectionMatrix();
+            cameraCockpit.aspect = aspect;
+            cameraCockpit.updateProjectionMatrix();
         }
-    } else if (!inputState.keySpace) {
-        engineForce = 0;
-        brake = 10; // Slight drag
-        if (currentSpeed < 2) gearEl.textContent = 'P';
-        else gearEl.textContent = 'N';
-    }
-
-    // Apply Controls
-    vehicle.setSteeringValue(steeringValue, 0);
-    vehicle.setSteeringValue(steeringValue, 1);
-
-    // AWD
-    vehicle.applyEngineForce(engineForce, 0);
-    vehicle.applyEngineForce(engineForce, 1);
-    vehicle.applyEngineForce(engineForce, 2);
-    vehicle.applyEngineForce(engineForce, 3);
-
-    let finalBrakeFL = brake, finalBrakeFR = brake, finalBrakeRL = brake, finalBrakeRR = brake;
-    if (inputState.keySpace) {
-        const handbrakeStrength = 200;
-        finalBrakeRL = handbrakeStrength;
-        finalBrakeRR = handbrakeStrength;
-        gearEl.textContent = 'E';
-    }
-
-    vehicle.setBrake(finalBrakeFL, 0);
-    vehicle.setBrake(finalBrakeFR, 1);
-    vehicle.setBrake(finalBrakeRL, 2);
-    vehicle.setBrake(finalBrakeRR, 3);
-}
-
-function updateCamera() {
-    if (!chassisBody) return;
-    const chassisPos = chassisBody.position;
-    const q = chassisBody.quaternion;
-
-    if (activeCamera === cameraChase) {
-        // Smooth follow cam
-        const relativeOffset = new THREE.Vector3(0, 3, -8); // Behind and up
-        const cameraOffset = relativeOffset.applyQuaternion(q);
-        const targetPos = new THREE.Vector3().copy(chassisPos).add(cameraOffset);
-        
-        // Use lerp for smoothness, but keep it tight
-        cameraChase.position.lerp(targetPos, 0.1);
-        
-        // Look slightly above the car
-        const lookTarget = new THREE.Vector3(0, 1, 0).add(chassisPos);
-        cameraChase.lookAt(lookTarget);
-    } else {
-        // Cockpit view
-        const offset = new THREE.Vector3(0, 0.8, 0.5).applyQuaternion(q);
-        offset.add(chassisPos);
-        cameraCockpit.position.copy(offset);
-        cameraCockpit.quaternion.copy(q);
-        const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-        cameraCockpit.quaternion.multiply(rotation180);
-    }
-}
-
-function updateWheelMeshes() {
-    for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-        vehicle.updateWheelTransform(i);
-        const t = vehicle.wheelInfos[i].worldTransform;
-        if (wheelMeshes[i]) {
-            wheelMeshes[i].position.copy(t.position);
-            wheelMeshes[i].quaternion.copy(t.quaternion);
-        }
-    }
-}
-
-function updateCarMesh() {
-    if (chassisBody && carMesh) {
-        carMesh.position.copy(chassisBody.position);
-        carMesh.quaternion.copy(chassisBody.quaternion);
-        // Correct visual offset if model is not centered
-        // carMesh.position.y -= 0.5; 
-    }
-}
-
-function updateHUD() {
-    if (!chassisBody) return;
-    const v = chassisBody.velocity;
-    const speed = v.length() * 3.6;
-    speedEl.textContent = speed.toFixed(0);
-    altitudeEl.textContent = chassisBody.position.y.toFixed(0);
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
-    const heading = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-    headingEl.textContent = ((heading + 360) % 360).toFixed(0).padStart(3, '0');
-    const rpm = Math.min(75, Math.floor(speed * 2.0) + (engineForce !== 0 ? 10 : 0));
-    rpmEl.textContent = rpm;
-    const steerDegrees = ((steeringValue / maxSteerVal) * 30).toFixed(0);
-    steerEl.textContent = steerDegrees + '°';
-    let throttlePercent = 0;
-    if (engineForce !== 0) throttlePercent = Math.abs((engineForce / maxEngineForce) * 100).toFixed(0);
-    throttleEl.textContent = throttlePercent + '%';
-}
-
-function animate(time) {
-    requestAnimationFrame(animate);
-    if (!chassisBody || !world) return;
-    const fixedTimeStep = 1 / 60;
-    const maxSubSteps = 3; // Increased substeps for physics stability
-    
-    if (lastTime !== undefined) {
-        const dt = (time - lastTime) / 1000;
-        world.step(fixedTimeStep, dt, maxSubSteps);
-    } else {
-        world.step(fixedTimeStep);
-    }
-    lastTime = time;
-    
-    updateControls();
-    updateWheelMeshes();
-    updateCarMesh();
-    
-    // Turbo flame effect
-    if (inputState.keyBoost) {
-        if (!flameMesh) {
-            const flameGeo = new THREE.SphereGeometry(0.5, 16, 16);
-            const flameMat = new THREE.MeshBasicMaterial({ color: 0xff4500 });
-            flameMesh = new THREE.Mesh(flameGeo, flameMat);
-            scene.add(flameMesh);
-        }
-        const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion); // +Z is back relative to car mesh
-        const pos = new THREE.Vector3().copy(chassisBody.position).add(backward.multiplyScalar(3.5));
-        pos.y += 0.5;
-        flameMesh.position.copy(pos);
-    } else {
-        if (flameMesh) {
-            scene.remove(flameMesh);
-            flameMesh = null;
-        }
-    }
-    
-    updateCamera();
-    updateHUD();
-    renderer.render(scene, activeCamera);
-}
-
-window.addEventListener('resize', () => {
-    if (renderer && cameraChase && cameraCockpit) {
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        const aspect = window.innerWidth / window.innerHeight;
-        cameraChase.aspect = aspect; cameraChase.updateProjectionMatrix();
-        cameraCockpit.aspect = aspect; cameraCockpit.updateProjectionMatrix();
-    }
-    if (splashRenderer && splashCamera) {
-        const container = document.getElementById('splash-three-container');
-        if(container) {
+        if (splashRenderer && splashCamera) {
+            const container = document.getElementById('splash-three-container');
             const width = container.clientWidth;
             const height = container.clientHeight;
             splashRenderer.setSize(width, height);
             splashCamera.aspect = width / height;
             splashCamera.updateProjectionMatrix();
         }
-    }
-});
+    });
 
-document.addEventListener('DOMContentLoaded', () => {
-    initLoaders();
-    initSplashThree();
-    loadSplashCarModel();
-});
-</script>
+    document.addEventListener('DOMContentLoaded', () => {
+        initLoaders();
+        initSplashThree();
+        loadSplashCarModel();
+    });
+    </script>
 </body>
 </html>
