@@ -56,6 +56,8 @@
             border-radius: 4px;
             max-width: 200px;
             line-height: 1.6;
+            /* 允许鼠标事件穿透，除非在点击提示本身时 */
+            pointer-events: auto;
         }
 
         .hint-title {
@@ -63,6 +65,13 @@
             font-weight: bold;
             margin-bottom: 8px;
             text-transform: uppercase;
+        }
+
+        /* 新增的自由视角提示样式 */
+        .hint-controls {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
         }
 
         /* 启动画面 (Splash Screen) */
@@ -199,6 +208,9 @@
                 <div>Press Shift for Boost</div>
                 <div>SPACE for handbrake drift</div>
                 <div>V to switch camera</div>
+                <div class="hint-controls">
+                    **Hold Left Mouse to Free-Look**
+                </div>
             </div>
             <div class="hud-bottom-right">
                 <div class="instrument" style="border-left-color: #00ff00;">
@@ -227,7 +239,8 @@
     // ** 主游戏 3D 场景变量 **
     // =============================================================================
     let scene, renderer;
-    let cameraChase, cameraCockpit, activeCamera;
+    // 增加 cameraFreeLook 变量
+    let cameraChase, cameraCockpit, cameraFreeLook, activeCamera;
     let world, vehicle, chassisBody;
     let wheelMeshes = [];
     let lastTime = undefined;
@@ -257,6 +270,15 @@
       keySpace: false,
       keyShift: false
     };
+
+    // 鼠标自由视角控制变量
+    let isMouseDown = false;
+    let prevMouseX = 0;
+    let prevMouseY = 0;
+    let cameraYaw = 0; // 绕 Y 轴旋转 (水平)
+    let cameraPitch = 0; // 绕 X 轴旋转 (垂直)
+    const MOUSE_SENSITIVITY = 0.005; // 鼠标灵敏度
+    const MAX_PITCH = Math.PI / 2.5; // 最大垂直旋转角度
 
     // 引擎和转向参数
     const maxEngineForce = 12000;
@@ -484,6 +506,8 @@
     function initCameraAndLights() {
         cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
+        // 初始化自由视角相机
+        cameraFreeLook = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
 
         hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
@@ -503,13 +527,12 @@
         scene.add(dirLight);
     }
 
-    // ✅ 修复转向问题的关键：调整轮子物理参数
+    // 修复车身不要后仰的悬挂参数
     function initVehicle() {
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
             mass: 1500,
             shape: chassisShape,
-            // ⬇️ 修改: 将底盘位置从 1.0 降低到 0.6，实现底盘降低
             position: new CANNON.Vec3(90, 0.6, 0)
         });
         chassisBody.angularDamping = 0.3;
@@ -526,25 +549,25 @@
         const axleWidth = 1.0;
         const wheelBase = 1.5;
         function makeWheelOptions(x,y,z) {
-    return {
-        radius: 0.5,
-        directionLocal: new CANNON.Vec3(0, -1, 0),
-        // 增加刚度：减少车身倾斜
-        suspensionStiffness: 100, // 从 50 增加到 100
-        suspensionRestLength: 0.3,
-        frictionSlip: 1.5,
-        // 增加阻尼：吸收震动，减少后仰/前倾
-        dampingRelaxation: 5.0, // 从 1.5 增加到 5.0
-        dampingCompression: 6.0, // 从 2.5 增加到 6.0
-        maxSuspensionForce: 100000,
-        rollInfluence: 0.3,
-        maxSuspensionTravel: 0.3,
-        customSlidingRotationalSpeed: -30,
-        useCustomSlidingRotationalSpeed: true,
-        axleLocal: new CANNON.Vec3(1, 0, 0),
-        chassisConnectionPointLocal: new CANNON.Vec3(x, y, z)
-    };
-}
+            return {
+                radius: 0.5,
+                directionLocal: new CANNON.Vec3(0, -1, 0),
+                // 提高刚度：减少车身倾斜 (防后仰/前倾)
+                suspensionStiffness: 100, // 从 50 增加到 100
+                suspensionRestLength: 0.3,
+                frictionSlip: 1.5,
+                // 提高阻尼：吸收震动，减少后仰/前倾
+                dampingRelaxation: 5.0, // 从 1.5 增加到 5.0
+                dampingCompression: 6.0, // 从 2.5 增加到 6.0
+                maxSuspensionForce: 100000,
+                rollInfluence: 0.3,
+                maxSuspensionTravel: 0.3,
+                customSlidingRotationalSpeed: -30,
+                useCustomSlidingRotationalSpeed: true,
+                axleLocal: new CANNON.Vec3(1, 0, 0),
+                chassisConnectionPointLocal: new CANNON.Vec3(x, y, z)
+            };
+        }
 
         vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 0: FL
         vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 1: FR
@@ -585,7 +608,12 @@
             case 'd': inputState.keyD = true; break;
             case ' ': inputState.keySpace = true; event.preventDefault(); break;
             case 'shift': inputState.keyShift = true; break;
-            case 'v': toggleCamera(); break;
+            case 'v': 
+                toggleCamera(); 
+                // 切换相机时，重置自由视角的角度，使其对齐追逐视角
+                cameraYaw = 0;
+                cameraPitch = 0;
+                break;
         }
     });
     window.addEventListener('keyup', (event) => {
@@ -598,12 +626,53 @@
             case 'shift': inputState.keyShift = false; break;
         }
     });
-    function toggleCamera() {
-        if (activeCamera === cameraChase) {
-            activeCamera = cameraCockpit;
-        } else {
-            activeCamera = cameraChase;
+
+    // 鼠标事件监听 (实现 360 自由观察视角)
+    document.addEventListener('mousedown', (event) => {
+        // 只对左键 (button 0) 启用自由视角
+        if (event.button === 0) {
+            isMouseDown = true;
+            prevMouseX = event.clientX;
+            prevMouseY = event.clientY;
+            // 如果当前相机不是自由视角，则切换到自由视角
+            if (activeCamera !== cameraFreeLook) {
+                activeCamera = cameraFreeLook;
+            }
+            // 阻止 HUD 元素的默认事件，确保自由视角工作
+            event.preventDefault();
         }
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (!isMouseDown || activeCamera !== cameraFreeLook) return;
+
+        const deltaX = event.clientX - prevMouseX;
+        const deltaY = event.clientY - prevMouseY;
+
+        cameraYaw -= deltaX * MOUSE_SENSITIVITY;
+        cameraPitch -= deltaY * MOUSE_SENSITIVITY;
+
+        // 限制垂直旋转角度
+        cameraPitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, cameraPitch));
+
+        prevMouseX = event.clientX;
+        prevMouseY = event.clientY;
+    });
+
+    document.addEventListener('mouseup', (event) => {
+        if (event.button === 0) {
+            isMouseDown = false;
+        }
+    });
+
+    function toggleCamera() {
+        // 依次切换：追逐 -> 座舱 -> 追逐
+        if (activeCamera === cameraFreeLook || activeCamera === cameraCockpit) {
+            activeCamera = cameraChase;
+        } else {
+            activeCamera = cameraCockpit;
+        }
+        isMouseDown = false; // 退出自由视角状态
     }
 
     function updateControls() {
@@ -657,7 +726,7 @@
         vehicle.setSteeringValue(steeringValue, 1);
 
         // 驱动
-        // ⬇️ 修改: 将推力应用到所有四个轮子 (0, 1, 2, 3) 实现四驱
+        // 将推力应用到所有四个轮子 (0, 1, 2, 3) 实现四驱
         vehicle.applyEngineForce(engineForce, 0); // FL
         vehicle.applyEngineForce(engineForce, 1); // FR
         vehicle.applyEngineForce(engineForce, 2); // RL
@@ -696,13 +765,14 @@
         if (!chassisBody) return;
         const chassisPos = new THREE.Vector3().copy(chassisBody.position);
         const q = chassisBody.quaternion;
+
         if (activeCamera === cameraChase) {
             const offset = new THREE.Vector3(0, 3, -7);
             offset.applyQuaternion(q);
             offset.add(chassisPos);
             cameraChase.position.lerp(offset, 0.1);
             cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
-        } else {
+        } else if (activeCamera === cameraCockpit) {
             const offset = new THREE.Vector3(0, 0.8, 1.5);
             offset.applyQuaternion(q);
             offset.add(chassisPos);
@@ -710,6 +780,30 @@
             cameraCockpit.quaternion.copy(q);
             const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI);
             cameraCockpit.quaternion.multiply(rotation180);
+        } else if (activeCamera === cameraFreeLook) {
+            // 自由观察模式
+            const lookOffset = new THREE.Vector3(0, 3, -7);
+            // 首先应用底盘的旋转
+            lookOffset.applyQuaternion(q);
+            lookOffset.add(chassisPos);
+            
+            // 将相机位置设置为追逐视角的位置
+            cameraFreeLook.position.copy(lookOffset);
+
+            // 应用鼠标拖动的旋转
+            const rotation = new THREE.Quaternion();
+            const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+            const pitchQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
+            rotation.multiplyQuaternions(yawQuaternion, pitchQuaternion);
+            
+            // 获取追逐相机的初始目标方向
+            const targetPos = new THREE.Vector3(chassisPos.x, chassisPos.y + 1, chassisPos.z);
+            const initialDirection = new THREE.Vector3().subVectors(targetPos, lookOffset).normalize();
+
+            // 将初始方向旋转后，作为新的目标方向
+            initialDirection.applyQuaternion(rotation);
+
+            cameraFreeLook.lookAt(new THREE.Vector3().addVectors(cameraFreeLook.position, initialDirection));
         }
     }
 
@@ -836,13 +930,15 @@
     }
 
     window.addEventListener('resize', () => {
-        if (renderer && cameraChase && cameraCockpit) {
+        if (renderer && cameraChase && cameraCockpit && cameraFreeLook) {
             renderer.setSize(window.innerWidth, window.innerHeight);
             const aspect = window.innerWidth / window.innerHeight;
             cameraChase.aspect = aspect;
             cameraChase.updateProjectionMatrix();
             cameraCockpit.aspect = aspect;
             cameraCockpit.updateProjectionMatrix();
+            cameraFreeLook.aspect = aspect;
+            cameraFreeLook.updateProjectionMatrix();
         }
         if (splashRenderer && splashCamera) {
             const container = document.getElementById('splash-three-container');
