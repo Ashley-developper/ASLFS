@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Car Simulator</title>
+    <title>ASL Car Simulator (Fixed)</title>
     <style>
         body { 
             margin: 0; 
@@ -206,7 +206,7 @@ const inputState = {
 // 引擎和转向参数
 const maxEngineForce = 12000;
 const brakeForce = 40;
-const maxSteerVal = 1.2;
+const maxSteerVal = 0.8; // Reduced slightly for stability
 
 const speedEl = document.getElementById('hud-spd');
 const altitudeEl = document.getElementById('hud-alt');
@@ -262,6 +262,12 @@ function loadSplashCarModel() {
         splashAnimate();
     }, undefined, (error) => {
         console.error('Failed to load splash car model', error);
+        // Fallback cube for splash if car fails
+        const geometry = new THREE.BoxGeometry(2, 1, 4);
+        const material = new THREE.MeshNormalMaterial();
+        splashCarModel = new THREE.Mesh(geometry, material);
+        splashScene.add(splashCarModel);
+        splashAnimate();
     });
 }
 
@@ -306,10 +312,7 @@ function setupGame() {
 }
 
 function loadCarModel() {
-    if (!gltfLoader) {
-        console.error("GLTFLoader is not initialized!");
-        return;
-    }
+    if (!gltfLoader) return;
     gltfLoader.load('car1.glb', (gltf) => {
         carMesh = gltf.scene;
         carMesh.scale.set(3, 3, 3);
@@ -321,21 +324,19 @@ function loadCarModel() {
         scene.add(carMesh);
         carModelLoaded = true;
         checkGameReady();
-    }, (xhr) => {
-        // progress
-    }, (error) => {
-        console.error('Failed to load car1.glb', error);
-        carMesh = null;
+    }, (xhr) => {}, (error) => {
+        console.warn('Failed to load car1.glb, using fallback box');
+        const geom = new THREE.BoxGeometry(1.5, 0.5, 3);
+        const mat = new THREE.MeshPhongMaterial({color:0xff0000});
+        carMesh = new THREE.Mesh(geom, mat);
+        scene.add(carMesh);
         carModelLoaded = true;
         checkGameReady();
     });
 }
 
 function loadTireModel() {
-    if (!gltfLoader) {
-        console.error("GLTFLoader is not initialized!");
-        return;
-    }
+    if (!gltfLoader) return;
     gltfLoader.load('tire1.glb', (gltf) => {
         tireMeshPrototype = gltf.scene;
         tireMeshPrototype.scale.set(1.5, 1.5, 1.5);
@@ -345,10 +346,8 @@ function loadTireModel() {
         });
         tireModelLoaded = true;
         checkGameReady();
-    }, (xhr) => {
-        // progress
-    }, (error) => {
-        console.error('Failed to load tire1.glb', error);
+    }, (xhr) => {}, (error) => {
+        console.warn('Failed to load tire1.glb, using fallback');
         tireMeshPrototype = null;
         tireModelLoaded = true;
         checkGameReady();
@@ -358,10 +357,7 @@ function loadTireModel() {
 function loadCity() {
     const progressFill = document.getElementById('loading-progress-fill');
     const loadingStatus = document.getElementById('loading-status');
-    if (!gltfLoader) {
-        console.error("GLTFLoader is not initialized!");
-        return;
-    }
+    if (!gltfLoader) return;
     gltfLoader.load('city.glb', (gltf) => {
         const city = gltf.scene;
         city.traverse((node) => {
@@ -383,7 +379,7 @@ function loadCity() {
             loadingStatus.innerText = `(${percent}%) Loading City Assets...`;
         }
     }, (err) => {
-        console.error('Failed to load city.glb', err);
+        console.warn('Failed to load city.glb, continuing with plane only');
         cityLoaded = true;
         checkGameReady();
     });
@@ -392,6 +388,8 @@ function loadCity() {
 function initThree() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 150); // Added fog for depth
+    
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -405,8 +403,13 @@ function initCannon() {
     world.gravity.set(0, -9.82, 0);
     world.broadphase = new CANNON.SAPBroadphase(world);
     world.allowSleep = true;
+    
+    // Increased friction for better grip
     const defaultMaterial = new CANNON.Material('default');
-    const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, { friction: 0.6, restitution: 0.0 });
+    const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, { 
+        friction: 0.8, // Increased from 0.6
+        restitution: 0.1 
+    });
     world.defaultContactMaterial = contactMaterial;
     world.addContactMaterial(contactMaterial);
 }
@@ -417,60 +420,74 @@ function initGround() {
     groundBody.addShape(groundShape);
     groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
     world.addBody(groundBody);
-    const groundGeo = new THREE.PlaneGeometry(500, 500, 10, 10);
-    const groundMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+    
+    // Visual Grid for ground reference if city fails
+    const groundGeo = new THREE.PlaneGeometry(1000, 1000, 50, 50);
+    const groundMat = new THREE.MeshPhongMaterial({ 
+        color: 0x222222, 
+        wireframe: false,
+        shininess: 0
+    });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI/2;
-    groundMesh.position.y = -0.05;
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
+
+    // Add grid helper
+    const gridHelper = new THREE.GridHelper(1000, 100, 0x444444, 0x222222);
+    scene.add(gridHelper);
 }
 
 function initCameraAndLights() {
     cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
     cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
     activeCamera = cameraChase;
+    
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.8);
     scene.add(hemiLight);
-    const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
+    
+    const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.2);
     dirLight.position.set(50, 100, 50);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 4096;
-    dirLight.shadow.mapSize.height = 4096;
+    
+    // Optimized shadow properties
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 500;
-    dirLight.shadow.camera.left = -100;
-    dirLight.shadow.camera.right = 100;
-    dirLight.shadow.camera.top = 100;
-    dirLight.shadow.camera.bottom = -100;
+    dirLight.shadow.camera.far = 200;
+    dirLight.shadow.camera.left = -50;
+    dirLight.shadow.camera.right = 50;
+    dirLight.shadow.camera.top = 50;
+    dirLight.shadow.camera.bottom = -50;
     scene.add(dirLight);
 }
 
-// ✅ 修复转向问题的关键：调整轮子物理参数
+// ** 修复: 调整出生位置和物理参数 **
 function initVehicle() {
-    const chassisShape = new CANNON.Box(new CANNON.Vec3(1.5, 0.25, 3));
-    chassisBody = new CANNON.Body({ mass: 1500, shape: chassisShape, position: new CANNON.Vec3(1000, 0.8, 0) });
-    chassisBody.angularDamping = 0.3;
+    const chassisShape = new CANNON.Box(new CANNON.Vec3(1.5, 0.3, 3)); // Slightly taller box for stability
+    // FIX: Spawn at (0, 4, 0) instead of (1000, 0.8, 0) so it drops onto the visible map
+    chassisBody = new CANNON.Body({ mass: 1500, shape: chassisShape, position: new CANNON.Vec3(0, 4, 0) });
+    chassisBody.angularDamping = 0.5;
     chassisBody.linearDamping = 0.05;
     world.addBody(chassisBody);
 
     vehicle = new CANNON.RaycastVehicle({ chassisBody: chassisBody, indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2 });
 
-    const axleWidth = 1.5;
-    const wheelBase = 3;
+    const axleWidth = 1.6;
+    const wheelBase = 3.2;
 
     function makeWheelOptions(x, y, z) {
         return {
             radius: 0.5,
             directionLocal: new CANNON.Vec3(0, -1, 0),
-            suspensionStiffness: 50,
-            suspensionRestLength: 0.3,
-            frictionSlip: 1.5,
-            dampingRelaxation: 1.5,
-            dampingCompression: 2.5,
-            maxSuspensionForce: 100000,
-            rollInfluence: 0.3,
-            maxSuspensionTravel: 0.3,
+            suspensionStiffness: 45, // Adjusted stiffness
+            suspensionRestLength: 0.5, // FIX: Increased rest length to prevent bottoming out
+            frictionSlip: 3.0, // FIX: Higher friction for acceleration
+            dampingRelaxation: 2.3,
+            dampingCompression: 4.5,
+            maxSuspensionForce: 200000,
+            rollInfluence: 0.1,
+            maxSuspensionTravel: 0.5, // FIX: More travel
             customSlidingRotationalSpeed: -30,
             useCustomSlidingRotationalSpeed: true,
             axleLocal: new CANNON.Vec3(1, 0, 0),
@@ -478,10 +495,11 @@ function initVehicle() {
         };
     }
 
-    vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
-    vehicle.addWheel(makeWheelOptions(axleWidth, 0, wheelBase));
-    vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
-    vehicle.addWheel(makeWheelOptions(axleWidth, 0, -wheelBase));
+    // Slightly lower Y connection point (-0.1) for better stance
+    vehicle.addWheel(makeWheelOptions(-axleWidth, -0.1, wheelBase));
+    vehicle.addWheel(makeWheelOptions(axleWidth, -0.1, wheelBase));
+    vehicle.addWheel(makeWheelOptions(-axleWidth, -0.1, -wheelBase));
+    vehicle.addWheel(makeWheelOptions(axleWidth, -0.1, -wheelBase));
 
     vehicle.addToWorld(world);
 
@@ -490,16 +508,16 @@ function initVehicle() {
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             const wheelMesh = tireMeshPrototype.clone();
             wheelMeshes.push(wheelMesh);
+            scene.add(wheelMesh); // Ensure wheels are added to scene
         }
     } else {
-        console.warn("Tire model not loaded, using fallback cylinder mesh.");
         const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24);
+        wheelGeom.rotateZ(Math.PI / 2);
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-            const wheel = vehicle.wheelInfos[i];
-            const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2, 32);
-            cylinderGeometry.rotateZ(Math.PI / 2);
-            const wheelMesh = new THREE.Mesh(cylinderGeometry, wheelMat);
+            const wheelMesh = new THREE.Mesh(wheelGeom, wheelMat);
             wheelMeshes.push(wheelMesh);
+            scene.add(wheelMesh);
         }
     }
 }
@@ -538,40 +556,51 @@ function updateControls() {
 
     const v = chassisBody.velocity;
     const currentSpeed = v.length() * 3.6;
+    // Fix: Local Z is forward
     const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
 
     // 速度敏感型渐变转向
     let steerInput = 0;
     if (inputState.keyA) steerInput = 1;
     else if (inputState.keyD) steerInput = -1;
-    const maxSteer = maxSteerVal * Math.max(0.2, 1 - currentSpeed / 100);
+    
+    // Limit steering at high speed to prevent flipping
+    const maxSteer = maxSteerVal * Math.max(0.1, 1 - (currentSpeed / 150));
     const desiredSteer = maxSteer * steerInput;
     steeringValue += (desiredSteer - steeringValue) * 0.1;
 
-    // 加速/刹车逻辑
+    // Fix: Better threshold for Stop/Go logic
+    const movingForward = v.dot(forwardVector) < -0.5; // Threshold
+    const movingBackward = v.dot(forwardVector) > 0.5;
+
     if (inputState.keyW) {
-        if (v.dot(forwardVector) < 0) {
+        if (movingBackward) {
             brake = maxEngineForce * 0.5;
+            gearEl.textContent = 'R';
         } else {
-            engineForce = -maxEngineForce;
+            engineForce = -maxEngineForce; // Negative Z is forward usually
             gearEl.textContent = 'D';
         }
     } else if (inputState.keyS) {
-        if (v.dot(forwardVector) > 0) {
+        if (movingForward) {
             brake = maxEngineForce * 0.5;
+            gearEl.textContent = 'D';
         } else {
-            engineForce = maxEngineForce * 0.5;
+            engineForce = maxEngineForce * 0.6; // Reverse force
             gearEl.textContent = 'R';
         }
     } else if (!inputState.keySpace) {
-        if (currentSpeed < 1) gearEl.textContent = 'P';
+        engineForce = 0;
+        brake = 10; // Slight drag
+        if (currentSpeed < 2) gearEl.textContent = 'P';
         else gearEl.textContent = 'N';
     }
 
-    // 前轮转向
+    // Apply Controls
     vehicle.setSteeringValue(steeringValue, 0);
     vehicle.setSteeringValue(steeringValue, 1);
-    // 四轮驱动
+
+    // AWD
     vehicle.applyEngineForce(engineForce, 0);
     vehicle.applyEngineForce(engineForce, 1);
     vehicle.applyEngineForce(engineForce, 2);
@@ -579,7 +608,7 @@ function updateControls() {
 
     let finalBrakeFL = brake, finalBrakeFR = brake, finalBrakeRL = brake, finalBrakeRR = brake;
     if (inputState.keySpace) {
-        const handbrakeStrength = maxEngineForce * 0.8;
+        const handbrakeStrength = 200;
         finalBrakeRL = handbrakeStrength;
         finalBrakeRR = handbrakeStrength;
         gearEl.textContent = 'E';
@@ -589,13 +618,6 @@ function updateControls() {
     vehicle.setBrake(finalBrakeFR, 1);
     vehicle.setBrake(finalBrakeRL, 2);
     vehicle.setBrake(finalBrakeRR, 3);
-
-    if (finalBrakeFL === 0 && finalBrakeRL === 0 && !inputState.keySpace) {
-        vehicle.setBrake(0, 0);
-        vehicle.setBrake(0, 1);
-        vehicle.setBrake(0, 2);
-        vehicle.setBrake(0, 3);
-    }
 }
 
 function updateCamera() {
@@ -604,12 +626,20 @@ function updateCamera() {
     const q = chassisBody.quaternion;
 
     if (activeCamera === cameraChase) {
-        const offset = new THREE.Vector3(0, 3, -7).applyQuaternion(q);
-        offset.add(chassisPos);
-        cameraChase.position.lerp(offset, 0.1);
-        cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
+        // Smooth follow cam
+        const relativeOffset = new THREE.Vector3(0, 3, -8); // Behind and up
+        const cameraOffset = relativeOffset.applyQuaternion(q);
+        const targetPos = new THREE.Vector3().copy(chassisPos).add(cameraOffset);
+        
+        // Use lerp for smoothness, but keep it tight
+        cameraChase.position.lerp(targetPos, 0.1);
+        
+        // Look slightly above the car
+        const lookTarget = new THREE.Vector3(0, 1, 0).add(chassisPos);
+        cameraChase.lookAt(lookTarget);
     } else {
-        const offset = new THREE.Vector3(0, 0.8, 1.5).applyQuaternion(q);
+        // Cockpit view
+        const offset = new THREE.Vector3(0, 0.8, 0.5).applyQuaternion(q);
         offset.add(chassisPos);
         cameraCockpit.position.copy(offset);
         cameraCockpit.quaternion.copy(q);
@@ -633,6 +663,8 @@ function updateCarMesh() {
     if (chassisBody && carMesh) {
         carMesh.position.copy(chassisBody.position);
         carMesh.quaternion.copy(chassisBody.quaternion);
+        // Correct visual offset if model is not centered
+        // carMesh.position.y -= 0.5; 
     }
 }
 
@@ -645,7 +677,7 @@ function updateHUD() {
     const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
     const heading = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
     headingEl.textContent = ((heading + 360) % 360).toFixed(0).padStart(3, '0');
-    const rpm = Math.min(75, Math.floor(speed * 2.0));
+    const rpm = Math.min(75, Math.floor(speed * 2.0) + (engineForce !== 0 ? 10 : 0));
     rpmEl.textContent = rpm;
     const steerDegrees = ((steeringValue / maxSteerVal) * 30).toFixed(0);
     steerEl.textContent = steerDegrees + '°';
@@ -658,7 +690,8 @@ function animate(time) {
     requestAnimationFrame(animate);
     if (!chassisBody || !world) return;
     const fixedTimeStep = 1 / 60;
-    const maxSubSteps = 1;
+    const maxSubSteps = 3; // Increased substeps for physics stability
+    
     if (lastTime !== undefined) {
         const dt = (time - lastTime) / 1000;
         world.step(fixedTimeStep, dt, maxSubSteps);
@@ -666,9 +699,12 @@ function animate(time) {
         world.step(fixedTimeStep);
     }
     lastTime = time;
+    
     updateControls();
     updateWheelMeshes();
     updateCarMesh();
+    
+    // Turbo flame effect
     if (inputState.keyBoost) {
         if (!flameMesh) {
             const flameGeo = new THREE.SphereGeometry(0.5, 16, 16);
@@ -676,14 +712,17 @@ function animate(time) {
             flameMesh = new THREE.Mesh(flameGeo, flameMat);
             scene.add(flameMesh);
         }
-        const backward = new THREE.Vector3(0, 0, -1).applyQuaternion(chassisBody.quaternion);
-        flameMesh.position.copy(chassisBody.position).add(backward.multiplyScalar(3));
+        const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion); // +Z is back relative to car mesh
+        const pos = new THREE.Vector3().copy(chassisBody.position).add(backward.multiplyScalar(3.5));
+        pos.y += 0.5;
+        flameMesh.position.copy(pos);
     } else {
         if (flameMesh) {
             scene.remove(flameMesh);
             flameMesh = null;
         }
     }
+    
     updateCamera();
     updateHUD();
     renderer.render(scene, activeCamera);
@@ -698,11 +737,13 @@ window.addEventListener('resize', () => {
     }
     if (splashRenderer && splashCamera) {
         const container = document.getElementById('splash-three-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        splashRenderer.setSize(width, height);
-        splashCamera.aspect = width / height;
-        splashCamera.updateProjectionMatrix();
+        if(container) {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            splashRenderer.setSize(width, height);
+            splashCamera.aspect = width / height;
+            splashCamera.updateProjectionMatrix();
+        }
     }
 });
 
