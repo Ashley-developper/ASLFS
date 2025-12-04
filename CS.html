@@ -268,8 +268,8 @@
 
     // 引擎和转向参数
     const maxEngineForce = 12000;
-    // 加剧转弯幅度：增加最大转向值
-    const maxSteerVal = 1.8; 
+    // const brakeForce = 40; // 忽略原始的brakeForce，直接使用逻辑中的值
+    const maxSteerVal = 1.2;
     // 转向平滑因子 (新增)
     const steeringSmoothFactor = 0.08; 
 
@@ -371,7 +371,7 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            // 车身再增大：从 1.7 增加到 2.5
+            // 3. 车身再增大：从 1.7 增加到 2.5
             carMesh.scale.set(2.5, 2.5, 2.5);
             carMesh.rotation.y = Math.PI;
             carMesh.position.y = -0.7; // 调整位置以适应新的底盘高度
@@ -449,7 +449,7 @@
     // =============================================================================
     function initThree() {
         scene = new THREE.Scene();
-        // 固定背景为白天
+        // 5. 去除日夜：固定背景为白天
         scene.background = daySkyColor.clone();
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -496,12 +496,11 @@
     }
 
     function initCameraAndLights() {
-        const initialFOV = 60; // 初始 FOV
-        cameraChase = new THREE.PerspectiveCamera(initialFOV, window.innerWidth/window.innerHeight, 0.1, 1000);
+        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
 
-        // 固定光照为白天
+        // 5. 去除日夜：固定光照为白天
         hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
         scene.add(hemiLight);
 
@@ -519,15 +518,10 @@
         scene.add(dirLight);
     }
 
-    // 底盘降低，伸长，符合f1赛车。
+    // 1. 底盘降低，伸长，符合f1赛车。
+    // ✅ 修复转向问题的关键：调整轮子物理参数
     function initVehicle() {
-        /*
-        修复/确认：chassisBody 隐形
-        chassisBody 是 Cannon.js 的物理刚体，本身没有视觉组件（Mesh），因此在 Three.js 场景中是不可见的。
-        我们只将 carMesh（视觉模型）添加到场景中。
-        */
-        
-        // 底盘：宽度1，高度0.3 (降低)，长度3 (伸长)
+        // 底盘：宽度1，高度0.3 (降低)，长度3 (伸长) -> 原为 1, 0.5, 2
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.3, 3));
         chassisBody = new CANNON.Body({
             mass: 1500,
@@ -537,7 +531,7 @@
         });
         chassisBody.angularDamping = 0.3;
         chassisBody.linearDamping = 0.05;
-        world.addBody(chassisBody); // 添加到物理世界，但没有对应的 THREE.Mesh 添加到 THREE.Scene
+        world.addBody(chassisBody);
 
         vehicle = new CANNON.RaycastVehicle({
             chassisBody: chassisBody,
@@ -641,7 +635,7 @@
         const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
         const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
 
-        // 转向平滑输入（渐变）
+        // 4. 平滑转向输入（渐变）
         if (inputState.keyA) {
             targetSteeringValue = maxSteerVal;
         } else if (inputState.keyD) {
@@ -684,7 +678,8 @@
         vehicle.setSteeringValue(0, 3); 
 
 
-        // 四轮驱动：驱动力应用于所有四个轮子 (0, 1, 2, 3)
+        // 2. 二驱改四驱
+        // 驱动力应用于所有四个轮子 (0, 1, 2, 3)
         vehicle.applyEngineForce(engineForce, 0);
         vehicle.applyEngineForce(engineForce, 1);
         vehicle.applyEngineForce(engineForce, 2);
@@ -693,18 +688,10 @@
         // 刹车
         let finalBrakeFL = brake, finalBrakeFR = brake, finalBrakeRL = brake, finalBrakeRR = brake;
         if (inputState.keySpace) {
-            // 漂移时速度增加：降低手刹力度 (0.8 -> 0.6) 以保持速度
-            const handbrakeStrength = maxEngineForce * 0.6; 
+            const handbrakeStrength = maxEngineForce * 0.8;
             finalBrakeRL = handbrakeStrength;
             finalBrakeRR = handbrakeStrength;
             gearEl.textContent = 'E';
-
-            // 漂移时速度增加：漂移时给前轮额外推力，克服摩擦，维持漂移速度
-            if (engineForce < 0) { // 只有在踩油门前进时才给额外推力
-                const driftBoost = maxEngineForce * 0.5; 
-                vehicle.applyEngineForce(engineForce - driftBoost, 0); // 前左轮
-                vehicle.applyEngineForce(engineForce - driftBoost, 1); // 前右轮
-            }
         }
         
         // 应用刹车
@@ -734,43 +721,13 @@
         if (!chassisBody) return;
         const chassisPos = new THREE.Vector3().copy(chassisBody.position);
         const q = chassisBody.quaternion;
-        
-        // 获取当前速度
-        const v = chassisBody.velocity;
-        const currentSpeed = v.length() * 3.6;
-        const baseFOV = 60;
-        const maxFOV = 85;
-        // 速度感应 FOV：120 km/h 达到最大 FOV
-        const speedFactor = Math.min(1, currentSpeed / 120); 
-
-        // 速度感应 FOV
-        cameraChase.fov = baseFOV + (maxFOV - baseFOV) * speedFactor;
-        cameraChase.updateProjectionMatrix();
-
         if (activeCamera === cameraChase) {
             const offset = new THREE.Vector3(0, 3, -7);
             offset.applyQuaternion(q);
             offset.add(chassisPos);
             cameraChase.position.lerp(offset, 0.1);
-
-            const lookAtTarget = new THREE.Vector3(chassisPos.x, chassisPos.y + 1, chassisPos.z);
-            cameraChase.lookAt(lookAtTarget);
-
-            // 转向侧倾 (Roll)
-            const maxRollAngle = Math.PI / 18; // 最大倾斜 10 度
-            // 侧倾角度与转向值成正比，方向相反，且受速度影响
-            const rollAngle = -(steeringValue / maxSteerVal) * maxRollAngle * speedFactor; 
-            
-            // 创建一个基于 Z 轴的旋转四元数 (Roll)
-            const rollQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rollAngle);
-            
-            // 将侧倾旋转应用到相机当前的四元数上
-            const finalQ = new THREE.Quaternion().copy(cameraChase.quaternion);
-            finalQ.multiply(rollQ);
-            cameraChase.quaternion.copy(finalQ);
-
+            cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
         } else {
-            // Cockpit Camera 驾驶舱视角
             const offset = new THREE.Vector3(0, 0.8, 1.5);
             offset.applyQuaternion(q);
             offset.add(chassisPos);
@@ -816,11 +773,18 @@
         steerEl.textContent = steerDegrees + '°';
         let throttlePercent = 0;
         if (engineForce !== 0) {
-            // throttlePercent 使用 maxEngineForce 来计算百分比
+            // 注意：因为是四驱，这里需要用 maxEngineForce * 4，但显示时用原始 maxEngineForce * 1 即可
             throttlePercent = Math.abs((engineForce / maxEngineForce) * 100).toFixed(0);
         }
         throttleEl.textContent = throttlePercent + '%';
     }
+
+    // 5. 去除日夜：删除 updateDayNight 函数，并移除调用
+    /*
+    function updateDayNight(time) {
+        // ... (原函数内容已移除)
+    }
+    */
 
     function updateColliders() {
         if (!chassisBody) return;
@@ -856,6 +820,7 @@
         updateCarMesh();
         updateCamera();
         updateHUD();
+        // updateDayNight(time); // 移除日夜调用
         updateColliders();
 
         renderer.render(scene, activeCamera);
