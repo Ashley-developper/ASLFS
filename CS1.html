@@ -261,8 +261,7 @@
     // 引擎和转向参数
     const maxEngineForce = 12000;
     const brakeForce = 40;
-    // 💥 改进转弯角度：增加最大转向值 (原 1.2)
-    const maxSteerVal = 1.6;
+    const maxSteerVal = 1.2;
 
     // 仪表盘元素
     const speedEl = document.getElementById('hud-spd');
@@ -363,8 +362,7 @@
             carMesh = gltf.scene;
             carMesh.scale.set(1.7, 1.7, 1.7);
             carMesh.rotation.y = Math.PI;
-            // 调整汽车网格的 Y 轴位置以匹配新的 F1 低底盘高度
-            carMesh.position.y = -0.05; 
+            carMesh.position.y = -0.5;
             carMesh.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
@@ -505,16 +503,16 @@
         scene.add(dirLight);
     }
 
-    // ✅ F1 风格物理底盘和悬挂设置
+    // ✅ 修复转向问题的关键：调整轮子物理参数
     function initVehicle() {
-        // F1 风格：底盘更小、更低
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(0.9, 0.25, 2.2)); // 调低高度 (0.25)
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
-            mass: 1200, // 略微减轻质量
+            mass: 1500,
             shape: chassisShape,
-            position: new CANNON.Vec3(0, 0.4, 0) // 显著降低起始高度和重心
+            // ⬇️ 修改: 将底盘位置从 1.0 降低到 0.6，实现底盘降低
+            position: new CANNON.Vec3(0, 0.6, 0)
         });
-        chassisBody.angularDamping = 0.5; // 略微增加角阻尼以稳定
+        chassisBody.angularDamping = 0.3;
         chassisBody.linearDamping = 0.05;
         world.addBody(chassisBody);
 
@@ -525,22 +523,20 @@
             indexForwardAxis: 2
         });
 
-        // F1 风格：更宽的轴距和更长的轴距
-        const axleWidth = 1.1; // 增加轴宽
-        const wheelBase = 1.8; // 增加轴距
+        const axleWidth = 1.0;
+        const wheelBase = 1.5;
         function makeWheelOptions(x,y,z) {
             return {
-                radius: 0.35, // 略微减小半径
+                radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                // F1 悬挂参数：硬且短行程
-                suspensionStiffness: 150, // 显著增加刚度 (原始 50)
-                suspensionRestLength: 0.1, // 缩短休息长度 (原始 0.3)
-                frictionSlip: 5.0, // 显著增加摩擦力以模拟高抓地力轮胎 (原始 1.5)
-                dampingRelaxation: 0.5, // 降低阻尼以获得更灵敏的响应 (原始 1.5)
-                dampingCompression: 0.8, // 降低压缩阻尼 (原始 2.5)
-                maxSuspensionForce: 200000, // 增加最大悬挂力
-                rollInfluence: 0.1, // 减小侧倾影响 (保持车辆稳定)
-                maxSuspensionTravel: 0.08, // 显著减少悬挂行程 (原始 0.3)
+                suspensionStiffness: 50,
+                suspensionRestLength: 0.3,
+                frictionSlip: 1.5,
+                dampingRelaxation: 1.5,
+                dampingCompression: 2.5,
+                maxSuspensionForce: 100000,
+                rollInfluence: 0.3,
+                maxSuspensionTravel: 0.3,
                 customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
@@ -548,16 +544,13 @@
             };
         }
 
-        // 前轮
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase));
-        // 后轮
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase));
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 0: FL
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 1: FR
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // 2: RL
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // 3: RR
 
         vehicle.addToWorld(world);
 
-        // Three.js 轮子网格（保持不变）
         wheelMeshes = [];
         if (tireMeshPrototype) {
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
@@ -662,8 +655,11 @@
         vehicle.setSteeringValue(steeringValue, 1);
 
         // 驱动
-        vehicle.applyEngineForce(engineForce, 2);
-        vehicle.applyEngineForce(engineForce, 3);
+        // ⬇️ 修改: 将推力应用到所有四个轮子 (0, 1, 2, 3) 实现四驱
+        vehicle.applyEngineForce(engineForce, 0); // FL
+        vehicle.applyEngineForce(engineForce, 1); // FR
+        vehicle.applyEngineForce(engineForce, 2); // RL
+        vehicle.applyEngineForce(engineForce, 3); // RR
 
         // 刹车
         let finalBrakeFL = brake, finalBrakeFR = brake, finalBrakeRL = brake, finalBrakeRR = brake;
@@ -699,15 +695,13 @@
         const chassisPos = new THREE.Vector3().copy(chassisBody.position);
         const q = chassisBody.quaternion;
         if (activeCamera === cameraChase) {
-            // 追逐相机调整高度以适应新的低底盘
-            const offset = new THREE.Vector3(0, 2, -5); 
+            const offset = new THREE.Vector3(0, 3, -7);
             offset.applyQuaternion(q);
             offset.add(chassisPos);
             cameraChase.position.lerp(offset, 0.1);
-            cameraChase.lookAt(chassisPos.x, chassisPos.y + 0.5, chassisPos.z);
+            cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
         } else {
-            // 驾驶舱相机调整高度和位置
-            const offset = new THREE.Vector3(0, 0.4, 1.2); 
+            const offset = new THREE.Vector3(0, 0.8, 1.5);
             offset.applyQuaternion(q);
             offset.add(chassisPos);
             cameraCockpit.position.copy(offset);
@@ -784,11 +778,10 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            // 激活碰撞体的距离可以根据需要调整
-            if (!obj.added && d <= obj.radius + 15) { 
+            if (!obj.added && d <= obj.radius + 3) {
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 15) {
+            } else if (obj.added && d > obj.radius + 3) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
