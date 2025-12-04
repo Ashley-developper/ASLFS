@@ -199,13 +199,13 @@
     };
 
     // F1 物理参数 (已优化)
-    const maxEngineForce = 15000; // 增强动力
+    const maxEngineForce = 15000; 
     const maxBrakeForce = 250;
-    const maxSteerVal = 0.55;     // 最大转向角
-    const steerSpeed = 0.08;      // 转向回正平滑度 (数值越小越平滑)
+    const maxSteerVal = 0.55;     
+    const steerSpeed = 0.08;      
     
     // 实时状态
-    let currentSteerAngle = 0;    // 当前平滑转向值
+    let currentSteerAngle = 0;    
     let engineForce = 0;
 
     // HUD 元素
@@ -296,20 +296,15 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            
-            // 优化 3: 增大车身尺寸，匹配霸气外观
             const carScale = 2.5;
             carMesh.scale.set(carScale, carScale, carScale);
-            
             carMesh.rotation.y = Math.PI;
-            // 稍微调整模型的Y轴偏移，使其对齐轮子
             carMesh.position.y = -0.6; 
 
             carMesh.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
-                    // 提升车辆材质质感
                     if(node.material) {
                         node.material.envMapIntensity = 1.0;
                         node.material.metalness = 0.7;
@@ -319,24 +314,20 @@
             });
             scene.add(carMesh);
 
-            // 优化 9: Boost 火焰位置修正
             const flameGeometry = new THREE.ConeGeometry(0.4 * carScale, 2.0 * carScale, 16);
-            // 旋转几何体使其尖端朝后
             flameGeometry.rotateX(Math.PI / 2); 
             
             const flameMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x00ffff, // 蓝色火焰更科幻
+                color: 0x00ffff, 
                 transparent: true,
                 opacity: 0.8
             });
             flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
-            // 根据车身比例调整位置，确保在排气管附近
             flameMesh.position.set(0, 0.5, 2.0 * carScale); 
             flameMesh.visible = false;
             carMesh.add(flameMesh);
         });
 
-        // 启动页也加载一个模型
         gltfLoader.load('car1.glb', (gltf) => {
             splashCarModel = gltf.scene;
             splashCarModel.scale.set(2,2,2);
@@ -348,7 +339,6 @@
     function loadTireModel() {
         gltfLoader.load('tire1.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
-            // 轮胎也相应放大
             tireMeshPrototype.scale.set(1.1, 1.1, 1.1);
             tireMeshPrototype.traverse((node) => {
                 if (node.isMesh) node.castShadow = true;
@@ -367,12 +357,10 @@
                     node.castShadow = true;
                     node.receiveShadow = true;
                     
-                    // 物理碰撞体生成
                     const geometry = node.geometry.clone();
                     geometry.applyMatrix4(node.matrixWorld);
                     geometry.computeBoundingSphere();
                     
-                    // 简单的剔除逻辑，防止处理过小的物体
                     if (geometry.boundingSphere.radius > 1) {
                         const vertices = Array.from(geometry.attributes.position.array);
                         let indices = [];
@@ -382,7 +370,6 @@
                             for (let i = 0; i < vertices.length/3; i++) indices.push(i);
                         }
                         
-                        // Cannon.js Trimesh
                         const shape = new CANNON.Trimesh(vertices, indices);
                         const body = new CANNON.Body({ mass: 0 });
                         body.addShape(shape);
@@ -404,44 +391,40 @@
     // =============================================================================
     function initThree() {
         scene = new THREE.Scene();
-        // 优化 5: 移除日夜，设置高质量天空颜色
         scene.background = new THREE.Color(0x88ccff); 
         scene.fog = new THREE.Fog(0x88ccff, 50, 600);
 
         renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比以提高性能
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
         renderer.setSize(window.innerWidth, window.innerHeight);
         
-        // 优化 8: 阴影优化
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 更柔和的阴影
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
         renderer.outputEncoding = THREE.sRGBEncoding;
         document.body.appendChild(renderer.domElement);
     }
 
     function initCannon() {
         world = new CANNON.World();
-        world.gravity.set(0, -12, 0); // 稍微增加重力，让车更贴地
+        world.gravity.set(0, -12, 0); 
         world.broadphase = new CANNON.SAPBroadphase(world);
         world.allowSleep = true;
 
         const defaultMaterial = new CANNON.Material('default');
         const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-            friction: 0.05, // 地面基础摩擦
+            friction: 0.05, 
             restitution: 0.1
         });
         world.defaultContactMaterial = contactMaterial;
     }
 
     function initGround() {
-        // 物理地面
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 });
         groundBody.addShape(groundShape);
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
 
-        // 视觉地面 (仅在城市模型未覆盖区域显示)
         const groundGeo = new THREE.PlaneGeometry(2000, 2000);
         const groundMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
@@ -456,16 +439,13 @@
         cameraCockpit = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
         activeCamera = cameraChase;
 
-        // 环境光
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
-        // 主光源 (模拟太阳)
         dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
         dirLight.position.set(100, 150, 50);
         dirLight.castShadow = true;
         
-        // 优化阴影范围
         const d = 80;
         dirLight.shadow.camera.left = -d;
         dirLight.shadow.camera.right = d;
@@ -480,21 +460,16 @@
     }
 
     // =============================================================================
-    // ** 车辆初始化 (核心物理优化) **
+    // ** 车辆初始化 **
     // =============================================================================
     function initVehicle() {
-        // 优化 1: 底盘调整 (F1 风格：宽、长、低)
-        // 之前的: (1, 0.5, 2)
-        // 现在的: 宽 2.2m, 高 0.5m, 长 4.4m (半宽1.1, 半高0.25, 半长2.2)
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.25, 2.2)); 
         chassisBody = new CANNON.Body({
-            mass: 1200, // 略微减轻质量
+            mass: 1200, 
             position: new CANNON.Vec3(0, 2, 0)
         });
         chassisBody.addShape(chassisShape);
-        // 降低重心：将形状相对于Body中心向下偏移
-        // CANNON的Body位置是重心，我们将形状向上移一点，或者不管，主要靠宽轮距
-        chassisBody.angularDamping = 0.5; // 增加阻尼防止乱转
+        chassisBody.angularDamping = 0.5; 
         chassisBody.linearDamping = 0.02;
         world.addBody(chassisBody);
 
@@ -505,21 +480,20 @@
             indexForwardAxis: 2
         });
 
-        // 优化轮距
-        const axleWidth = 1.3; // 更宽的轮距，防止翻车
+        const axleWidth = 1.3; 
         const wheelBaseFront = 1.6;
         const wheelBaseRear = 1.8;
         
         const wheelOptions = {
             radius: 0.55,
             directionLocal: new CANNON.Vec3(0, -1, 0),
-            suspensionStiffness: 65,    // 悬挂变硬 (F1风格)
-            suspensionRestLength: 0.4,  // 悬挂行程变短
-            frictionSlip: 2.5,          // **重要**：增加抓地力，解决转弯慢
+            suspensionStiffness: 65,    
+            suspensionRestLength: 0.4,  
+            frictionSlip: 2.5,          
             dampingRelaxation: 2.3,
             dampingCompression: 4.4,
             maxSuspensionForce: 100000,
-            rollInfluence: 0.05,        // 极小的侧倾影响，防止翻车
+            rollInfluence: 0.05,        
             axleLocal: new CANNON.Vec3(1, 0, 0),
             chassisConnectionPointLocal: new CANNON.Vec3(1, 1, 0),
             useCustomSlidingRotationalSpeed: true,
@@ -541,7 +515,6 @@
 
         vehicle.addToWorld(world);
 
-        // 创建轮子模型
         if (tireMeshPrototype) {
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const w = tireMeshPrototype.clone();
@@ -549,7 +522,6 @@
                 scene.add(w);
             }
         } else {
-            // Fallback
             const wMat = new THREE.MeshPhongMaterial({color:0x111111});
             const wGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.4, 24);
             wGeo.rotateZ(Math.PI/2);
@@ -593,36 +565,28 @@
     function updatePhysics() {
         if (!chassisBody) return;
 
-        // 1. 计算目标转向
         let targetSteer = 0;
         if (inputState.keyA) targetSteer = maxSteerVal;
         if (inputState.keyD) targetSteer = -maxSteerVal;
 
-        // 优化 4: 渐进式转向 (Lerp)
-        // 每一帧将当前转向角向目标转向角靠近一点点
         currentSteerAngle += (targetSteer - currentSteerAngle) * steerSpeed;
         
-        vehicle.setSteeringValue(currentSteerAngle, 0); // 前左
-        vehicle.setSteeringValue(currentSteerAngle, 1); // 前右
+        vehicle.setSteeringValue(currentSteerAngle, 0); 
+        vehicle.setSteeringValue(currentSteerAngle, 1); 
 
-        // 2. 动力输出
         engineForce = 0;
         let brakeForce = 0;
         
         const vel = chassisBody.velocity;
-        const localVel = chassisBody.vectorToLocalFrame(vel);
-        const movingFwd = localVel.z > 0.5; // Cannon z向前是正还是负取决于模型方向，这里假设
-
+        
         if (inputState.keyW) {
-             engineForce = -maxEngineForce; // 负值向前
+             engineForce = -maxEngineForce; 
         } else if (inputState.keyS) {
-             engineForce = maxEngineForce * 0.6; // 倒车/刹车
+             engineForce = maxEngineForce * 0.6; 
         }
 
-        // 优化 2: 四驱系统 (4WD) - 动力给所有轮子
-        // 优化 9: Boost
         if (inputState.keyShift && inputState.keyW) {
-            engineForce *= 5; // 超级加速
+            engineForce *= 5; 
             if(flameMesh) flameMesh.visible = true;
         } else {
             if(flameMesh) flameMesh.visible = false;
@@ -633,13 +597,10 @@
         vehicle.applyEngineForce(engineForce, 2);
         vehicle.applyEngineForce(engineForce, 3);
 
-        // 3. 刹车与漂移
         if (inputState.keySpace) {
-            brakeForce = 150; // 手刹
-            // 手刹时锁死后轮
+            brakeForce = 150; 
             vehicle.setBrake(brakeForce, 2);
             vehicle.setBrake(brakeForce, 3);
-            // 稍微松一点前轮以便能甩尾
             vehicle.setBrake(brakeForce * 0.2, 0);
             vehicle.setBrake(brakeForce * 0.2, 1);
         } else {
@@ -653,7 +614,6 @@
     function updateVisuals() {
         if(!chassisBody) return;
 
-        // 轮子模型同步
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -663,44 +623,34 @@
             }
         }
 
-        // 车身同步
         if (carMesh) {
-            // 插值平滑视觉位置（可选，这里直接复制）
             carMesh.position.copy(chassisBody.position);
-            // 这里我们对Quaternion稍微做一点Slerp让车身看起来有重量感（可选）
             carMesh.quaternion.copy(chassisBody.quaternion);
         }
 
-        // 相机跟随
         const chassisPos = chassisBody.position;
         const speed = chassisBody.velocity.length();
 
         if (activeCamera === cameraChase) {
-            // 动态相机距离：速度越快，拉得越远
             const dist = 8 + (speed * 0.1); 
-            // 目标位置：车后上方
             const offset = new THREE.Vector3(0, 4.0, 7.5 + (speed * 0.05)); 
             offset.applyQuaternion(chassisBody.quaternion);
-            offset.add(chassisPos); // 转换到世界坐标
+            offset.add(chassisPos); 
 
-            // 弹性跟随
             cameraChase.position.lerp(offset, 0.1); 
-            // 看向车前方一点的位置
             const lookTarget = new THREE.Vector3(0, 1, -5); 
             lookTarget.applyQuaternion(chassisBody.quaternion);
             lookTarget.add(chassisPos);
             cameraChase.lookAt(lookTarget);
         } else {
-            // 驾驶舱视角
-            const offset = new THREE.Vector3(0, 1.2, 0.5); // 调整以适应新车身
+            const offset = new THREE.Vector3(0, 1.2, 0.5); 
             offset.applyQuaternion(chassisBody.quaternion);
             offset.add(chassisPos);
             cameraCockpit.position.copy(offset);
             cameraCockpit.quaternion.copy(chassisBody.quaternion);
-            cameraCockpit.rotateY(Math.PI); // 修正朝向
+            cameraCockpit.rotateY(Math.PI); 
         }
 
-        // 优化 8: 让阳光跟随车辆，保证阴影质量
         if(dirLight) {
             dirLight.position.set(chassisPos.x + 50, chassisPos.y + 100, chassisPos.z + 50);
             dirLight.target.position.copy(chassisPos);
@@ -715,7 +665,6 @@
         
         speedEl.textContent = Math.floor(kmh);
         
-        // 模拟 RPM
         let rpm = 0;
         if (engineForce !== 0) {
             rpm = 10 + (Math.abs(kmh) / 300) * 70;
@@ -725,24 +674,26 @@
         }
         rpmEl.textContent = Math.min(99, Math.floor(rpm));
 
-        // 档位逻辑
         if (inputState.keySpace) gearEl.textContent = 'DRIFT';
         else if (kmh < 1 && Math.abs(engineForce) < 10) gearEl.textContent = 'N';
         else if (inputState.keyW) gearEl.textContent = inputState.keyShift ? 'S' : 'D';
         else if (inputState.keyS) gearEl.textContent = 'R';
 
-        // 油门显示
         const throttle = engineForce !== 0 ? (inputState.keyShift ? 100 : 70) : 0;
         throttleEl.textContent = throttle + '%';
     }
 
+    // ✅ FIXED FUNCTION: 将Cannon向量转换为Three向量再进行计算
     function updateColliders() {
         if (!chassisBody) return;
-        const pos = chassisBody.position;
-        // 动态加载附近的碰撞体 (LOD System for physics)
+        
+        // 关键修复：将Cannon.js的Vec3转换为Three.js的Vector3
+        const pos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
+        
         staticBodies.forEach(obj => {
+            // 现在 pos 是 Three.js 对象，可以使用 distanceToSquared
             const distSq = pos.distanceToSquared(obj.center);
-            const range = obj.radius + 15; // 增加加载范围
+            const range = obj.radius + 15; 
             if (!obj.added && distSq < range * range) {
                 world.addBody(obj.body);
                 obj.added = true;
@@ -795,10 +746,8 @@
         }
     });
 
-    // 页面加载即初始化 Splash 3D
     document.addEventListener('DOMContentLoaded', () => {
         initSplashThree();
-        // 预加载 Splash Car
         const gltfSimple = new THREE.GLTFLoader();
         const dracoSimple = new THREE.DRACOLoader();
         dracoSimple.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
