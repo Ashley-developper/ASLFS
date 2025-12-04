@@ -769,7 +769,7 @@
             hemiLight.groundColor.lerpColors(nightHemiGround, dayHemiGround, t);
             dirLight.color.lerpColors(new THREE.Color(0x222233), new THREE.Color(0xfff0dd), t);
             dirLight.intensity = 0.2 * (1 - t) + 1.0 * t;
-            hemiLight.intensity = 0.2 * (1 - t) + 0.8 * t;
+            hemiLight.intensity = 0.4 * (1 - t) + 0.8 * t;
         }
     }
 
