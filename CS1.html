@@ -261,7 +261,7 @@
     // 引擎和转向参数
     const maxEngineForce = 12000;
     const brakeForce = 40;
-    const maxSteerVal = 0.6;
+    const maxSteerVal = 0.62;
 
     // 仪表盘元素
     const speedEl = document.getElementById('hud-spd');
@@ -530,14 +530,14 @@
             return {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 80,
+                suspensionStiffness: 50,
                 suspensionRestLength: 0.3,
                 frictionSlip: 1.5,
                 dampingRelaxation: 1.5,
                 dampingCompression: 2.5,
                 maxSuspensionForce: 100000,
                 rollInfluence: 0.3,
-                maxSuspensionTravel: 0.05,
+                maxSuspensionTravel: 0.3,
                 customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
