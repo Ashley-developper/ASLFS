@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Car Simulator - FIXED</title>
+    <title>ASL Car Simulator</title>
     <style>
-        /* CSS 样式保持不变 */
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; }
+        
+        /* 仪表盘布局 */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
@@ -40,6 +41,7 @@
             font-size: 12px; color: #888; margin-left: 4px; font-weight: 400;
         }
 
+        /* 控制提示 */
         #control-hints {
             position: absolute;
             bottom: 20px;
@@ -63,6 +65,7 @@
             text-transform: uppercase;
         }
 
+        /* 启动画面 (Splash Screen) */
         #splash {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -90,13 +93,6 @@
             text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
         }
 
-        #copyright-info {
-            position: absolute;
-            bottom: 10px;
-            opacity: 0.7;
-            font-size: 12px;
-        }
-        
         #plane-chooser-title {
             font-size: 20px;
             margin-bottom: 20px;
@@ -162,14 +158,15 @@
     </style>
 </head>
 <body>
+    <!-- 开始界面 Splash Screen -->
     <div id="splash">
         <div id="splash-three-container"></div>
         <h1>ASL CAR SIMULATOR</h1>
         <p style="opacity:0.8; margin-top:15px;">Press Start to Play</p>
         <button id="start-button" onclick="startGame()">START DRIVING</button>
-        <p id="copyright-info">© 2025 Zhanyi Zhou & Gemini AI</p>
     </div>
 
+    <!-- 控制提示 (在HUD显示) -->
     <div id="hud-layer" style="display:none;">
         <div class="hud-top-left">
             <div class="instrument">
@@ -204,7 +201,6 @@
                 <div>Press Shift for Boost</div>
                 <div>SPACE for handbrake drift</div>
                 <div>V to switch camera</div>
-                <div>**R to Respawn**</div>
             </div>
             <div class="hud-bottom-right">
                 <div class="instrument" style="border-left-color: #00ff00;">
@@ -215,6 +211,7 @@
         </div>
     </div>
 
+    <!-- 加载屏幕 -->
     <div id="loading-screen" style="display:none; flex-direction:column; align-items:center; justify-content:center; position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8); color:#fff; z-index:1000;">
         <p>Loading City and Assets...</p>
         <div id="loading-progress-bar" style="width:300px; height:10px; background:#333; margin-top:10px;">
@@ -223,6 +220,7 @@
         <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
     </div>
 
+    <!-- Three.js, Cannon.js 等库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -238,12 +236,14 @@
     let wheelMeshes = [];
     let lastTime = undefined;
 
-    // ** 环境光/日夜切换变量 (已移除日夜切换逻辑，仅保留白天设置) **
-    const daySkyColor = new THREE.Color(0x87CEEB);
-    const dayHemiSky = new THREE.Color(0xffffff);
-    const dayHemiGround = new THREE.Color(0x3b4c5a);
+    // ** 环境光/日夜切换变量 **
     let hemiLight, dirLight;
-
+    const daySkyColor = new THREE.Color(0x87CEEB);
+    const nightSkyColor = new THREE.Color(0x000022);
+    const dayHemiSky = new THREE.Color(0xffffff);
+    const nightHemiSky = new THREE.Color(0x111133);
+    const dayHemiGround = new THREE.Color(0x3b4c5a);
+    const nightHemiGround = new THREE.Color(0x04040a);
 
     // ** 关键的状态变量 **
     let staticBodies = [];
@@ -259,19 +259,13 @@
       keyA: false,
       keyD: false,
       keySpace: false,
-      keyShift: false,
-      keyR: false // 新增：R键重生状态
+      keyShift: false
     };
 
     // 引擎和转向参数
     const maxEngineForce = 12000;
-    const maxSteerVal = 1.6; // 保持 90 度大转弯幅度
-    // ** 修复转向问题：提高转向响应速度 **
-    const steeringSmoothFactor = 0.25; // 从 0.15 增加到 0.25，减少转向延迟
-
-    let engineForce = 0;
-    let steeringValue = 0;
-    let targetSteeringValue = 0; 
+    const brakeForce = 40;
+    const maxSteerVal = 1.2;
 
     // 仪表盘元素
     const speedEl = document.getElementById('hud-spd');
@@ -282,6 +276,8 @@
     const steerEl = document.getElementById('hud-steer');
     const throttleEl = document.getElementById('hud-throttle');
 
+    let engineForce = 0;
+    let steeringValue = 0;
 
     // =============================================================================
     // ** THREE.js/GLTF Loader 初始化 **
@@ -368,27 +364,14 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            // ** 悬空轮子修复：将视觉缩放重置为 1.0 (或更小)，确保物理尺寸匹配 **
-            carMesh.scale.set(1.0, 1.0, 1.0); // 从 2.5 降为 1.0
+            carMesh.scale.set(1.7, 1.7, 1.7);
             carMesh.rotation.y = Math.PI;
-            carMesh.position.y = -0.3; // 调整位置以适应新的底盘高度 (0.5 + 轮半径0.4)
-
-            // 移除模型自带的轮子网格，只保留物理引擎驱动的轮子网格
-            const objectsToRemove = [];
+            carMesh.position.y = -0.5;
             carMesh.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                 }
-                const name = node.name.toLowerCase();
-                if (name.includes('wheel') || name.includes('tire') || name.includes('rim')) {
-                    objectsToRemove.push(node);
-                }
             });
-
-            objectsToRemove.forEach(node => {
-                if (node.parent) node.parent.remove(node);
-            });
-
             scene.add(carMesh);
 
             // 添加尾部火焰特效
@@ -405,8 +388,7 @@
     function loadTireModel() {
         gltfLoader.load('tire1.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
-            // ** 悬空轮子修复：将轮胎缩放也重置到更保守的 1.0 **
-            tireMeshPrototype.scale.set(1.0, 1.0, 1.0); // 从 0.75 调整
+            tireMeshPrototype.scale.set(0.75, 0.75, 0.75);
             tireMeshPrototype.rotation.x = Math.PI / 2;
             tireMeshPrototype.traverse((node) => {
                 if (node.isMesh) node.castShadow = true;
@@ -426,7 +408,7 @@
             city.scale.set(4,4,4);
             scene.add(city);
 
-            // 碰撞体代码保持不变
+            // 将city模型转换为Cannon Trimesh用于精确碰撞
             city.updateMatrixWorld(true);
             city.traverse((node) => {
                 if (node.isMesh) {
@@ -477,7 +459,7 @@
 
         const defaultMaterial = new CANNON.Material('default');
         const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-            friction: 2.5,
+            friction: 0.6,
             restitution: 0.0
         });
         world.defaultContactMaterial = contactMaterial;
@@ -525,17 +507,15 @@
         scene.add(dirLight);
     }
 
+    // ✅ 修复转向问题的关键：调整轮子物理参数
     function initVehicle() {
-        // ** 悬空轮子修复：缩小底盘尺寸以匹配视觉模型（假设 1.0 缩放）**
-        // 底盘：宽度 0.8，高度 0.3，长度 1.5 (半尺寸) -> 原为 1, 0.3, 3
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(0.8, 0.3, 1.5));
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
             mass: 1500,
             shape: chassisShape,
-            position: new CANNON.Vec3(0, 0.8, 0)
+            position: new CANNON.Vec3(0, 1.0, 0)
         });
-        // 保持低角阻尼以利于转向
-        chassisBody.angularDamping = 0.1; 
+        chassisBody.angularDamping = 0.3;
         chassisBody.linearDamping = 0.05;
         world.addBody(chassisBody);
 
@@ -546,34 +526,31 @@
             indexForwardAxis: 2
         });
 
-        // 调整轴距和轮距以适应新底盘
-        const axleWidth = 0.7; // 新轮距 (总宽度 1.4)
-        const wheelBase = 1.2; // 新轴距 (总长度 2.4)
+        const axleWidth = 1.0;
+        const wheelBase = 1.5;
         function makeWheelOptions(x,y,z) {
             return {
-                radius: 0.4, // 略微减小轮子半径以匹配新尺寸
+                radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
                 suspensionStiffness: 50,
                 suspensionRestLength: 0.3,
-                // ** 转弯修复：降低摩擦力，让车轮更容易侧滑转向 **
-                frictionSlip: 1.0, // 从 2.5 降到 1.0
+                frictionSlip: 1.5,
                 dampingRelaxation: 1.5,
                 dampingCompression: 2.5,
                 maxSuspensionForce: 100000,
-                rollInfluence: 0.1, 
+                rollInfluence: 0.3,
                 maxSuspensionTravel: 0.3,
                 customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // ** 悬空轮子修复：新的连接点与新底盘尺寸匹配 **
                 chassisConnectionPointLocal: new CANNON.Vec3(x, y, z)
             };
         }
 
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 前左 (0)
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 前右 (1)
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // 后左 (2)
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // 后右 (3)
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase));
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase));
 
         vehicle.addToWorld(world);
 
@@ -610,7 +587,6 @@
             case ' ': inputState.keySpace = true; event.preventDefault(); break;
             case 'shift': inputState.keyShift = true; break;
             case 'v': toggleCamera(); break;
-            case 'r': inputState.keyR = true; break; 
         }
     });
     window.addEventListener('keyup', (event) => {
@@ -621,7 +597,6 @@
             case 'd': inputState.keyD = false; break;
             case ' ': inputState.keySpace = false; break;
             case 'shift': inputState.keyShift = false; break;
-            case 'r': inputState.keyR = false; break; 
         }
     });
     function toggleCamera() {
@@ -635,28 +610,8 @@
     function updateControls() {
         if (!chassisBody) return;
         engineForce = 0;
+        steeringValue = 0;
         let brake = 0;
-
-        // R 键重生逻辑
-        if (inputState.keyR) {
-            chassisBody.position.set(0, 5, 0);
-            chassisBody.quaternion.set(0, 0, 0, 1);
-            chassisBody.velocity.set(0, 0, 0);
-            chassisBody.angularVelocity.set(0, 0, 0);
-            chassisBody.wakeUp();
-
-            inputState.keyR = false; 
-            gearEl.textContent = 'P';
-            
-            vehicle.setSteeringValue(0, 0);
-            vehicle.setSteeringValue(0, 1);
-            vehicle.applyEngineForce(0, 0);
-            vehicle.applyEngineForce(0, 1);
-            vehicle.applyEngineForce(0, 2);
-            vehicle.applyEngineForce(0, 3);
-            return; 
-        }
-
 
         const v = chassisBody.velocity;
         const currentSpeed = v.length() * 3.6;
@@ -666,19 +621,16 @@
         const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
         const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
 
-        // 平滑转向输入（渐变）
+        // 转向
         if (inputState.keyA) {
-            targetSteeringValue = maxSteerVal;
+            steeringValue = maxSteerVal;
         } else if (inputState.keyD) {
-            targetSteeringValue = -maxSteerVal;
+            steeringValue = -maxSteerVal;
         } else {
-            targetSteeringValue = 0;
+            steeringValue = 0;
         }
-        // 转向平滑
-        steeringValue = steeringValue + (targetSteeringValue - steeringValue) * steeringSmoothFactor;
 
-
-        // 加速 / 倒车逻辑保持不变
+        // 加速 / 倒车
         if (inputState.keyW) {
             if (isMovingBackward) {
                 brake = maxEngineForce * 0.5;
@@ -701,24 +653,15 @@
             }
         }
 
-        // 转向值应用：仅前轮转向 (0, 1)
-        vehicle.setSteeringValue(steeringValue, 0); 
-        vehicle.setSteeringValue(steeringValue, 1); 
-        vehicle.setSteeringValue(0, 2); 
-        vehicle.setSteeringValue(0, 3); 
+        // 转向值应用
+        vehicle.setSteeringValue(steeringValue, 0);
+        vehicle.setSteeringValue(steeringValue, 1);
 
+        // 驱动
+        vehicle.applyEngineForce(engineForce, 2);
+        vehicle.applyEngineForce(engineForce, 3);
 
-        // 驱动力：后驱为主 (保持不变，避免推头)
-        const frontWheelForce = engineForce * 0.2; 
-        const rearWheelForce = engineForce;        
-
-        vehicle.applyEngineForce(frontWheelForce, 0); 
-        vehicle.applyEngineForce(frontWheelForce, 1); 
-        vehicle.applyEngineForce(rearWheelForce, 2);  
-        vehicle.applyEngineForce(rearWheelForce, 3);  
-
-
-        // 刹车逻辑保持不变
+        // 刹车
         let finalBrakeFL = brake, finalBrakeFR = brake, finalBrakeRL = brake, finalBrakeRR = brake;
         if (inputState.keySpace) {
             const handbrakeStrength = maxEngineForce * 0.8;
@@ -726,17 +669,16 @@
             finalBrakeRR = handbrakeStrength;
             gearEl.textContent = 'E';
         }
-        
         vehicle.setBrake(finalBrakeFL, 0);
         vehicle.setBrake(finalBrakeFR, 1);
         vehicle.setBrake(finalBrakeRL, 2);
         vehicle.setBrake(finalBrakeRR, 3);
 
         if (finalBrakeFL === 0 && finalBrakeRL === 0 && !inputState.keySpace) {
-             vehicle.setBrake(0, 0);
-             vehicle.setBrake(0, 1);
-             vehicle.setBrake(0, 2);
-             vehicle.setBrake(0, 3);
+            vehicle.setBrake(0, 0);
+            vehicle.setBrake(0, 1);
+            vehicle.setBrake(0, 2);
+            vehicle.setBrake(0, 3);
         }
 
         // 增强功能：Shift 键加速
@@ -770,7 +712,6 @@
     }
 
     function updateWheelMeshes() {
-        // ** 物理轮子和视觉轮子同步：代码保持正确 **
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -783,7 +724,6 @@
 
     function updateCarMesh() {
         if (chassisBody && carMesh) {
-            // ** 悬空轮子修复：车身网格跟随物理底盘移动 **
             carMesh.position.copy(chassisBody.position);
             carMesh.quaternion.copy(chassisBody.quaternion);
         }
@@ -801,8 +741,7 @@
         headingEl.textContent = h.toFixed(0).padStart(3, '0');
         const rpm = Math.min(75, Math.floor(speed * 2.0));
         rpmEl.textContent = rpm;
-        // 使用平滑后的 steeringValue 来计算角度
-        const steerDegrees = (steeringValue / maxSteerVal * 30).toFixed(0); 
+        const steerDegrees = (steeringValue / maxSteerVal * 30).toFixed(0);
         steerEl.textContent = steerDegrees + '°';
         let throttlePercent = 0;
         if (engineForce !== 0) {
@@ -811,15 +750,38 @@
         throttleEl.textContent = throttlePercent + '%';
     }
 
+    function updateDayNight(time) {
+        const tSec = time / 1000;
+        const cycle = tSec % 240;
+        let t = 0;
+        if (cycle < 120) {
+            t = cycle / 120;
+            scene.background.lerpColors(daySkyColor, nightSkyColor, t);
+            hemiLight.color.lerpColors(dayHemiSky, nightHemiSky, t);
+            hemiLight.groundColor.lerpColors(dayHemiGround, nightHemiGround, t);
+            dirLight.color.lerpColors(new THREE.Color(0xfff0dd), new THREE.Color(0x222233), t);
+            dirLight.intensity = 1.0 * (1 - t) + 0.2 * t;
+            hemiLight.intensity = 0.8 * (1 - t) + 0.2 * t;
+        } else {
+            t = (cycle - 120) / 120;
+            scene.background.lerpColors(nightSkyColor, daySkyColor, t);
+            hemiLight.color.lerpColors(nightHemiSky, dayHemiSky, t);
+            hemiLight.groundColor.lerpColors(nightHemiGround, dayHemiGround, t);
+            dirLight.color.lerpColors(new THREE.Color(0x222233), new THREE.Color(0xfff0dd), t);
+            dirLight.intensity = 0.2 * (1 - t) + 1.0 * t;
+            hemiLight.intensity = 0.2 * (1 - t) + 0.8 * t;
+        }
+    }
+
     function updateColliders() {
         if (!chassisBody) return;
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            if (!obj.added && d <= obj.radius + 10) { 
+            if (!obj.added && d <= obj.radius + 3) {
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 15) {
+            } else if (obj.added && d > obj.radius + 3) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
@@ -844,6 +806,7 @@
         updateCarMesh();
         updateCamera();
         updateHUD();
+        updateDayNight(time);
         updateColliders();
 
         renderer.render(scene, activeCamera);
