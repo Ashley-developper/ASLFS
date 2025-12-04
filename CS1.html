@@ -474,7 +474,7 @@
     function initThree() {
         scene = new THREE.Scene();
         scene.background = daySkyColor.clone();
-        scene.fog = new THREE.Fog(daySkyColor, 100, 500);
+        scene.fog = new THREE.Fog(daySkyColor, 500, 800);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(window.devicePixelRatio || 1);
