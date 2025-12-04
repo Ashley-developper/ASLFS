@@ -198,7 +198,7 @@
       keySpace: false, keyShift: false
     };
 
-    // F1 物理参数 (已优化)
+    // F1 物理参数
     const maxEngineForce = 15000; 
     const maxBrakeForce = 250;
     const maxSteerVal = 0.55;     
@@ -399,7 +399,8 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        // 性能优化：切换到 BasicShadowMap
+        renderer.shadowMap.type = THREE.BasicShadowMap; 
         renderer.outputEncoding = THREE.sRGBEncoding;
         document.body.appendChild(renderer.domElement);
     }
@@ -453,6 +454,7 @@
         dirLight.shadow.camera.bottom = -d;
         dirLight.shadow.camera.near = 1;
         dirLight.shadow.camera.far = 500;
+        // 阴影分辨率：1024x1024
         dirLight.shadow.mapSize.width = 1024;
         dirLight.shadow.mapSize.height = 1024;
         dirLight.shadow.bias = -0.0005;
@@ -632,13 +634,17 @@
         const speed = chassisBody.velocity.length();
 
         if (activeCamera === cameraChase) {
+            // 摄像机修复：确保相机在车身后方（-Z 方向）
             const dist = 8 + (speed * 0.1); 
-            const offset = new THREE.Vector3(0, 4.0, 7.5 + (speed * 0.05)); 
+            // 目标位置：车后上方，Z轴取负确保在后方
+            const offset = new THREE.Vector3(0, 4.0, -7.5 - (speed * 0.05)); 
             offset.applyQuaternion(chassisBody.quaternion);
             offset.add(chassisPos); 
 
             cameraChase.position.lerp(offset, 0.1); 
-            const lookTarget = new THREE.Vector3(0, 1, -5); 
+            
+            // Look Target：看向车身中央偏前方一点
+            const lookTarget = new THREE.Vector3(0, 1, -1); 
             lookTarget.applyQuaternion(chassisBody.quaternion);
             lookTarget.add(chassisPos);
             cameraChase.lookAt(lookTarget);
@@ -683,15 +689,12 @@
         throttleEl.textContent = throttle + '%';
     }
 
-    // ✅ FIXED FUNCTION: 将Cannon向量转换为Three向量再进行计算
     function updateColliders() {
         if (!chassisBody) return;
         
-        // 关键修复：将Cannon.js的Vec3转换为Three.js的Vector3
         const pos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         
         staticBodies.forEach(obj => {
-            // 现在 pos 是 Three.js 对象，可以使用 distanceToSquared
             const distSq = pos.distanceToSquared(obj.center);
             const range = obj.radius + 15; 
             if (!obj.added && distSq < range * range) {
