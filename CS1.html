@@ -784,10 +784,10 @@
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
             // 简单逻辑：靠近时添加碰撞体，远离时移除
-            if (!obj.added && d <= obj.radius + 30) {
+            if (!obj.added && d <= obj.radius + 120) {
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 35) {
+            } else if (obj.added && d > obj.radius + 120) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
