@@ -32,6 +32,12 @@
             gap: 20px; 
             flex-wrap: wrap; 
         }
+
+        .hud-top-right {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+        }
         
         /* 仪表盘核心样式 - 赛博朋克霓虹风 */
         .instrument {
@@ -89,6 +95,27 @@
         .gear-color { border-left-color: #FFD700 !important; }
         .throttle-color { border-left-color: #00FF00 !important; }
         
+        /* 奖励仪表盘样式 */
+        #hud-reward {
+            background: rgba(30, 0, 30, 0.7);
+            border: 1px solid rgba(255, 0, 255, 0.2);
+            border-left: 5px solid #FF00FF;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.1);
+            min-width: 150px;
+            margin-bottom: 20px;
+        }
+        
+        #hud-reward .label {
+            color: #FF00FF;
+            text-shadow: 0 0 5px rgba(255, 0, 255, 0.8);
+        }
+        
+        #reward-level {
+            font-size: 40px; 
+            letter-spacing: 2px;
+            color: #FFD700;
+        }
+
         /* =========================================================================
          * 底部控制提示与版权
          * ========================================================================= */
@@ -107,6 +134,12 @@
             max-width: 250px;
             line-height: 1.8;
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+        }
+        
+        /* 新增的重生提示的特殊样式 */
+        .respawn-hint {
+            color: #FFD700;
+            font-weight: bold;
         }
 
         .hint-title {
@@ -248,12 +281,23 @@
             </div>
         </div>
 
+        <div class="hud-top-right">
+            <div class="instrument" id="hud-reward">
+                <span class="label">DRIVE REWARD</span>
+                <span class="value" id="reward-level">LEVEL 1</span>
+                <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
+                    <span id="distance-value">0.0</span> <span class="unit" style="margin: 0;">KM</span>
+                </div>
+            </div>
+        </div>
+
         <div class="hud-bottom">
             <div id="control-hints">
                 <div class="hint-title">SYSTEM CONTROLS</div>
                 <div>[SHIFT] NITRO BOOST (MAX TORQUE)</div>
                 <div>[SPACE] HANDBRAKE DRIFT</div>
                 <div>[V] TOGGLE CAMERA</div>
+                <div class="respawn-hint">[R] RESPAWN CAR (RESETS VELOCITY)</div>
                 <div>[WASD] DRIVE</div>
             </div>
         </div>
@@ -284,6 +328,7 @@
 
     // ** 环境光/日夜切换变量 **
     let hemiLight, dirLight;
+    // NOTE: 城市自发光将在材质加载时设置，这里只修改光源和背景
     const daySkyColor = new THREE.Color(0x87CEEB);
     const nightSkyColor = new THREE.Color(0x050510);
     const dayHemiSky = new THREE.Color(0xffffff);
@@ -292,12 +337,25 @@
     const nightHemiGround = new THREE.Color(0x04040a);
 
     // ** 物理调整参数 (根据用户要求修改) **
-    const maxEngineForce = 9000; // FIX: 提升到 9000
-    const brakeForce = 40;
+    const maxEngineForce = 9000; 
+    const brakeForce = 40; // 未使用，但保留
     const maxSteerVal = 0.7;
 
     // ** 日夜循环时间 (根据用户要求修改) **
-    const cycleDurationSec = 1000; // FIX: 5 分钟 = 300 秒
+    const cycleDurationSec = 300; // FIX: 5 分钟 = 300 秒
+
+    // ** 车辆初始位置 **
+    const initialCarPosition = new CANNON.Vec3(90, 0.6, 0);
+
+    // ** 奖励机制变量 **
+    let totalDistanceKM = 0;
+    let lastCarPosition = null;
+    const rewardLevels = [
+        { level: "LEVEL 1", distance: 0 },
+        { level: "LEVEL 2", distance: 1.0 }, // 1.0 km
+        { level: "LEVEL 3", distance: 5.0 }  // 5.0 km
+    ];
+    let currentRewardLevel = rewardLevels[0];
 
     // 状态和加载器
     let staticBodies = [];
@@ -307,7 +365,7 @@
     let gltfLoader = null;
     let dracoLoader = null;
 
-    const inputState = { keyW: false, keyS: false, keyA: false, keyD: false, keySpace: false, keyShift: false };
+    const inputState = { keyW: false, keyS: false, keyA: false, keyD: false, keySpace: false, keyShift: false, keyR: false };
 
     // 仪表盘元素
     const speedEl = document.getElementById('hud-spd');
@@ -317,6 +375,8 @@
     const gearEl = document.getElementById('hud-gear');
     const throttleEl = document.getElementById('hud-throttle');
     const timeEl = document.getElementById('hud-time');
+    const rewardLevelEl = document.getElementById('reward-level');
+    const distanceValueEl = document.getElementById('distance-value');
 
     let engineForce = 0;
     let steeringValue = 0;
@@ -346,6 +406,7 @@
                 document.getElementById('hud-layer').style.display = 'flex';
             }, 500);
             initVehicle();
+            lastCarPosition = new THREE.Vector3().copy(chassisBody.position); // 初始化距离计算
             requestAnimationFrame(animate);
         };
 
@@ -390,7 +451,10 @@
 
     function loadSplashCarModel() {
         if (!gltfLoader) return;
-        gltfLoader.load('car1.glb', (gltf) => {
+        // 使用一个简单的加载器来避免与主游戏加载管理器冲突
+        const simpleLoader = new THREE.GLTFLoader();
+        simpleLoader.setDRACOLoader(dracoLoader);
+        simpleLoader.load('car1.glb', (gltf) => {
             splashCarModel = gltf.scene;
             splashCarModel.scale.set(1.7,1.7,1.7);
             splashCarModel.position.set(0,-0.5,0);
@@ -436,6 +500,21 @@
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
+
+                    // ** 城市自发光逻辑 **
+                    if (node.name.includes('Emissive')) { // 假设所有需要发光的材质或网格名称中包含 'Emissive'
+                        node.material = new THREE.MeshBasicMaterial({ color: 0x00FFFF, fog: false }); // 使用 MeshBasicMaterial 实现纯色自发光
+                        node.userData.isEmissive = true;
+                    }
+                    else if(node.material) {
+                        // 克隆材质以避免共享，并启用夜晚自发光效果
+                        const originalMaterial = node.material;
+                        const emsMaterial = originalMaterial.clone();
+                        emsMaterial.emissive = new THREE.Color(0x0a0a1a); // 默认低发光
+                        emsMaterial.emissiveIntensity = 0.5;
+                        node.material = emsMaterial;
+                        node.userData.isStandardMaterial = true;
+                    }
                 }
             });
             city.scale.set(4,4,4);
@@ -492,7 +571,7 @@
 
         const defaultMaterial = new CANNON.Material('default');
         const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-            friction: 1.0, // 高摩擦力
+            friction: 1.0, 
             restitution: 0.0
         });
         world.defaultContactMaterial = contactMaterial;
@@ -543,11 +622,11 @@
     function initVehicle() {
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
-            mass: 2500, // 增加质量进一步增加稳定性
+            mass: 2500, 
             shape: chassisShape,
-            position: new CANNON.Vec3(90, 0.6, 0)
+            position: initialCarPosition.clone() // 使用初始位置
         });
-        chassisBody.angularDamping = 0.9; // FIX: 高阻尼，彻底防止后仰
+        chassisBody.angularDamping = 0.9; 
         chassisBody.linearDamping = 0.05;
         world.addBody(chassisBody);
 
@@ -566,11 +645,11 @@
                 directionLocal: new CANNON.Vec3(0, -1, 0),
                 suspensionStiffness: 150,
                 suspensionRestLength: 0.3,
-                frictionSlip: 4.0, // FIX: 极高抓地力
+                frictionSlip: 4.0, 
                 dampingRelaxation: 8.0,
                 dampingCompression: 10.0,
                 maxSuspensionForce: 100000,
-                rollInfluence: 0.05, // FIX: 极低侧倾影响，彻底防止翻车
+                rollInfluence: 0.05, 
                 maxSuspensionTravel: 0.3,
                 customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
@@ -590,7 +669,7 @@
         if (tireMeshPrototype) {
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const wheelMesh = tireMeshPrototype.clone();
-                if(i===0 || i===2) wheelMesh.rotation.y = Math.PI; // 左侧轮子反转
+                if(i===0 || i===2) wheelMesh.rotation.y = Math.PI; 
                 wheelMeshes.push(wheelMesh);
                 scene.add(wheelMesh);
             }
@@ -607,6 +686,39 @@
         }
     }
 
+    /**
+     * 将车辆重置到初始位置和状态
+     */
+    function respawnCar() {
+        if (!chassisBody) return;
+        
+        // 1. 重置物理位置和速度
+        chassisBody.position.copy(initialCarPosition);
+        chassisBody.quaternion.set(0, 0, 0, 1);
+        chassisBody.velocity.set(0, 0, 0);
+        chassisBody.angularVelocity.set(0, 0, 0);
+
+        // 2. 重置车辆状态
+        vehicle.applyEngineForce(0, 0); 
+        vehicle.applyEngineForce(0, 1); 
+        vehicle.applyEngineForce(0, 2); 
+        vehicle.applyEngineForce(0, 3); 
+        vehicle.setSteeringValue(0, 0);
+        vehicle.setSteeringValue(0, 1);
+        vehicle.setBrake(0, 0);
+        vehicle.setBrake(0, 1);
+        vehicle.setBrake(0, 2);
+        vehicle.setBrake(0, 3);
+
+        // 3. 更新距离计算起点
+        lastCarPosition = new THREE.Vector3().copy(chassisBody.position);
+        
+        // 4. 强制更新一次 HUD (显示'P'档)
+        gearEl.textContent = 'P';
+        
+        console.log("Car Respawned to initial position.");
+    }
+
     // =============================================================================
     // ** 游戏控制 与 逻辑更新 **
     // =============================================================================
@@ -619,6 +731,7 @@
         if(k===' ') { inputState.keySpace = true; event.preventDefault(); }
         if(k==='shift') inputState.keyShift = true;
         if(k==='v') toggleCamera();
+        if(k==='r') { inputState.keyR = true; respawnCar(); } // R 键重生
     });
     window.addEventListener('keyup', (event) => {
         const k = event.key.toLowerCase();
@@ -628,6 +741,7 @@
         if(k==='d') inputState.keyD = false;
         if(k===' ') inputState.keySpace = false;
         if(k==='shift') inputState.keyShift = false;
+        if(k==='r') inputState.keyR = false;
     });
 
     function toggleCamera() {
@@ -722,7 +836,7 @@
     function updateHUD(time) {
         if (!chassisBody) return;
         const v = chassisBody.velocity;
-        const speed = v.length() * 3.6;
+        const speed = v.length() * 3.6; // KM/H
         speedEl.textContent = speed.toFixed(0);
         altitudeEl.textContent = chassisBody.position.y.toFixed(0);
         
@@ -741,7 +855,38 @@
         }
         throttleEl.textContent = throttlePercent.toFixed(0) + '%';
 
+        updateDistanceAndReward();
         updateDayNight(time);
+    }
+
+    function updateDistanceAndReward() {
+        if (!chassisBody || !lastCarPosition) return;
+
+        const currentPos = new THREE.Vector3().copy(chassisBody.position);
+        
+        // 只计算水平距离 (忽略Y轴)
+        const distM = new THREE.Vector3(currentPos.x, lastCarPosition.y, currentPos.z).distanceTo(new THREE.Vector3(lastCarPosition.x, lastCarPosition.y, lastCarPosition.z));
+
+        totalDistanceKM += distM / 1000; // 累加到总距离 (KM)
+        lastCarPosition.copy(currentPos); // 更新上一个位置
+
+        distanceValueEl.textContent = totalDistanceKM.toFixed(2);
+
+        // 检查奖励等级
+        let newLevel = currentRewardLevel;
+        for (let i = rewardLevels.length - 1; i >= 0; i--) {
+            if (totalDistanceKM >= rewardLevels[i].distance) {
+                newLevel = rewardLevels[i];
+                break;
+            }
+        }
+        
+        if (newLevel.level !== currentRewardLevel.level) {
+            currentRewardLevel = newLevel;
+            rewardLevelEl.textContent = newLevel.level;
+            // 可以在此添加等级提升的视觉或声音效果
+            console.log("Reward Level Up! " + newLevel.level);
+        }
     }
 
     function updateDayNight(time) {
@@ -751,10 +896,12 @@
 
         let t = 0;
         let timeLabel = "DAY";
+        let isNight = false;
 
         if (cycle < halfCycleSec) {
             // Day to Night transition (0s to 150s)
             t = cycle / halfCycleSec;
+            isNight = t > 0.5;
             scene.background.lerpColors(daySkyColor, nightSkyColor, t);
             scene.fog.color.copy(scene.background);
             hemiLight.color.lerpColors(dayHemiSky, nightHemiSky, t);
@@ -762,10 +909,11 @@
             dirLight.color.lerpColors(new THREE.Color(0xfff0dd), new THREE.Color(0x222233), t);
             dirLight.intensity = 1.0 * (1 - t) + 0.2 * t;
             hemiLight.intensity = 0.8 * (1 - t) + 0.2 * t;
-            timeLabel = (t < 0.5) ? "DAY" : "TWILIGHT";
+            timeLabel = (t < 0.2) ? "DAY" : (t < 0.8) ? "TWILIGHT" : "NIGHT";
         } else {
             // Night to Day transition (150s to 300s)
             t = (cycle - halfCycleSec) / halfCycleSec;
+            isNight = t < 0.5; // 夜晚部分
             scene.background.lerpColors(nightSkyColor, daySkyColor, t);
             scene.fog.color.copy(scene.background);
             hemiLight.color.lerpColors(nightHemiSky, dayHemiSky, t);
@@ -773,9 +921,22 @@
             dirLight.color.lerpColors(new THREE.Color(0x222233), new THREE.Color(0xfff0dd), t);
             dirLight.intensity = 0.2 * (1 - t) + 1.0 * t;
             hemiLight.intensity = 0.2 * (1 - t) + 0.8 * t;
-            timeLabel = (t < 0.5) ? "NIGHT" : "DAWN";
+            timeLabel = (t < 0.2) ? "NIGHT" : (t < 0.8) ? "DAWN" : "DAY";
         }
         timeEl.textContent = timeLabel;
+        
+        // ** 更新城市自发光 **
+        scene.traverse((node) => {
+            if (node.isMesh && node.userData.isStandardMaterial) {
+                // 标准材质发光强度随时间平滑变化
+                const intensity = isNight ? (1 - Math.abs(t - 0.5) * 2) * 2 : 0; // 夜晚达到最高，白天降为0
+                node.material.emissiveIntensity = THREE.MathUtils.lerp(0.1, 1.0, intensity);
+            }
+            if (node.isMesh && node.userData.isEmissive) {
+                // 纯色发光材质只在夜晚显示
+                node.visible = isNight;
+            }
+        });
     }
 
     function updateColliders() {
