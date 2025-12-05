@@ -236,7 +236,7 @@
         <h1>HYPER DRIVE</h1>
         <p class="splash-subtitle">MADE BY ZHANYI ZHOU</p>
         <!-- 首页金币显示 -->
-        <div style="margin-top:16px; color:#FFD700; font-weight:700;">Gold: <span id="splash-coin-count">0</span></div>
+        <div style="margin-top:16px; color:#FFD700; font-weight:700;">Gold Coin collected: <span id="splash-coin-count">0</span></div>
         <button id="start-button" onclick="startGame()">PLAY NOW</button>
     </div>
 
@@ -277,7 +277,7 @@
         <div class="hud-top-right">
             <!-- 替换原 DRIVE_REWARD 为金币显示 -->
             <div class="instrument" id="hud-coin">
-                <span class="label">GOLD</span>
+                <span class="label">GOLD COIN</span>
                 <span class="value" id="coin-count">0</span>
             </div>
         </div>
@@ -368,10 +368,10 @@
     let coinMeshes = [];              // Three.js mesh 实例列表
     let coinBodies = [];              // Cannon.js body 实例列表
     let coinCount = 0;                // 当前金币数量（持久化到 localStorage）
-    const COIN_MIN = 20;
-    const COIN_MAX = 50;
+    const COIN_MIN = 10;
+    const COIN_MAX = 20;
     const COIN_SPAWN_RADIUS = 180;    // 随机位置半径（相对城市中心）
-    const COIN_HEIGHT = 1.0;          // Y 高度
+    const COIN_HEIGHT = 0.7;          // Y 高度
 
     // =============================================================================
     // ** 加载器初始化 **
