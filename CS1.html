@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Car Simulator - Hyper Drive Edition</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASL Car Simulator - Hyper Drive Edition (with Gold Coins)</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
@@ -94,27 +94,18 @@
         .rpm-color { border-left-color: #FF00FF !important; }
         .gear-color { border-left-color: #FFD700 !important; }
         .throttle-color { border-left-color: #00FF00 !important; }
-        
-        /* 奖励仪表盘样式 */
-        #hud-reward {
-            background: rgba(30, 0, 30, 0.7);
-            border: 1px solid rgba(255, 0, 255, 0.2);
-            border-left: 5px solid #FF00FF;
-            box-shadow: 0 0 20px rgba(255, 0, 255, 0.1);
-            min-width: 150px;
+
+        /* HUD coin 仪表 - 与原风格一致 */
+        #hud-coin {
+            background: rgba(35, 18, 0, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-left: 5px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.06);
+            min-width: 140px;
             margin-bottom: 20px;
         }
-        
-        #hud-reward .label {
-            color: #FF00FF;
-            text-shadow: 0 0 5px rgba(255, 0, 255, 0.8);
-        }
-        
-        #reward-level {
-            font-size: 40px; 
-            letter-spacing: 2px;
-            color: #FFD700;
-        }
+        #hud-coin .label { color: #FFD700; text-shadow: 0 0 5px rgba(255, 215, 0, 0.6); }
+        #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
 
         /* =========================================================================
          * 底部控制提示与版权
@@ -244,6 +235,8 @@
         <div id="splash-three-container"></div>
         <h1>HYPER DRIVE</h1>
         <p class="splash-subtitle">MADE BY ZHANYI ZHOU</p>
+        <!-- 首页金币显示 -->
+        <div style="margin-top:16px; color:#FFD700; font-weight:700;">Gold: <span id="splash-coin-count">0</span></div>
         <button id="start-button" onclick="startGame()">PLAY NOW</button>
     </div>
 
@@ -282,12 +275,10 @@
         </div>
 
         <div class="hud-top-right">
-            <div class="instrument" id="hud-reward">
-                <span class="label">DRIVE REWARD</span>
-                <span class="value" id="reward-level">LEVEL 1</span>
-                <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
-                    <span id="distance-value">0.0</span> <span class="unit" style="margin: 0;">KM</span>
-                </div>
+            <!-- 替换原 DRIVE_REWARD 为金币显示 -->
+            <div class="instrument" id="hud-coin">
+                <span class="label">GOLD</span>
+                <span class="value" id="coin-count">0</span>
             </div>
         </div>
 
@@ -328,7 +319,6 @@
 
     // ** 环境光/日夜切换变量 **
     let hemiLight, dirLight;
-    // NOTE: 城市自发光将在材质加载时设置，这里只修改光源和背景
     const daySkyColor = new THREE.Color(0x87CEEB);
     const nightSkyColor = new THREE.Color(0x050510);
     const dayHemiSky = new THREE.Color(0xffffff);
@@ -336,26 +326,16 @@
     const dayHemiGround = new THREE.Color(0x3b4c5a);
     const nightHemiGround = new THREE.Color(0x04040a);
 
-    // ** 物理调整参数 (根据用户要求修改) **
+    // ** 物理调整参数 **
     const maxEngineForce = 9000; 
-    const brakeForce = 40; // 未使用，但保留
+    const brakeForce = 40;
     const maxSteerVal = 0.7;
 
-    // ** 日夜循环时间 (根据用户要求修改) **
-    const cycleDurationSec = 300; // FIX: 5 分钟 = 300 秒
+    // ** 日夜循环时间 **
+    const cycleDurationSec = 300; // 5 分钟
 
     // ** 车辆初始位置 **
     const initialCarPosition = new CANNON.Vec3(90, 0.6, 0);
-
-    // ** 奖励机制变量 **
-    let totalDistanceKM = 0;
-    let lastCarPosition = null;
-    const rewardLevels = [
-        { level: "LEVEL 1", distance: 0 },
-        { level: "LEVEL 2", distance: 1.0 }, // 1.0 km
-        { level: "LEVEL 3", distance: 5.0 }  // 5.0 km
-    ];
-    let currentRewardLevel = rewardLevels[0];
 
     // 状态和加载器
     let staticBodies = [];
@@ -375,11 +355,23 @@
     const gearEl = document.getElementById('hud-gear');
     const throttleEl = document.getElementById('hud-throttle');
     const timeEl = document.getElementById('hud-time');
-    const rewardLevelEl = document.getElementById('reward-level');
-    const distanceValueEl = document.getElementById('distance-value');
+    const coinCountEl = document.getElementById('coin-count');
+    const splashCoinCountEl = document.getElementById('splash-coin-count');
 
     let engineForce = 0;
     let steeringValue = 0;
+
+    // =============================================================================
+    // ** Gold coin 相关状态 **
+    // =============================================================================
+    let coinProto = null;             // 预加载的金币原型（GLTF.scene）
+    let coinMeshes = [];              // Three.js mesh 实例列表
+    let coinBodies = [];              // Cannon.js body 实例列表
+    let coinCount = 0;                // 当前金币数量（持久化到 localStorage）
+    const COIN_MIN = 20;
+    const COIN_MAX = 50;
+    const COIN_SPAWN_RADIUS = 180;    // 随机位置半径（相对城市中心）
+    const COIN_HEIGHT = 1.0;          // Y 高度
 
     // =============================================================================
     // ** 加载器初始化 **
@@ -399,14 +391,17 @@
         };
         
         loadingManager.onLoad = function() {
+            // 加载完成：显示 HUD，初始化车辆物理，产生金币，然后启动动画循环
             cancelAnimationFrame(splashAnimationId);
             document.getElementById('loading-screen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('hud-layer').style.display = 'flex';
             }, 500);
+
             initVehicle();
-            lastCarPosition = new THREE.Vector3().copy(chassisBody.position); // 初始化距离计算
+            // 在车辆初始化后生成金币（需要 chassisBody 存在以便碰撞检测）
+            spawnCoinsWhenReady();
             requestAnimationFrame(animate);
         };
 
@@ -451,7 +446,6 @@
 
     function loadSplashCarModel() {
         if (!gltfLoader) return;
-        // 使用一个简单的加载器来避免与主游戏加载管理器冲突
         const simpleLoader = new THREE.GLTFLoader();
         simpleLoader.setDRACOLoader(dracoLoader);
         simpleLoader.load('car1.glb', (gltf) => {
@@ -502,15 +496,14 @@
                     node.receiveShadow = true;
 
                     // ** 城市自发光逻辑 **
-                    if (node.name.includes('Emissive')) { // 假设所有需要发光的材质或网格名称中包含 'Emissive'
-                        node.material = new THREE.MeshBasicMaterial({ color: 0x00FFFF, fog: false }); // 使用 MeshBasicMaterial 实现纯色自发光
+                    if (node.name.includes('Emissive')) {
+                        node.material = new THREE.MeshBasicMaterial({ color: 0x00FFFF, fog: false });
                         node.userData.isEmissive = true;
                     }
                     else if(node.material) {
-                        // 克隆材质以避免共享，并启用夜晚自发光效果
                         const originalMaterial = node.material;
                         const emsMaterial = originalMaterial.clone();
-                        emsMaterial.emissive = new THREE.Color(0x0a0a1a); // 默认低发光
+                        emsMaterial.emissive = new THREE.Color(0x0a0a1a);
                         emsMaterial.emissiveIntensity = 0.5;
                         node.material = emsMaterial;
                         node.userData.isStandardMaterial = true;
@@ -617,14 +610,14 @@
     }
 
     // =============================================================================
-    // ** 车辆物理核心 (已修复和调优) **
+    // ** 车辆物理核心 (保持原实现) **
     // =============================================================================
     function initVehicle() {
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
             mass: 2500, 
             shape: chassisShape,
-            position: initialCarPosition.clone() // 使用初始位置
+            position: initialCarPosition.clone()
         });
         chassisBody.angularDamping = 0.9; 
         chassisBody.linearDamping = 0.05;
@@ -686,19 +679,13 @@
         }
     }
 
-    /**
-     * 将车辆重置到初始位置和状态
-     */
     function respawnCar() {
         if (!chassisBody) return;
-        
-        // 1. 重置物理位置和速度
         chassisBody.position.copy(initialCarPosition);
         chassisBody.quaternion.set(0, 0, 0, 1);
         chassisBody.velocity.set(0, 0, 0);
         chassisBody.angularVelocity.set(0, 0, 0);
 
-        // 2. 重置车辆状态
         vehicle.applyEngineForce(0, 0); 
         vehicle.applyEngineForce(0, 1); 
         vehicle.applyEngineForce(0, 2); 
@@ -710,17 +697,12 @@
         vehicle.setBrake(0, 2);
         vehicle.setBrake(0, 3);
 
-        // 3. 更新距离计算起点
-        lastCarPosition = new THREE.Vector3().copy(chassisBody.position);
-        
-        // 4. 强制更新一次 HUD (显示'P'档)
         gearEl.textContent = 'P';
-        
         console.log("Car Respawned to initial position.");
     }
 
     // =============================================================================
-    // ** 游戏控制 与 逻辑更新 **
+    // ** 控制与更新（保留原逻辑） **
     // =============================================================================
     window.addEventListener('keydown', (event) => {
         const k = event.key.toLowerCase();
@@ -731,7 +713,7 @@
         if(k===' ') { inputState.keySpace = true; event.preventDefault(); }
         if(k==='shift') inputState.keyShift = true;
         if(k==='v') toggleCamera();
-        if(k==='r') { inputState.keyR = true; respawnCar(); } // R 键重生
+        if(k==='r') { inputState.keyR = true; respawnCar(); }
     });
     window.addEventListener('keyup', (event) => {
         const k = event.key.toLowerCase();
@@ -775,15 +757,13 @@
             gearEl.textContent = (currentSpeed < 1) ? 'P' : 'N';
         }
 
-        // Shift 键加速 (超增压)
         if (inputState.keyShift && engineForce !== 0) {
-            engineForce *= 2.5; // 超增压
+            engineForce *= 2.5;
             if (flameMesh) flameMesh.visible = true;
         } else {
             if (flameMesh) flameMesh.visible = false;
         }
 
-        // 应用转向和动力
         vehicle.setSteeringValue(steeringValue, 0);
         vehicle.setSteeringValue(steeringValue, 1);
         vehicle.applyEngineForce(engineForce, 0); 
@@ -791,7 +771,6 @@
         vehicle.applyEngineForce(engineForce, 2); 
         vehicle.applyEngineForce(engineForce, 3); 
 
-        // 刹车和手刹
         let finalBrakeRL = brake, finalBrakeRR = brake;
         if (inputState.keySpace) {
             finalBrakeRL = maxEngineForce * 0.8; 
@@ -855,38 +834,10 @@
         }
         throttleEl.textContent = throttlePercent.toFixed(0) + '%';
 
-        updateDistanceAndReward();
+        // 不再有 reward 逻辑（已移除）
         updateDayNight(time);
-    }
-
-    function updateDistanceAndReward() {
-        if (!chassisBody || !lastCarPosition) return;
-
-        const currentPos = new THREE.Vector3().copy(chassisBody.position);
-        
-        // 只计算水平距离 (忽略Y轴)
-        const distM = new THREE.Vector3(currentPos.x, lastCarPosition.y, currentPos.z).distanceTo(new THREE.Vector3(lastCarPosition.x, lastCarPosition.y, lastCarPosition.z));
-
-        totalDistanceKM += distM / 1000; // 累加到总距离 (KM)
-        lastCarPosition.copy(currentPos); // 更新上一个位置
-
-        distanceValueEl.textContent = totalDistanceKM.toFixed(2);
-
-        // 检查奖励等级
-        let newLevel = currentRewardLevel;
-        for (let i = rewardLevels.length - 1; i >= 0; i--) {
-            if (totalDistanceKM >= rewardLevels[i].distance) {
-                newLevel = rewardLevels[i];
-                break;
-            }
-        }
-        
-        if (newLevel.level !== currentRewardLevel.level) {
-            currentRewardLevel = newLevel;
-            rewardLevelEl.textContent = newLevel.level;
-            // 可以在此添加等级提升的视觉或声音效果
-            console.log("Reward Level Up! " + newLevel.level);
-        }
+        // 同步金币 HUD
+        coinCountEl.textContent = coinCount;
     }
 
     function updateDayNight(time) {
@@ -899,7 +850,6 @@
         let isNight = false;
 
         if (cycle < halfCycleSec) {
-            // Day to Night transition (0s to 150s)
             t = cycle / halfCycleSec;
             isNight = t > 0.5;
             scene.background.lerpColors(daySkyColor, nightSkyColor, t);
@@ -911,9 +861,8 @@
             hemiLight.intensity = 0.8 * (1 - t) + 0.2 * t;
             timeLabel = (t < 0.2) ? "DAY" : (t < 0.8) ? "TWILIGHT" : "NIGHT";
         } else {
-            // Night to Day transition (150s to 300s)
             t = (cycle - halfCycleSec) / halfCycleSec;
-            isNight = t < 0.5; // 夜晚部分
+            isNight = t < 0.5;
             scene.background.lerpColors(nightSkyColor, daySkyColor, t);
             scene.fog.color.copy(scene.background);
             hemiLight.color.lerpColors(nightHemiSky, dayHemiSky, t);
@@ -925,15 +874,12 @@
         }
         timeEl.textContent = timeLabel;
         
-        // ** 更新城市自发光 **
         scene.traverse((node) => {
             if (node.isMesh && node.userData.isStandardMaterial) {
-                // 标准材质发光强度随时间平滑变化
-                const intensity = isNight ? (1 - Math.abs(t - 0.5) * 2) * 2 : 0; // 夜晚达到最高，白天降为0
+                const intensity = isNight ? (1 - Math.abs(t - 0.5) * 2) * 2 : 0;
                 node.material.emissiveIntensity = THREE.MathUtils.lerp(0.1, 1.0, intensity);
             }
             if (node.isMesh && node.userData.isEmissive) {
-                // 纯色发光材质只在夜晚显示
                 node.visible = isNight;
             }
         });
@@ -944,7 +890,6 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            // 简单逻辑：靠近时添加碰撞体，远离时移除
             if (!obj.added && d <= obj.radius + 120) {
                 world.addBody(obj.body);
                 obj.added = true;
@@ -955,13 +900,104 @@
         });
     }
 
+    // =============================================================================
+    // ** Gold coin 生成与碰撞处理 **
+    // =============================================================================
+    function loadCoinPrototype(callback) {
+        // 先读取持久化金币数（首页、HUD）
+        const stored = localStorage.getItem('goldCoinCount');
+        coinCount = stored ? parseInt(stored, 10) : 0;
+        splashCoinCountEl.textContent = coinCount;
+        coinCountEl.textContent = coinCount;
+
+        // 加载 gold_coin.glb（与 car1.glb 同目录）
+        const coinLoader = new THREE.GLTFLoader();
+        coinLoader.load('gold_coin.glb', (gltf) => {
+            coinProto = gltf.scene;
+            // 保证原型不受场景矩阵影响
+            coinProto.traverse(node => { if (node.isMesh) node.castShadow = true; });
+            if (callback) callback();
+        }, undefined, (err) => {
+            console.warn('gold_coin.glb 加载失败，请确认文件存在于同一目录下。', err);
+            if (callback) callback(); // 即使失败也继续（不阻塞游戏）
+        });
+    }
+
+    function spawnCoinsWhenReady() {
+        // 等待 chassisBody 已初始化再生成金币
+        if (!chassisBody) {
+            setTimeout(spawnCoinsWhenReady, 200);
+            return;
+        }
+        // 先加载金币原型（如果未加载）
+        if (!coinProto) {
+            loadCoinPrototype(() => spawnCoins(Math.floor(Math.random()*(COIN_MAX-COIN_MIN+1))+COIN_MIN));
+        } else {
+            spawnCoins(Math.floor(Math.random()*(COIN_MAX-COIN_MIN+1))+COIN_MIN);
+        }
+    }
+
+    function spawnCoins(num) {
+        if (!coinProto) return; // 未加载原型则跳过
+        for (let i = 0; i < num; i++) {
+            // 随机位置：在城市范围附近随机分布
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * COIN_SPAWN_RADIUS;
+            const x = Math.cos(angle) * radius + (Math.random()-0.5)*20; // 加入一点噪声
+            const z = Math.sin(angle) * radius + (Math.random()-0.5)*20;
+            const y = COIN_HEIGHT + (Math.random()*0.3 - 0.15);
+
+            // 克隆 mesh
+            const coinMesh = coinProto.clone(true);
+            coinMesh.scale.set(1.0,1.0,1.0);
+            coinMesh.position.set(x, y, z);
+            coinMesh.rotation.y = Math.random()*Math.PI*2;
+            scene.add(coinMesh);
+            coinMeshes.push(coinMesh);
+
+            // 对应的物理体（静态球体，collisionResponse=0，仅触发事件）
+            const coinBody = new CANNON.Body({ mass: 0 });
+            const radiusSphere = 0.4;
+            coinBody.addShape(new CANNON.Sphere(radiusSphere));
+            coinBody.position.set(x, y, z);
+            coinBody.collisionResponse = 0; // 不产生物理作用，仅用来触发事件
+            // 监听碰撞事件
+            coinBody.addEventListener('collide', (e) => {
+                // 检查是否与车辆发生碰撞（考虑到 wheel/车身接触可能使用 chassisBody）
+                const other = e.body;
+                const contact = e.contact;
+                const hitByChassis = (other === chassisBody) || (contact && (contact.bi === chassisBody || contact.bj === chassisBody));
+                if (hitByChassis) {
+                    // 找到对应 mesh 与 body 在数组中的索引并移除
+                    const bIdx = coinBodies.indexOf(coinBody);
+                    if (bIdx !== -1) {
+                        // 移除 mesh & body
+                        const mesh = coinMeshes[bIdx];
+                        if (mesh) scene.remove(mesh);
+                        coinMeshes.splice(bIdx, 1);
+                        coinBodies.splice(bIdx, 1);
+                        try { world.removeBody(coinBody); } catch (err) {}
+                        // 更新计数并持久化
+                        coinCount += 1;
+                        localStorage.setItem('goldCoinCount', coinCount);
+                        coinCountEl.textContent = coinCount;
+                    }
+                }
+            });
+            coinBodies.push(coinBody);
+            world.addBody(coinBody);
+        }
+    }
+
+    // =============================================================================
+    // ** 主循环 **
+    // =============================================================================
     function animate(time) {
         requestAnimationFrame(animate);
         if (!chassisBody || !world) return;
         const fixedTimeStep = 1/60;
         const maxSubSteps = 1;
         
-        // 物理更新
         if (lastTime !== undefined) {
             const dt = (time - lastTime) / 1000;
             world.step(fixedTimeStep, dt, maxSubSteps);
@@ -986,6 +1022,16 @@
             carMesh.quaternion.copy(chassisBody.quaternion);
         }
 
+        // 同步金币 mesh 与 body（如果 body 有位置改变）
+        for (let i = 0; i < coinMeshes.length; i++) {
+            if (coinBodies[i]) {
+                coinMeshes[i].position.copy(coinBodies[i].position);
+                coinMeshes[i].quaternion.copy(coinBodies[i].quaternion);
+                // 轻微自转视觉（保持可见性）
+                coinMeshes[i].rotation.y += 0.02;
+            }
+        }
+
         updateCamera();
         updateHUD(time);
         updateColliders();
@@ -997,6 +1043,12 @@
     // ** 启动逻辑 **
     // =============================================================================
     function startGame() {
+        // 首页显示的金币与 localStorage 同步
+        const stored = localStorage.getItem('goldCoinCount');
+        coinCount = stored ? parseInt(stored, 10) : 0;
+        splashCoinCountEl.textContent = coinCount;
+        coinCountEl.textContent = coinCount;
+
         document.getElementById('splash').style.opacity = '0';
         document.getElementById('loading-screen').style.display = 'flex';
         setTimeout(() => {
@@ -1016,6 +1068,8 @@
         loadCarModel();
         loadTireModel();
         loadCity();
+        // 预加载金币原型（即使未在 city 完成也会尽快准备）
+        loadCoinPrototype();
     }
 
     window.addEventListener('resize', () => {
@@ -1037,7 +1091,14 @@
         }
     });
 
+    // 页面初始化：准备 Splash、加载器（点击 PLAY 触发 startGame）
     document.addEventListener('DOMContentLoaded', () => {
+        // 页面加载时读取本地金币数并显示在首页
+        const stored = localStorage.getItem('goldCoinCount');
+        coinCount = stored ? parseInt(stored, 10) : 0;
+        splashCoinCountEl.textContent = coinCount;
+        coinCountEl.textContent = coinCount;
+
         initLoaders();
         initSplashThree();
         loadSplashCarModel();
