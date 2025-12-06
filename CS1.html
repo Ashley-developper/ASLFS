@@ -450,7 +450,7 @@
         simpleLoader.setDRACOLoader(dracoLoader);
         simpleLoader.load('car1.glb', (gltf) => {
             splashCarModel = gltf.scene;
-            splashCarModel.scale.set(64.7,64.7,64.7);
+            splashCarModel.scale.set(104.7,104.7,104.7);
             splashCarModel.position.set(0,-0.5,0);
             splashScene.add(splashCarModel);
         });
@@ -462,7 +462,7 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            carMesh.scale.set(64.7, 64.7, 64.7);
+            carMesh.scale.set(104.7, 104.7, 104.7);
             carMesh.rotation.y = Math.PI;
             carMesh.position.y = -0.5;
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
