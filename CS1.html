@@ -466,11 +466,6 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-        const carContainer = new THREE.Object3D();
-        carContainer.add(carMesh);
-        scene.add(carContainer);
-        window._carContainer = carContainer;
-        carMesh.position.set(0, -1.5, 0);
             carMesh.scale.set(104.7, 104.7, 104.7);
             carMesh.rotation.y = Math.PI;
             // 把车整体往下移
@@ -479,7 +474,7 @@
             scene.add(carMesh);
 
             // ========== 前灯（白色，白天关闭，夜间打开） ==========
-            headlightLeft = new THREE.SpotLight(0xffffff, 2.0, 60, Math.PI / 7, 0.2, 2);
+            headlightLeft = new THREE.SpotLight(0xffffff, 0, 60, Math.PI / 7, 0.2, 2);
             headlightLeft.castShadow = true;
             headlightLeft.shadow.mapSize.width = 1024;
             headlightLeft.shadow.mapSize.height = 1024;
@@ -490,7 +485,7 @@
             headlightLeft.target = leftTarget;
             carMesh.add(headlightLeft);
 
-            headlightRight = new THREE.SpotLight(0xffffff, 2.0, 60, Math.PI / 7, 0.2, 2);
+            headlightRight = new THREE.SpotLight(0xffffff, 0, 60, Math.PI / 7, 0.2, 2);
             headlightRight.castShadow = true;
             headlightRight.shadow.mapSize.width = 1024;
             headlightRight.shadow.mapSize.height = 1024;
@@ -1061,8 +1056,8 @@ function animate(time) {
             }
         }
         if (carMesh && chassisBody) {
-            if(window._carContainer) window._carContainer.position.copy(chassisBody.position);
-            if(window._carContainer) window._carContainer.quaternion.copy(chassisBody.quaternion);
+            carMesh.position.copy(chassisBody.position);
+            carMesh.quaternion.copy(chassisBody.quaternion);
         }
 
         // 同步金币 mesh 与 body（如果 body 有位置改变）
