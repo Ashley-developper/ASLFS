@@ -331,7 +331,7 @@
 
     // ** 车辆视觉偏移 - 核心修正点 **
     // 原始模型的中心位于物理底盘中心，但 GLB 模型需要向下偏移 -1.9 才能让轮胎接地。
-    // 我们将整体降到 -2.2，即比默认低 0.3m
+    // 我们将整体降到 -2.2, 即比默认低 0.3m
     const VISUAL_Y_OFFSET = -0.9; 
 
     // ** 日夜循环时间 **
@@ -362,6 +362,7 @@
     const splashCoinCountEl = document.getElementById('splash-coin-count');
 
     let headlightLeft = null, headlightRight = null;
+    let headlightFlares = []; // <--- 新增：用来存灯光的光晕 sprite
 
     let engineForce = 0;
     let steeringValue = 0;
@@ -462,11 +463,109 @@
     }
     
     // =============================================================================
+    // ** 新增辅助函数：车灯相关 **
+    // =============================================================================
+
+    // === 新增辅助函数：创建发光纹理（避免加载外部图片） ===
+    function createFlareTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(0.2, 'rgba(240, 240, 255, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(240, 240, 255, 0.2)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    // === 新增核心函数：自动计算位置并添加车灯 ===
+    function addSmartHeadlights(carScene) {
+        // 1. 计算原始包围盒（在缩放前）
+        const box = new THREE.Box3().setFromObject(carScene);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        // 2. 动态计算车灯坐标
+        // 车头位置：假设车头朝向 Z 正方向 
+        // 如果发现灯在车屁股，把 max.z 改为 min.z
+        const zPos = box.max.z - (size.z * 0.05); 
+        
+        // 车灯高度：由中心点稍微向上一点
+        const yPos = center.y + (size.y * 0.15); 
+        
+        // 车灯宽度：宽度的 35% 处（左右各一个）
+        const xOffset = size.x * 0.35;
+
+        const positions = [
+            { x: center.x - xOffset, y: yPos, z: zPos }, // 左灯
+            { x: center.x + xOffset, y: yPos, z: zPos }  // 右灯
+        ];
+
+        const flareTex = createFlareTexture();
+
+        // 清空旧引用
+        headlightFlares = [];
+
+        positions.forEach((pos, index) => {
+            // A. 创建聚光灯 (照亮路面)
+            const spot = new THREE.SpotLight(0xffffff, 0); // 初始亮度0
+            spot.angle = Math.PI / 6;
+            spot.penumbra = 0.3;
+            spot.decay = 2;
+            spot.distance = 200; // 照得更远
+            spot.castShadow = true;
+            spot.shadow.mapSize.width = 1024;
+            spot.shadow.mapSize.height = 1024;
+            
+            // 设置灯光位置
+            spot.position.set(pos.x, pos.y, pos.z);
+            
+            // 设置目标点 (向车前方打光)
+            const target = new THREE.Object3D();
+            target.position.set(pos.x, pos.y - 0.5, pos.z + 20);
+            carScene.add(target);
+            spot.target = target;
+
+            // B. 创建光晕 (看起来像发光的灯泡)
+            const mat = new THREE.SpriteMaterial({ 
+                map: flareTex, 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false // 避免光晕遮挡其他物体
+            });
+            const sprite = new THREE.Sprite(mat);
+            // 根据车的大小调整光晕大小，这里大概给个固定比例
+            sprite.scale.set(0.4, 0.4, 0.4); 
+            sprite.position.set(pos.x, pos.y, pos.z + 0.02); // 稍微比灯靠前一点点
+
+            carScene.add(spot);
+            carScene.add(sprite);
+            headlightFlares.push(sprite);
+
+            // 存入全局变量
+            if (index === 0) headlightLeft = spot;
+            else headlightRight = spot;
+        });
+    }
+
+    // =============================================================================
     // ** 游戏资源加载 **
     // =============================================================================
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
+            
+            // 1. 先计算并添加车灯 (此时 scale 还是 1，计算坐标最准)
+            // >>>>>> 新增调用 >>>>>>
+            addSmartHeadlights(carMesh);
+            // <<<<<<<<<<<<<<<<<<<<<
+
+            // 2. 然后再应用缩放
             carMesh.scale.set(104.7, 104.7, 104.7);
             carMesh.rotation.y = Math.PI;
             
@@ -475,30 +574,6 @@
 
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
             scene.add(carMesh);
-
-            // ========== 前灯（白色，白天关闭，夜间打开） ==========
-            headlightLeft = new THREE.SpotLight(0xffffff, 0, 60, Math.PI / 7, 0.2, 2);
-            headlightLeft.castShadow = true;
-            headlightLeft.shadow.mapSize.width = 1024;
-            headlightLeft.shadow.mapSize.height = 1024;
-            headlightLeft.position.set(-0.6, 0.4, 2.2);
-            const leftTarget = new THREE.Object3D();
-            leftTarget.position.set(-0.6, 0.4, 10);
-            carMesh.add(leftTarget);
-            headlightLeft.target = leftTarget;
-            carMesh.add(headlightLeft);
-
-            headlightRight = new THREE.SpotLight(0xffffff, 0, 60, Math.PI / 7, 0.2, 2);
-            headlightRight.castShadow = true;
-            headlightRight.shadow.mapSize.width = 1024;
-            headlightRight.shadow.mapSize.height = 1024;
-            headlightRight.position.set(0.6, 0.4, 2.2);
-            const rightTarget = new THREE.Object3D();
-            rightTarget.position.set(0.6, 0.4, 10);
-            carMesh.add(rightTarget);
-            headlightRight.target = rightTarget;
-            carMesh.add(headlightRight);
-            // ========= 结束前灯 ==========
 
             // 原来的“火焰/尾焰” — 已改为白色（去掉蓝色）
             const flameGeometry = new THREE.ConeGeometry(0.3, 1, 16);
@@ -872,9 +947,32 @@
         throttleEl.textContent = throttlePercent.toFixed(0) + '%';
 
         // 不再有 reward 逻辑（已移除）
-        updateDayNight(time); setHeadlights();
+        updateDayNight(time); // setHeadlights() 现在在 updateDayNight 内部调用
         // 同步金币 HUD
         coinCountEl.textContent = coinCount;
+    }
+
+    // =============================================================================
+    // ** 修改：日夜切换与车灯触发逻辑 **
+    // =============================================================================
+
+    // 修改 setHeadlights 接收参数
+    function setHeadlights(shouldBeOn) {
+        if (!headlightLeft || !headlightRight) return;
+
+        // 目标强度
+        const targetIntensity = shouldBeOn ? 50.0 : 0.0; // 亮度设高一点，因为车缩放很大
+        const targetOpacity = shouldBeOn ? 1.0 : 0.0;
+
+        // 简单的线性插值 (Lerp) 实现呼吸灯/渐变效果
+        headlightLeft.intensity += (targetIntensity - headlightLeft.intensity) * 0.05;
+        headlightRight.intensity += (targetIntensity - headlightRight.intensity) * 0.05;
+
+        // 同时控制光晕的透明度
+        headlightFlares.forEach(flare => {
+            flare.material.opacity += (targetOpacity - flare.material.opacity) * 0.05;
+            flare.visible = flare.material.opacity > 0.01; // 完全看不见时隐藏
+        });
     }
 
     function updateDayNight(time) {
@@ -885,10 +983,19 @@
         let t = 0;
         let timeLabel = "DAY";
         let isNight = false;
+        // 新增：判断是否应该开灯
+        let lightsShouldBeOn = false; 
 
         if (cycle < halfCycleSec) {
+            // === 前半段 (0% - 50%)：白天 -> 黄昏 -> 晚上 ===
             t = cycle / halfCycleSec;
             isNight = t > 0.5;
+            
+            // 亮灯逻辑：从 TWILIGHT (t > 0.2) 开始亮灯
+            if (t > 0.2) {
+                lightsShouldBeOn = true;
+            }
+
             scene.background.lerpColors(daySkyColor, nightSkyColor, t);
             scene.fog.color.copy(scene.background);
             hemiLight.color.lerpColors(dayHemiSky, nightHemiSky, t);
@@ -898,8 +1005,15 @@
             hemiLight.intensity = 0.8 * (1 - t) + 0.2 * t;
             timeLabel = (t < 0.2) ? "DAY" : (t < 0.8) ? "TWILIGHT" : "NIGHT";
         } else {
+            // === 后半段 (50% - 100%)：晚上 -> 黎明 -> 白天 ===
             t = (cycle - halfCycleSec) / halfCycleSec;
             isNight = t < 0.5;
+
+            // 亮灯逻辑：一直亮到 DAY 开始前 (t < 0.8)
+            if (t < 0.8) {
+                lightsShouldBeOn = true;
+            }
+
             scene.background.lerpColors(nightSkyColor, daySkyColor, t);
             scene.fog.color.copy(scene.background);
             hemiLight.color.lerpColors(nightHemiSky, dayHemiSky, t);
@@ -920,6 +1034,10 @@
                 node.visible = isNight;
             }
         });
+
+        // >>>>>> 调用车灯控制 >>>>>>
+        setHeadlights(lightsShouldBeOn);
+        // <<<<<<<<<<<<<<<<<<<<<<<<<
     }
 
     function updateColliders() {
@@ -1030,17 +1148,7 @@
     // ** 主循环 **
     // =============================================================================
     
-
-function setHeadlights() {
-    if (!headlightLeft || !headlightRight) return;
-    const tSec = performance.now() / 1000;
-    const cycle = tSec % cycleDurationSec;
-    const isNight = cycle >= (cycleDurationSec / 2);
-    headlightLeft.intensity = isNight ? 3.0 : 0.0;
-    headlightRight.intensity = isNight ? 3.0 : 0.0;
-}
-
-function animate(time) {
+    function animate(time) {
         requestAnimationFrame(animate);
         if (!chassisBody || !world) return;
         const fixedTimeStep = 1/60;
