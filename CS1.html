@@ -329,6 +329,11 @@
     const brakeForce = 40;
     const maxSteerVal = 0.7;
 
+    // ** 车辆视觉偏移 - 核心修正点 **
+    // 原始模型的中心位于物理底盘中心，但 GLB 模型需要向下偏移 -1.9 才能让轮胎接地。
+    // 我们将整体降到 -2.2，即比默认低 0.3m
+    const VISUAL_Y_OFFSET = -2.2; 
+
     // ** 日夜循环时间 **
     const cycleDurationSec = 300; // 5 分钟
 
@@ -366,7 +371,7 @@
     // =============================================================================
     let coinProto = null;             // 预加载的金币原型（GLTF.scene）
     let coinMeshes = [];              // Three.js mesh 实例列表
-    let coinBodies = [];              // Cannon.js body 实例列表
+    let coinBodies = [];              // Cannon.js body 实例实例
     let coinCount = 0;                // 当前金币数量（持久化到 localStorage）
     const COIN_MIN = 50;
     const COIN_MAX = 80;
@@ -464,9 +469,10 @@
             carMesh = gltf.scene;
             carMesh.scale.set(104.7, 104.7, 104.7);
             carMesh.rotation.y = Math.PI;
-            // 把车整体往下移
-            // *** 视觉修改点: -1.9 -> -2.2 (降低 0.3 米) ***
-            carMesh.position.y = -2.2;
+            
+            // *** 修正: 移除这里设置的 position.y，它会被 animate 循环覆盖 ***
+            // carMesh.position.y = VISUAL_Y_OFFSET; // <-- 移除此行
+
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
             scene.add(carMesh);
 
@@ -671,7 +677,7 @@
                 customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // *** 物理修改点: 0 -> -0.3 (降低 0.3 米以匹配 GLB) ***
+                // *** 物理修改点: y (原为 0) -> -0.3 (同步降低 0.3 米以匹配 GLB) ***
                 chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
             };
         }
@@ -823,6 +829,7 @@
             const idealOffset = new THREE.Vector3(0, 3, -7);
             idealOffset.applyQuaternion(q);
             idealOffset.add(chassisPos);
+            // 确保相机不会太低，即使车身很低
             if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
             cameraChase.position.lerp(idealOffset, 0.1);
             cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
@@ -1056,6 +1063,8 @@ function animate(time) {
         if (carMesh && chassisBody) {
             carMesh.position.copy(chassisBody.position);
             carMesh.quaternion.copy(chassisBody.quaternion);
+            // *** 核心修正：在复制物理位置后，应用静态视觉偏移 ***
+            carMesh.position.y += VISUAL_Y_OFFSET; 
         }
 
         // 同步金币 mesh 与 body（如果 body 有位置改变）
