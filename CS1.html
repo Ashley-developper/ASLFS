@@ -763,6 +763,11 @@
 
     function updateControls() {
         if (!chassisBody) return;
+        if (inputState.keyW || inputState.keyS || inputState.keyA || inputState.keyD) {
+            if (chassisBody.sleepState === CANNON.Body.SLEEPING) {
+                chassisBody.wakeUp(); 
+            }
+        }
         engineForce = 0;
         steeringValue = 0;
         let brake = 0;
