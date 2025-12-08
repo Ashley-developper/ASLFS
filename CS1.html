@@ -92,66 +92,17 @@
         #delivery-distance-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #FFFFFF; }
         #delivery-timer-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #FFD700; }
 
-        /* MODIFICATION: Right-Bottom Container for Hints and Quality Switcher */
-        .hud-bottom-right {
-            position: absolute; 
-            bottom: 30px; 
-            right: 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end; /* Align items to the right */
-            gap: 15px; /* Spacing between elements */
-        }
-        
-        /* Control Hints (Original Bottom Left, now moved to Right Bottom) */
         #control-hints {
-            /* Remove absolute positioning since it's now in .hud-bottom-right */
-            position: static; 
-            
+            position: absolute; bottom: 30px; left: 30px;
             background: rgba(0, 0, 0, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-left: 5px solid #00FF00;
             backdrop-filter: blur(10px); padding: 18px 25px;
             color: #eee; font-size: 13px; border-radius: 4px;
             max-width: 250px; line-height: 1.8;
-            /* Ensure clip-path respects alignment if you move this block to bottom right */
-            clip-path: polygon(5% 0, 100% 0, 100% 100%, 0 100%); /* Adjusted clip-path for right placement */
         }
         .respawn-hint { color: #FFD700; font-weight: bold; }
         .hint-title { color: #00FF00; font-family: 'Orbitron', sans-serif; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 0, 0.3); padding-bottom: 5px; }
-
-        /* NEW: Resolution Switcher Style for Right Bottom */
-        #resolution-switcher {
-            /* Inherits .instrument style */
-            border-left-color: #FF00FF !important; 
-            min-width: 180px; 
-            text-align: right;
-            clip-path: polygon(0 0, 100% 0, 100% 100%, 10% 100%); /* Adjusted clip-path */
-        }
-        #resolution-switcher .label { 
-            text-align: right; 
-            color: #FF00FF; 
-            text-shadow: 0 0 5px rgba(255, 0, 255, 0.8); 
-        }
-        #res-switch-btn {
-            font-family: 'Orbitron', sans-serif; 
-            background: #00FFFF; /* Initial HD color */
-            color: #000; 
-            border: none; 
-            padding: 8px 15px; /* Larger button */
-            font-weight: 700; 
-            cursor: pointer; 
-            border-radius: 2px;
-            transition: 0.2s;
-            font-size: 18px;
-            letter-spacing: 2px;
-            width: 100%;
-        }
-        #res-switch-btn:hover {
-            opacity: 0.8;
-            box-shadow: 0 0 10px currentColor;
-        }
-
         .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
 
         /* =========================================================================
@@ -398,17 +349,7 @@
             <div class="mission-detail">DISTANCE: <span id="delivery-distance-value">0</span> M</div>
             <div class="mission-detail">TIME LEFT: <span id="delivery-timer-value">--:--</span></div>
         </div>
-        
-        <div class="hud-bottom-right">
-            <div id="resolution-switcher" class="instrument">
-                <span class="label" style="color: #FF00FF;">RENDER QUALITY</span>
-                <button id="res-switch-btn" 
-                    onclick="toggleRenderQuality()" 
-                    style="font-family: 'Orbitron', sans-serif;">
-                    HD
-                </button>
-            </div>
-
+        <div class="hud-bottom">
             <div id="control-hints">
                 <div class="hint-title">SYSTEM CONTROLS</div>
                 <div>[SHIFT] NITRO BOOST</div>
@@ -443,8 +384,6 @@
     // ** NEW: Maximum render resolution cap (1080p) **
     const MAX_RENDER_WIDTH = 1920; 
     const MAX_RENDER_HEIGHT = 1080; 
-    let isHD = true; // NEW: Track current quality state
-    const SD_SCALE = 0.5; // NEW: SD will render at 50% of HD max resolution
     // **********************************************
 
     const daySkyColor = new THREE.Color(0x87CEEB);
@@ -480,7 +419,6 @@
     const splashCoinCountEl = document.getElementById('splash-coin-count');
     const loadingStatusEl = document.getElementById('loading-status'); // UX: Added reference
     const loadingProgressFillEl = document.getElementById('loading-progress-fill'); // UX: Added reference
-    const resSwitchBtnEl = document.getElementById('res-switch-btn'); // NEW: Reference to the button
 
     // ** Delivery Mode Elements **
     const deliveryHudEl = document.getElementById('delivery-hud');
@@ -775,49 +713,21 @@
             distanceEl.textContent = '0';
         }
     }
-
-    // =============================================================================
-    // ** NEW: Quality Switcher Logic **
-    // =============================================================================
-    window.toggleRenderQuality = function() {
-        isHD = !isHD;
-        
-        // Update button text and style
-        resSwitchBtnEl.textContent = isHD ? 'HD' : 'SD';
-        resSwitchBtnEl.style.background = isHD ? '#00FFFF' : '#FF00FF';
-        resSwitchBtnEl.style.color = '#000'; // Keep text black for contrast
-        
-        // Force the renderer to update the size
-        updateRendererSize();
-    }
     
     // =============================================================================
-    // ** RESOLUTION CAPPING FUNCTION (MODIFIED FOR HD/SD) **
+    // ** RESOLUTION CAPPING FUNCTION **
     // =============================================================================
     function updateRendererSize() {
-        if (!renderer) return;
-
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         
-        // Define the target MAX resolution based on HD/SD state
-        let targetMaxWidth = MAX_RENDER_WIDTH;
-        let targetMaxHeight = MAX_RENDER_HEIGHT;
-
-        if (!isHD) {
-            // SD Mode: Reduce max target resolution by SD_SCALE (e.g., 50%)
-            targetMaxWidth = Math.floor(MAX_RENDER_WIDTH * SD_SCALE);
-            targetMaxHeight = Math.floor(MAX_RENDER_HEIGHT * SD_SCALE);
-        }
-
         let renderW = windowWidth;
         let renderH = windowHeight;
 
-        // 1. Apply the Capping Logic based on the selected target Max
-        // 如果窗口尺寸超出当前画质的限制 (例如 HD=1920x1080 或 SD=960x540)
-        if (windowWidth > targetMaxWidth || windowHeight > targetMaxHeight) {
-            const widthRatio = targetMaxWidth / windowWidth;
-            const heightRatio = targetMaxHeight / windowHeight;
+        // 如果窗口尺寸超出最大限制 (1920x1080)，则按比例缩小渲染分辨率
+        if (windowWidth > MAX_RENDER_WIDTH || windowHeight > MAX_RENDER_HEIGHT) {
+            const widthRatio = MAX_RENDER_WIDTH / windowWidth;
+            const heightRatio = MAX_RENDER_HEIGHT / windowHeight;
             
             // 使用最小的比例因子，确保分辨率在任一轴上都不超过限制
             const scaleFactor = Math.min(widthRatio, heightRatio); 
@@ -826,13 +736,13 @@
             renderH = Math.floor(windowHeight * scaleFactor);
         } 
         
-        // 2. 设置 Canvas 的显示尺寸 (保持全屏)
+        // 1. 设置 Canvas 的显示尺寸 (保持全屏)
         renderer.setSize(windowWidth, windowHeight);
         
-        // 3. 设置渲染缓冲区尺寸 (实际渲染分辨率)
+        // 2. 设置渲染缓冲区尺寸 (实际渲染分辨率，不超过 1920x1080)
         renderer.setDrawingBufferSize(renderW, renderH, false);
 
-        // 4. 更新摄像机比例
+        // 3. 更新摄像机比例
         const cameraAspect = windowWidth / windowHeight;
         if (cameraChase) {
             cameraChase.aspect = cameraAspect;
@@ -1161,7 +1071,7 @@
             targetPos = currentMission.pickupPoint.position; 
             targetColor = targetArrowMesh.userData.pickupColor;
         } else if (currentMission.status === 'delivering') {
-            targetPos = currentMission.deliveryTarget.position; // FIX: should use deliveryTarget
+            targetPos = currentMission.targetBody.position; 
             targetColor = targetArrowMesh.userData.deliveryColor;
         } else {
             targetArrowMesh.visible = false;
