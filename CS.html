@@ -395,6 +395,22 @@
     // ** Initial Vehicle Position **
     const initialCarPosition = new CANNON.Vec3(90, 0.7, 0);
 
+    // ** AI Vehicle Variables **
+    let aiVehicle;
+    let aiChassisBody;
+    let aiCarMesh = null;
+    let aiWheelMeshes = [];
+
+    // AI Patrol Vars
+    const PATROL_POINTS = [
+        new THREE.Vector3(100, 0.7, 500),
+        new THREE.Vector3(-500, 0.7, 500),
+        new THREE.Vector3(-500, 0.7, -500),
+        new THREE.Vector3(100, 0.7, -500)
+    ]; // Simple square patrol route
+    let currentPatrolIndex = 0;
+    const PATROL_THRESHOLD = 50; // Distance to next waypoint before switching
+
     let staticBodies = [];
     let carMesh = null;
     let tireMeshPrototype = null;
@@ -438,15 +454,16 @@
 
     // ** Predefined Delivery Points **
     const DELIVERY_POINTS = [
-    { name: "BigHouse Plaza",    x: 478.60042572021484,  y: 1.0, z: 386.34082221984863 },
-    { name: "Green Park",        x: -9.638931274414062,  y: 1.0, z: 11.96923828125 },
-    { name: "Babylon District",  x: 922.1522827148438,   y: 1.0, z: 1054.5473022460938 },
-    { name: "ACE Market",        x: 71.44308471679688,   y: 1.0, z: 345.6099510192871 },
-    { name: "El Pollo (Food)",   x: 1142.7783813476562,  y: 1.0, z: 541.5901107788086 },
-    { name: "BurgerTown",        x: 37.049530029296875,  y: 1.0, z: 450.0001449584961 },
-    { name: "Convoy Hotel",      x: -0.00042724609375,   y: 1.0, z: 636.5507278442383 },
-    { name: "Apartment Cluster", x: 8212.001220703125,   y: 1.0, z: 7673.230712890625 }
-];
+        { name: "Central Plaza", x: 90, y: 1.0, z: 0 },
+        { name: "West Dock", x: -500, y: 1.0, z: 300 },
+        { name: "Pizza Pizza", x: 1800, y: 1.0, z: -200 },
+        { name: "Industrial Zone", x: -3200, y: 1.0, z: -200 },
+        { name: "Airport Gate", x: 450, y: 1.0, z: 250 },
+        { name: "City Museum", x: 250, y: 1.0, z: -150 }, 
+        { name: "Southern Freeway", x: 90, y: 3.0, z: 400 }, 
+        { name: "City center", x: -6000, y: 3.0, z: 400 }, 
+    ];
+
     // ** Delivery Mode Variables **
     let isDeliveryModeActive = false;
     const MAX_MISSION_TIME = 240; 
@@ -840,6 +857,73 @@
         }
     }
 
+    // =============================================================================
+    // ** AI VEHICLE SETUP (NEW) **
+    // =============================================================================
+    function initAIVehicle() {
+        // Ensure AI car model is loaded and tire prototype is ready
+        if (!aiCarMesh || !tireMeshPrototype) {
+            return; 
+        }
+
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
+        aiChassisBody = new CANNON.Body({
+            mass: 2500, 
+            shape: chassisShape,
+            // Start at the first patrol point
+            position: new CANNON.Vec3(PATROL_POINTS[0].x, PATROL_POINTS[0].y, PATROL_POINTS[0].z) 
+        });
+        aiChassisBody.angularDamping = 0.9;
+        aiChassisBody.linearDamping = 0.05;
+        world.addBody(aiChassisBody);
+
+        aiVehicle = new CANNON.RaycastVehicle({
+            chassisBody: aiChassisBody,
+            indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
+        });
+
+        const axleWidth = 1.0;
+        const wheelBase = 1.5;
+        function makeAIWheelOptions(x,y,z) {
+            return {
+                radius: 0.5,
+                directionLocal: new CANNON.Vec3(0, -1, 0),
+                suspensionStiffness: 150, suspensionRestLength: 0.3,
+                frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
+                maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
+                customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
+                axleLocal: new CANNON.Vec3(1, 0, 0),
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
+            };
+        }
+
+        aiVehicle.addWheel(makeAIWheelOptions(-axleWidth, 0, wheelBase));
+        aiVehicle.addWheel(makeAIWheelOptions( axleWidth, 0, wheelBase));
+        aiVehicle.addWheel(makeAIWheelOptions(-axleWidth, 0, -wheelBase));
+        aiVehicle.addWheel(makeAIWheelOptions( axleWidth, 0, -wheelBase));
+
+        aiVehicle.addToWorld(world);
+
+        aiWheelMeshes = [];
+        for (let i = 0; i < aiVehicle.wheelInfos.length; i++) {
+            const wheelMesh = tireMeshPrototype.clone();
+            if(i===0 || i===2) wheelMesh.rotation.y = Math.PI;
+            // 将 AI 车轮设置为紫色/洋红色以匹配车身
+            wheelMesh.traverse((node) => { 
+                if (node.isMesh) {
+                    const mat = node.material.clone();
+                    if (mat.color) mat.color.setHex(0xFF00FF); 
+                    node.material = mat;
+                } 
+            });
+            aiWheelMeshes.push(wheelMesh);
+            scene.add(wheelMesh);
+        }
+    }
+    // =============================================================================
+    // ** END AI VEHICLE SETUP **
+    // =============================================================================
+
     function respawnCar() {
         if (!chassisBody) return;
         chassisBody.position.copy(initialCarPosition); 
@@ -880,6 +964,7 @@
             }, 500);
 
             initVehicle();
+            // initAIVehicle() is called inside loadAICarModel(), which is called in initSystem().
             spawnCoinsWhenReady();
             requestAnimationFrame(animate);
         };
@@ -905,6 +990,33 @@
             carMesh.add(flameMesh);
         });
     }
+
+    // =============================================================================
+    // ** AI CAR MODEL LOADER (NEW) **
+    // =============================================================================
+    function loadAICarModel() {
+        gltfLoader.load('car1.glb', (gltf) => {
+            aiCarMesh = gltf.scene;
+            aiCarMesh.scale.set(104.7, 104.7, 104.7);
+            aiCarMesh.rotation.y = Math.PI;
+            aiCarMesh.traverse((node) => { 
+                if (node.isMesh) {
+                    node.castShadow = true; 
+                    // 将颜色更改为紫色/洋红色以与玩家车辆区分
+                    const mat = node.material.clone();
+                    if (mat.color) mat.color.setHex(0xFF00FF); 
+                    node.material = mat;
+                } 
+            });
+            scene.add(aiCarMesh);
+            
+            // 模型加载完成后，初始化物理体
+            initAIVehicle();
+        });
+    }
+    // =============================================================================
+    // ** END AI CAR MODEL LOADER **
+    // =============================================================================
     
     // MODIFICATION 1: Adjust arrow size
     function loadArrowModel() {
@@ -1001,6 +1113,15 @@
                 }
             });
         });
+    }
+
+    // =============================================================================
+    // ** AI HELPER FUNCTION (REQUESTED) **
+    // =============================================================================
+    function meshLooksLikeRoad(mesh) {
+        const n = mesh.name.toLowerCase();
+        if (n.includes("miami_ground")) return true;
+        return false;
     }
 
     // =============================================================================
@@ -1144,6 +1265,102 @@
         vehicle.setBrake(brake, 0); vehicle.setBrake(brake, 1);
         vehicle.setBrake(finalBrakeRL, 2); vehicle.setBrake(finalBrakeRR, 3);
     }
+
+    // =============================================================================
+    // ** AI CONTROL LOGIC (NEW) **
+    // =============================================================================
+    const _tempForwardVector = new THREE.Vector3();
+    const _tempCurrentPos = new THREE.Vector3();
+    const _tempTargetPos = new THREE.Vector3();
+    const _tempDirectionToTarget = new THREE.Vector3();
+
+    function updateAIControls() {
+        if (!aiChassisBody || !aiVehicle || !isGameRunning) return;
+        aiChassisBody.wakeUp();
+
+        // 1. Get current position and target position
+        _tempCurrentPos.copy(aiChassisBody.position);
+        const targetPoint = PATROL_POINTS[currentPatrolIndex];
+        _tempTargetPos.copy(targetPoint);
+
+        // 2. Check if reached waypoint
+        if (_tempCurrentPos.distanceTo(_tempTargetPos) < PATROL_THRESHOLD) {
+            currentPatrolIndex = (currentPatrolIndex + 1) % PATROL_POINTS.length;
+        }
+
+        // 3. Calculate direction vector from car to target
+        _tempDirectionToTarget.subVectors(_tempTargetPos, _tempCurrentPos).normalize();
+        
+        // 4. Get car's forward vector (from quaternion)
+        _tempForwardVector.set(0, 0, 1).applyQuaternion(aiChassisBody.quaternion);
+
+        // 5. Calculate angle/dot product for steering
+        // 使用叉积确定目标在左侧还是右侧
+        const crossProduct = _tempForwardVector.cross(_tempDirectionToTarget).y; 
+        const dotProduct = _tempForwardVector.dot(_tempDirectionToTarget);
+        
+        let aiSteering = 0;
+        const maxAICarSteer = 0.5; // 略微减小最大转向值以提高稳定性
+        
+        // 根据叉积符号进行转向
+        if (crossProduct > 0.05) {
+            aiSteering = maxAICarSteer; // 向左转
+        } else if (crossProduct < -0.05) {
+            aiSteering = -maxAICarSteer; // 向右转
+        } else {
+             aiSteering = 0;
+        }
+        
+        // 如果车辆指向偏差太大，加大转向力度
+        if (dotProduct < 0.2) {
+            aiSteering *= 2.5; 
+        }
+        
+        // 钳制最终转向值
+        aiSteering = Math.max(-maxAICarSteer, Math.min(maxAICarSteer, aiSteering));
+
+        // 6. 引擎推力 (持续前进，必要时减速)
+        const maxEngineForceAI = maxEngineForce * 0.7;
+        let aiEngineForce = -maxEngineForceAI; // 恒定向前驱动
+        let aiBrake = 0;
+        
+        const speed = aiChassisBody.velocity.length();
+        const desiredSpeed = 40; // 目标速度约 40 km/h
+
+        // 如果车辆方向不正，轻微制动以获得更好的转弯半径
+        if (dotProduct < 0.6 && speed > 5) {
+            aiBrake = maxEngineForce * 0.1;
+            aiEngineForce = 0;
+        }
+        
+        // 如果速度过快，轻微制动
+        if (speed * 3.6 > desiredSpeed) {
+            aiEngineForce = 0;
+            aiBrake = maxEngineForce * 0.05;
+        } else if (speed * 3.6 < desiredSpeed * 0.5) {
+            aiEngineForce = -maxEngineForceAI; // 加速
+        }
+        
+        // 7. 应用于 AI 车辆
+        aiVehicle.setSteeringValue(aiSteering, 0); 
+        aiVehicle.setSteeringValue(aiSteering, 1);
+        
+        // 应用引擎推力 (四个轮子)
+        aiVehicle.applyEngineForce(aiEngineForce, 0); 
+        aiVehicle.applyEngineForce(aiEngineForce, 1); 
+        aiVehicle.applyEngineForce(aiEngineForce, 2); 
+        aiVehicle.applyEngineForce(aiEngineForce, 3); 
+        
+        // 应用制动力
+        aiVehicle.setBrake(aiBrake, 0); 
+        aiVehicle.setBrake(aiBrake, 1);
+        aiVehicle.setBrake(aiBrake, 2);
+        aiVehicle.setBrake(aiBrake, 3);
+    }
+    // =============================================================================
+    // ** END AI CONTROL LOGIC **
+    // =============================================================================
+
 
     function updateCamera() {
         if (!chassisBody) return;
@@ -1308,6 +1525,10 @@
             
             updateControls();
             updateColliders();
+            
+            // ** NEW: AI Car Control Update **
+            updateAIControls(); 
+
             if (isDeliveryModeActive) {
                 updateDeliveryMode(); 
                 updateTargetArrow(); 
@@ -1316,7 +1537,7 @@
             }
         }
 
-        // Model position synchronization
+        // Model position synchronization (Player Car)
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -1330,6 +1551,23 @@
             carMesh.quaternion.copy(chassisBody.quaternion);
             carMesh.position.y += VISUAL_Y_OFFSET; 
         }
+
+        // ** NEW: AI Car Model position synchronization **
+        if (aiCarMesh && aiChassisBody) {
+            aiCarMesh.position.copy(aiChassisBody.position);
+            aiCarMesh.quaternion.copy(aiChassisBody.quaternion);
+            aiCarMesh.position.y += VISUAL_Y_OFFSET; 
+        }
+        
+        for (let i = 0; i < aiVehicle.wheelInfos.length; i++) {
+            aiVehicle.updateWheelTransform(i);
+            const t = aiVehicle.wheelInfos[i].worldTransform;
+            if (aiWheelMeshes[i]) {
+                aiWheelMeshes[i].position.copy(t.position);
+                aiWheelMeshes[i].quaternion.copy(t.quaternion);
+            }
+        }
+        // ** END NEW **
 
         for (let i = 0; i < coinMeshes.length; i++) {
             if (coinBodies[i]) {
@@ -1364,6 +1602,8 @@
         loadCity();
         loadCoinPrototype();
         loadArrowModel(); 
+        // ** NEW: Load AI Car Model **
+        loadAICarModel(); 
     }
 
     window.enterGame = function() { 
