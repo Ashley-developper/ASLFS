@@ -785,13 +785,13 @@
         });
     }
     
-    // ** 新增：加载 arrow.glb 模型 **
+    // ** 修改点 1：调整箭头尺寸 (1.5 -> 1.0) **
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
 
-            // 调整缩放以使其在场景中可见
-            targetArrowMesh.scale.set(1.5, 1.5, 1.5); 
+            // 调整缩放以使其在场景中可见 (尺寸减小到 1.0)
+            targetArrowMesh.scale.set(1.0, 1.0, 1.0); 
             
             // 遍历模型并设置材质和阴影
             targetArrowMesh.traverse((node) => { 
@@ -834,11 +834,12 @@
         });
     }
 
+    // ** 修改点 3：缩小城市模型和碰撞激活范围 **
     function loadCity() {
         gltfLoader.load('city.glb', (gltf) => {
             const city = gltf.scene;
-            // 城市模型扩大，以配合 COIN_SPAWN_RADIUS = 1500
-            city.scale.set(6,6,6); 
+            // 城市模型缩小，以配合 COIN_SPAWN_RADIUS = 1500
+            city.scale.set(4, 4, 4); 
             city.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
@@ -875,6 +876,7 @@
                         body: body,
                         center: new THREE.Vector3().copy(geometry.boundingSphere.center),
                         radius: geometry.boundingSphere.radius,
+                        // 碰撞激活范围从 300 减小到 200
                         added: false
                     });
                 }
@@ -884,6 +886,7 @@
 
     // =============================================================================
     // ** 目标箭头更新 - 修复指向逻辑 (已更新以兼容 GLB 模型) **
+    // ** 修改点 2：增加右转 90 度和倾斜 45 度的逻辑 **
     // =============================================================================
     const _tempDirectionVector = new THREE.Vector3();
     const _tempCarPosition = new THREE.Vector3();
@@ -922,7 +925,7 @@
         _tempCarPosition.copy(chassisBody.position);
         targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z); 
         
-        // 3. 旋转逻辑： lookAt + 180度翻转
+        // 3. 旋转逻辑： lookAt + 180度翻转 + 额外旋转
         const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
         
         // 重置旋转 (关键步骤，防止 GLB 模型出现多余的旋转)
@@ -931,11 +934,14 @@
         // lookAt() 会让物体的 -Z 轴指向目标。
         targetArrowMesh.lookAt(lookAtTarget); 
 
-        // 假设 arrow.glb 模型的尖端朝向是 +Z 轴（GLTF 常见约定）。
-        // 1. lookAt 使得 -Z 轴指向目标 (即箭头的尾部指向目标)。
-        // 2. 绕 Y 轴旋转 180 度，将 +Z 轴指向目标 (即箭头尖端指向目标)。
-        // 如果 arrow.glb 的尖端是 Y 轴或其他轴，则需要在这里调整 rotateX/rotateZ。
+        // 1. 绕 Y 轴旋转 180 度 (将 +Z 轴指向目标)
         targetArrowMesh.rotateY(Math.PI); 
+        
+        // 2. 新增：绕 Y 轴额外旋转 -90 度 (右转 90 度)
+        targetArrowMesh.rotateY(-Math.PI / 2); 
+        
+        // 3. 新增：绕 X 轴旋转 45 度 (向前下方倾斜)
+        targetArrowMesh.rotateX(Math.PI / 4); 
         
         // 4. 稍微抬高箭头，增加视觉效果
         targetArrowMesh.position.y += 0.5;
@@ -1081,11 +1087,11 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            // 增加激活范围以配合更大的城市
-            if (!obj.added && d <= obj.radius + 300) { 
+            // 减小激活范围以配合更小的城市模型
+            if (!obj.added && d <= obj.radius + 200) { 
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 300) {
+            } else if (obj.added && d > obj.radius + 200) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
