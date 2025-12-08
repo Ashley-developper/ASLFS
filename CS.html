@@ -1002,7 +1002,7 @@
 
     // MODIFICATION 3: Reduce city model scale and collision activation range
     function loadCity() {
-        gltfLoader.load('city.glb', (gltf) => {
+        gltfLoader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
             const city = gltf.scene;
             // Scale down city model to match the COIN_SPAWN_RADIUS = 1500
             city.scale.set(4, 4, 4); 
