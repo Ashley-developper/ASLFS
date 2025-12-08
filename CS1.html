@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ASL Car Simulator - Ultra Hyper Drive Edition</title>
+    <title>ASL Car Simulator - Hyper Drive Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
@@ -215,7 +215,7 @@
 
     <div id="splash">
         <div class="splash-header">
-            <h1>OPEN WORLD<br>ULTRA HYPER DRIVE</h1>
+            <h1>OPEN WORLD<br>HYPER DRIVE</h1>
             <p class="splash-subtitle">IMMERSIVE SIMULATION // ZHANYI ZHOU</p>
         </div>
 
@@ -306,21 +306,14 @@
     const daySkyColor = new THREE.Color(0x87CEEB);
     const dayHemiSky = new THREE.Color(0xffffff);
     const dayHemiGround = new THREE.Color(0x3b4c5a);
-    
-    // ** 全局缩放因子 (1.5 * 2 = 3.0 倍) **
-    const SCALE_FACTOR = 3.0; 
 
-    // 车辆物理和视觉参数（已乘以 SCALE_FACTOR）
-    // maxEngineForce 原本是 9000, 现为 9000 * 3.0 = 27000
-    const maxEngineForce = 9000 * SCALE_FACTOR; 
-    // brakeForce 原本是 40, 现为 40 * 3.0 = 120
-    const brakeForce = 40 * SCALE_FACTOR; 
-    const maxSteerVal = 0.9; // 保持不变 (角度)
-    // VISUAL_Y_OFFSET 原本是 -0.9, 现为 -0.9 * 3.0 = -2.7
-    const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
+    const maxEngineForce = 9000; 
+    const brakeForce = 40;
+    const maxSteerVal = 0.7;
+    const VISUAL_Y_OFFSET = -0.9; 
 
-    // ** 车辆初始位置 ** (Y: 0.7 * 3.0 = 2.1)
-    const initialCarPosition = new CANNON.Vec3(90, 1.9 * SCALE_FACTOR, 0); 
+    // ** 车辆初始位置 **
+    const initialCarPosition = new CANNON.Vec3(90, 0.7, 0);
 
     let staticBodies = [];
     let carMesh = null;
@@ -351,34 +344,31 @@
     let engineForce = 0;
     let steeringValue = 0;
 
-    // Coin Vars 
+    // Coin Vars
     let coinProto = null;
     let coinMeshes = [];
     let coinBodies = [];
     let coinCount = 0;
     const COIN_MIN = 50;
     const COIN_MAX = 80;
-    // COIN_SPAWN_RADIUS 原本是 1500, 现为 1500 * 3.0 = 4500
-    const COIN_SPAWN_RADIUS = 1500 * SCALE_FACTOR; 
-    // COIN_HEIGHT 原本是 0.7, 现为 0.7 * 3.0 = 2.1
-    const COIN_HEIGHT = 0.7 * SCALE_FACTOR; 
+    const COIN_SPAWN_RADIUS = 1500; // 增大到 1500 以拉远任务和金币分布距离
+    const COIN_HEIGHT = 0.7;
 
-    // ** Predefined Delivery Points (Y轴位置已乘以 SCALE_FACTOR) **
+    // ** Predefined Delivery Points **
     const DELIVERY_POINTS = [
-        { name: "Central Plaza", x: 90, y: 1.0 * SCALE_FACTOR, z: 0 },
-        { name: "West Dock", x: -500, y: 1.0 * SCALE_FACTOR, z: 300 },
-        { name: "North Bridge Entrance", x: 100, y: 1.0 * SCALE_FACTOR, z: -400 },
-        { name: "Industrial Zone", x: -300, y: 1.0 * SCALE_FACTOR, z: -200 },
-        { name: "Airport Gate", x: 450, y: 1.0 * SCALE_FACTOR, z: 250 },
-        { name: "City Museum", x: 250, y: 1.0 * SCALE_FACTOR, z: -150 }, 
-        { name: "Southern Freeway", x: 0, y: 3.0 * SCALE_FACTOR, z: 500 }, 
+        { name: "Central Plaza", x: 90, y: 1.0, z: 0 },
+        { name: "West Dock", x: -500, y: 1.0, z: 300 },
+        { name: "North Bridge Entrance", x: 100, y: 1.0, z: -400 },
+        { name: "Industrial Zone", x: -300, y: 1.0, z: -200 },
+        { name: "Airport Gate", x: 450, y: 1.0, z: 250 },
+        { name: "City Museum", x: 250, y: 1.0, z: -150 }, 
+        { name: "Southern Freeway", x: 0, y: 3.0, z: 500 }, 
     ];
 
     // ** Delivery Mode Variables **
     let isDeliveryModeActive = false;
     const MAX_MISSION_TIME = 240; 
-    // TARGET_RADIUS 原本是 5, 现为 5 * 3.0 = 15
-    const TARGET_RADIUS = 5 * SCALE_FACTOR; 
+    const TARGET_RADIUS = 5; 
     let currentMission = {
         status: 'none', 
         pickupPoint: null, 
@@ -506,9 +496,8 @@
     }
 
     function createTargetMesh(color) {
-        // 使用一个简单的圆柱体作为任务点的标识，尺寸已放大
-        const radius = TARGET_RADIUS / 2;
-        const geometry = new THREE.CylinderGeometry(radius, radius, TARGET_RADIUS, 16);
+        // 使用一个简单的圆柱体作为任务点的标识，避免和箭头混淆
+        const geometry = new THREE.CylinderGeometry(TARGET_RADIUS / 2, TARGET_RADIUS / 2, TARGET_RADIUS, 16);
         const material = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.7 });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.y += TARGET_RADIUS / 2; // 抬升到地面以上
@@ -671,11 +660,9 @@
     }
 
     function initVehicle() {
-        // 车辆 Box 尺寸 (1, 0.5, 2) * 3.0 = (3, 1.5, 6)
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(1 * SCALE_FACTOR, 0.5 * SCALE_FACTOR, 2 * SCALE_FACTOR));
-        // 质量相应放大 2500 * 3.0 = 7500
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
-            mass: 2500 * SCALE_FACTOR, 
+            mass: 2500, 
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
@@ -688,20 +675,18 @@
             indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
         });
 
-        const axleWidth = 1.0 * SCALE_FACTOR; // 3.0
-        const wheelBase = 1.5 * SCALE_FACTOR; // 4.5
+        const axleWidth = 1.0;
+        const wheelBase = 1.5;
         function makeWheelOptions(x,y,z) {
             return {
-                radius: 0.5 * SCALE_FACTOR, // 1.5
+                radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150, 
-                suspensionRestLength: 0.3 * SCALE_FACTOR, // 0.9
+                suspensionStiffness: 150, suspensionRestLength: 0.3,
                 frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
                 maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
                 customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // 连接点 Y 坐标 (-0.3) * 3.0 = -0.9
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.9 * SCALE_FACTOR, z)
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
             };
         }
 
@@ -724,8 +709,7 @@
             const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const wheel = vehicle.wheelInfos[i];
-                // 确保圆柱体几何体尺寸正确
-                const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2 * SCALE_FACTOR, 32); 
+                const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2, 32);
                 cylinderGeometry.rotateZ(Math.PI / 2);
                 const wheelMesh = new THREE.Mesh(cylinderGeometry, wheelMat);
                 wheelMeshes.push(wheelMesh);
@@ -784,31 +768,30 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            // 车身尺寸放大 3.0 倍 (104.7 * 3.0 = 314.1)
-            carMesh.scale.set(104.7 * SCALE_FACTOR, 104.7 * SCALE_FACTOR, 104.7 * SCALE_FACTOR);
+            carMesh.scale.set(104.7, 104.7, 104.7);
             carMesh.rotation.y = Math.PI;
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
             scene.add(carMesh);
 
-            // 火焰几何体尺寸放大 3.0 倍
-            const flameGeometry = new THREE.ConeGeometry(0.3 * SCALE_FACTOR, 1.0 * SCALE_FACTOR, 16);
+            const flameGeometry = new THREE.ConeGeometry(0.3, 1, 16);
             const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.75 });
             flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
             flameMesh.rotation.x = -Math.PI / 2;
-            // 火焰位置 (2.5 * 3.0 = 7.5)
-            flameMesh.position.set(0, 0, 2.5 * SCALE_FACTOR);
+            flameMesh.position.set(0, 0, 2.5);
             flameMesh.visible = false;
             carMesh.add(flameMesh);
+
+            // 原始的 ConeGeometry 箭头模型代码已移除，现在由 loadArrowModel 负责加载 arrow.glb
         });
     }
     
-    // ** 新增：加载 arrow.glb 模型 (已放大 3.0 倍) **
+    // ** 新增：加载 arrow.glb 模型 **
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
 
-            // 调整缩放以使其在场景中可见 (1.5 * 3.0 = 4.5)
-            targetArrowMesh.scale.set(1.5 * SCALE_FACTOR, 1.5 * SCALE_FACTOR, 1.5 * SCALE_FACTOR); 
+            // 调整缩放以使其在场景中可见
+            targetArrowMesh.scale.set(1.5, 1.5, 1.5); 
             
             // 遍历模型并设置材质和阴影
             targetArrowMesh.traverse((node) => { 
@@ -829,9 +812,9 @@
 
         }, undefined, (error) => {
             console.error('Failed to load arrow.glb:', error);
-            // 兜底：如果 arrow.glb 加载失败，使用回 ConeGeometry (尺寸也放大)
+            // 兜底：如果 arrow.glb 加载失败，使用回 ConeGeometry
             if (!targetArrowMesh) {
-                const arrowGeometry = new THREE.ConeGeometry(0.4 * SCALE_FACTOR, 2.0 * SCALE_FACTOR, 8); 
+                const arrowGeometry = new THREE.ConeGeometry(0.4, 2.0, 8); 
                 const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
                 targetArrowMesh = new THREE.Mesh(arrowGeometry, arrowMaterial);
                 targetArrowMesh.visible = false;
@@ -845,8 +828,7 @@
     function loadTireModel() {
         gltfLoader.load('tire1.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
-            // 轮胎尺寸放大 3.0 倍 (0.75 * 3.0 = 2.25)
-            tireMeshPrototype.scale.set(0.75 * SCALE_FACTOR, 0.75 * SCALE_FACTOR, 0.75 * SCALE_FACTOR);
+            tireMeshPrototype.scale.set(0.75, 0.75, 0.75);
             tireMeshPrototype.rotation.x = Math.PI / 2;
             tireMeshPrototype.traverse((node) => { if (node.isMesh) node.castShadow = true; });
         });
@@ -855,7 +837,7 @@
     function loadCity() {
         gltfLoader.load('city.glb', (gltf) => {
             const city = gltf.scene;
-            // 城市模型保持原有缩放（6,6,6）
+            // 城市模型扩大，以配合 COIN_SPAWN_RADIUS = 1500
             city.scale.set(6,6,6); 
             city.traverse((node) => {
                 if (node.isMesh) {
@@ -937,19 +919,26 @@
         });
 
         // 2. 更新箭头在世界空间中的位置
-        // 箭头相对于车体的高度 (2.5 * 3.0 = 7.5)
         _tempCarPosition.copy(chassisBody.position);
-        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5 * SCALE_FACTOR, _tempCarPosition.z); 
+        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z); 
         
         // 3. 旋转逻辑： lookAt + 180度翻转
         const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
         
+        // 重置旋转 (关键步骤，防止 GLB 模型出现多余的旋转)
         targetArrowMesh.rotation.set(0, 0, 0); 
+        
+        // lookAt() 会让物体的 -Z 轴指向目标。
         targetArrowMesh.lookAt(lookAtTarget); 
+
+        // 假设 arrow.glb 模型的尖端朝向是 +Z 轴（GLTF 常见约定）。
+        // 1. lookAt 使得 -Z 轴指向目标 (即箭头的尾部指向目标)。
+        // 2. 绕 Y 轴旋转 180 度，将 +Z 轴指向目标 (即箭头尖端指向目标)。
+        // 如果 arrow.glb 的尖端是 Y 轴或其他轴，则需要在这里调整 rotateX/rotateZ。
         targetArrowMesh.rotateY(Math.PI); 
         
-        // 4. 稍微抬高箭头，增加视觉效果 (0.5 * 3.0 = 1.5)
-        targetArrowMesh.position.y += 0.5 * SCALE_FACTOR;
+        // 4. 稍微抬高箭头，增加视觉效果
+        targetArrowMesh.position.y += 0.5;
     }
 
     // =============================================================================
@@ -1038,18 +1027,14 @@
         if (isGameRunning) {
             const q = chassisBody.quaternion;
             if (activeCamera === cameraChase) {
-                // 追逐相机理想偏移量 (0, 3, -7) * 3.0 = (0, 9.0, -21.0)
-                const idealOffset = new THREE.Vector3(0, 3 * SCALE_FACTOR, -7 * SCALE_FACTOR); 
+                const idealOffset = new THREE.Vector3(0, 3, -7);
                 idealOffset.applyQuaternion(q);
                 idealOffset.add(chassisPos);
-                // Clamp y position (0.5 * 3.0 = 1.5)
-                if(idealOffset.y < chassisPos.y + 0.5 * SCALE_FACTOR) idealOffset.y = chassisPos.y + 0.5 * SCALE_FACTOR; 
+                if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
                 cameraChase.position.lerp(idealOffset, 0.1);
-                // LookAt offset (1.0 * 3.0 = 3.0)
-                cameraChase.lookAt(chassisPos.x, chassisPos.y + 1 * SCALE_FACTOR, chassisPos.z);
+                cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
             } else {
-                // 驾驶舱相机偏移量 (0, 0.8, 1.5) * 3.0 = (0, 2.4, 4.5)
-                const offset = new THREE.Vector3(0, 0.8 * SCALE_FACTOR, 1.5 * SCALE_FACTOR); 
+                const offset = new THREE.Vector3(0, 0.8, 1.5);
                 offset.applyQuaternion(q);
                 offset.add(chassisPos);
                 cameraCockpit.position.copy(offset);
@@ -1062,9 +1047,8 @@
             if (!isDragging) {
                 splashCameraAngle += 0.002; 
             }
-            // 启动界面的相机半径和高度也放大 3.0 倍
-            const radius = 6.0 * SCALE_FACTOR; // 18.0
-            const height = 2.0 * SCALE_FACTOR; // 6.0
+            const radius = 6.0;
+            const height = 2.0;
             const x = chassisPos.x + Math.sin(splashCameraAngle) * radius;
             const z = chassisPos.z + Math.cos(splashCameraAngle) * radius;
             
@@ -1086,7 +1070,6 @@
         rpmEl.textContent = Math.min(99, Math.floor(v.length() * 3.6 * 1.5));
         
         let throttlePercent = 0;
-        // Nitro boost is 2.5x, so max is (maxEngineForce * 2.5)
         if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
         throttleEl.textContent = Math.min(100, throttlePercent).toFixed(0) + '%';
 
@@ -1098,11 +1081,11 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            // 激活范围放大 3.0 倍 (300 * 3.0 = 900)
-            if (!obj.added && d <= obj.radius + 300 * SCALE_FACTOR) { 
+            // 增加激活范围以配合更大的城市
+            if (!obj.added && d <= obj.radius + 300) { 
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 300 * SCALE_FACTOR) {
+            } else if (obj.added && d > obj.radius + 300) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
@@ -1148,16 +1131,14 @@
             const y = COIN_HEIGHT + (Math.random()*0.3 - 0.15); 
 
             const coinMesh = coinProto.clone(true);
-            // 金币模型尺寸放大 3.0 倍
-            coinMesh.scale.set(1.0 * SCALE_FACTOR, 1.0 * SCALE_FACTOR, 1.0 * SCALE_FACTOR);
+            coinMesh.scale.set(1.0,1.0,1.0);
             coinMesh.position.set(x, y, z);
             coinMesh.rotation.y = Math.random()*Math.PI*2;
             scene.add(coinMesh);
             coinMeshes.push(coinMesh);
 
             const coinBody = new CANNON.Body({ mass: 0 });
-            // 金币物理体尺寸放大 3.0 倍 (0.4 * 3.0 = 1.2)
-            coinBody.addShape(new CANNON.Sphere(0.4 * SCALE_FACTOR));
+            coinBody.addShape(new CANNON.Sphere(0.4));
             coinBody.position.set(x, y, z);
             coinBody.collisionResponse = 0;
             coinBody.addEventListener('collide', (e) => {
@@ -1257,7 +1238,7 @@
         loadTireModel();
         loadCity();
         loadCoinPrototype();
-        loadArrowModel(); // <-- 加载 arrow.glb
+        loadArrowModel(); // <-- 新增：加载 arrow.glb
     }
 
     window.enterGame = function() { 
