@@ -315,6 +315,8 @@
     const brakeForce = 40 * SCALE_FACTOR; 
     const maxSteerVal = 0.7; // 保持不变 (角度)
     const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
+    // ** 关键修改: 氮气推力倍数，降低到 1.5 防止过度后仰 **
+    const NITRO_BOOST_MULTIPLIER = 1.5; 
 
     // ** 车辆初始位置 ** (Y: 0.7 * 3.0 = 2.1)
     const initialCarPosition = new CANNON.Vec3(90, 0.7 * SCALE_FACTOR, 0); 
@@ -688,7 +690,7 @@
             return {
                 radius: 0.5 * SCALE_FACTOR, 
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 200, // <-- 增加刚度
+                suspensionStiffness: 130, // <-- 增加刚度
                 suspensionRestLength: 0.3 * SCALE_FACTOR, 
                 frictionSlip: 10.0, // <-- 增加摩擦力，防侧滑
                 dampingRelaxation: 8.0, 
@@ -699,8 +701,8 @@
                 customSlidingRotationalSpeed: -30, 
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // 连接点 Y 坐标 (-0.4 * 3.0 = -1.2) - 略微降低重心
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.4 * SCALE_FACTOR, z) 
+                // **【关键修改】进一步降低重心 (从 -0.4 降到 -0.7)，增强抗后仰能力**
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.7 * SCALE_FACTOR, z) 
             };
         }
 
@@ -794,8 +796,8 @@
             const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.75 });
             flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
             flameMesh.rotation.x = -Math.PI / 2;
-            // 火焰位置 (2.5 * 3.0 = 7.5)
-            flameMesh.position.set(0, 0, 2.5 * SCALE_FACTOR);
+            // **【关键修改】火焰位置 Y 坐标调整以适应更低重心**
+            flameMesh.position.set(0, -0.3 * SCALE_FACTOR, 2.5 * SCALE_FACTOR);
             flameMesh.visible = false;
             carMesh.add(flameMesh);
         });
@@ -1008,7 +1010,8 @@
         }
 
         if (inputState.keyShift && engineForce !== 0) {
-            engineForce *= 2.5;
+            // **【关键修改】使用 NITRO_BOOST_MULTIPLIER (1.5) 防止后仰**
+            engineForce *= NITRO_BOOST_MULTIPLIER;
             if (flameMesh) flameMesh.visible = true;
         } else {
             if (flameMesh) flameMesh.visible = false;
@@ -1084,8 +1087,8 @@
         rpmEl.textContent = Math.min(99, Math.floor(v.length() * 3.6 * 1.5));
         
         let throttlePercent = 0;
-        // Nitro boost is 2.5x, so max is (maxEngineForce * 2.5)
-        if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
+        // Nitro boost max is (maxEngineForce * NITRO_BOOST_MULTIPLIER)
+        if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * NITRO_BOOST_MULTIPLIER)) * 100);
         throttleEl.textContent = Math.min(100, throttlePercent).toFixed(0) + '%';
 
         coinCountEl.textContent = coinCount;
