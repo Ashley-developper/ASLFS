@@ -313,12 +313,13 @@
     const VISUAL_Y_OFFSET = -0.9; 
 
     // ** 用户要求设置的车辆初始位置：设置为 90, 0.7, 0 **
-    const initialCarPosition = new CANNON.Vec3(90, 1.0, 0);
+    const initialCarPosition = new CANNON.Vec3(90, 0.7, 0);
 
     let staticBodies = [];
     let carMesh = null;
     let tireMeshPrototype = null;
     let flameMesh = null;
+    let targetArrowMesh = null; // ** NEW: 目标指示箭头模型 **
     let gltfLoader = null;
     let dracoLoader = null;
 
@@ -350,17 +351,18 @@
     let coinCount = 0;
     const COIN_MIN = 50;
     const COIN_MAX = 80;
-    const COIN_SPAWN_RADIUS = 800;
+    const COIN_SPAWN_RADIUS = 1500; // ** MODIFIED: 增大到 1500 以拉远任务和金币分布距离 **
     const COIN_HEIGHT = 0.7;
 
     // ** Predefined Delivery Points **
+    // ** MODIFIED: 替换 High-Rise Rooftop 为 City Museum **
     const DELIVERY_POINTS = [
         { name: "Central Plaza", x: 90, y: 1.0, z: 0 },
         { name: "West Dock", x: -500, y: 1.0, z: 300 },
         { name: "North Bridge Entrance", x: 100, y: 1.0, z: -400 },
         { name: "Industrial Zone", x: -300, y: 1.0, z: -200 },
         { name: "Airport Gate", x: 450, y: 1.0, z: 250 },
-        { name: "High-Rise Rooftop", x: 200, y: 20.0, z: 100 }, 
+        { name: "City Museum", x: 250, y: 1.0, z: -150 }, // NEW
         { name: "Southern Freeway", x: 0, y: 3.0, z: 500 }, 
     ];
 
@@ -390,7 +392,9 @@
     const TARGET_FPS_MAX = 60; // 目标最高帧率
     const MIN_PIXEL_RATIO = 0.6; // 最小渲染质量
     const MAX_PIXEL_RATIO = window.devicePixelRatio; // 最大渲染质量 (原生分辨率)
+    const QUALITY_WARN_THRESHOLD = MIN_PIXEL_RATIO + 0.05; // 0.65
     let currentPixelRatio = MAX_PIXEL_RATIO; // 初始设置为最高
+    let qualityWarningShown = false; // 警告是否已显示
 
     // =============================================================================
     // ** 交互：Splash 界面拖拽旋转 **
@@ -626,8 +630,15 @@
         
         if (changed) {
             renderer.setPixelRatio(currentPixelRatio);
-            // 可以在控制台打印调试信息，例如：
-            // console.log(`FPS: ${actualFPS.toFixed(1)}. New Pixel Ratio: ${currentPixelRatio.toFixed(2)}`);
+            
+            // ** 新增：画质消减提示逻辑 **
+            if (currentPixelRatio <= QUALITY_WARN_THRESHOLD && !qualityWarningShown) {
+                alert("⚠️ Performance Warning: Graphics quality has been reduced to maintain smooth FPS. Check your device load or settings.");
+                qualityWarningShown = true;
+            } else if (currentPixelRatio > QUALITY_WARN_THRESHOLD) {
+                // 当画质恢复到安全阈值之上时，重置警告标志
+                qualityWarningShown = false; 
+            }
         }
     }
 
@@ -670,7 +681,7 @@
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
 
-        const groundGeo = new THREE.PlaneGeometry(500, 500, 10, 10);
+        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10); // 扩大地面
         const groundMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
@@ -680,7 +691,7 @@
     }
 
     function initCameraAndLights() {
-        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000); // 增加视野距离
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
 
@@ -693,11 +704,11 @@
         dirLight.shadow.mapSize.width = 4096;
         dirLight.shadow.mapSize.height = 4096;
         dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 500;
-        dirLight.shadow.camera.left = -100;
-        dirLight.shadow.camera.right = 100;
-        dirLight.shadow.camera.top = 100;
-        dirLight.shadow.camera.bottom = -100;
+        dirLight.shadow.camera.far = 1000; // 增加阴影距离
+        dirLight.shadow.camera.left = -200;
+        dirLight.shadow.camera.right = 200;
+        dirLight.shadow.camera.top = 200;
+        dirLight.shadow.camera.bottom = -200;
         scene.add(dirLight);
     }
 
@@ -774,7 +785,7 @@
     }
     
     // =============================================================================
-    // ** 加载器初始化... (代码同上，为简洁省略) **
+    // ** 资源加载 **
     // =============================================================================
     function initLoaders() {
         dracoLoader = new THREE.DRACOLoader();
@@ -823,6 +834,16 @@
             flameMesh.position.set(0, 0, 2.5);
             flameMesh.visible = false;
             carMesh.add(flameMesh);
+
+            // ** NEW: 目标指示箭头模型 **
+            const arrowGeometry = new THREE.ConeGeometry(0.3, 1.5, 3);
+            const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
+            targetArrowMesh = new THREE.Mesh(arrowGeometry, arrowMaterial);
+            
+            targetArrowMesh.position.set(0, 2.0, 0); // 放置在车体上方
+            targetArrowMesh.rotation.x = Math.PI / 2; // 使其尖端朝前（局部Z轴）
+            targetArrowMesh.visible = false; // 初始隐藏
+            carMesh.add(targetArrowMesh);
         });
     }
 
@@ -838,6 +859,8 @@
     function loadCity() {
         gltfLoader.load('city.glb', (gltf) => {
             const city = gltf.scene;
+            // 城市模型扩大，以配合 COIN_SPAWN_RADIUS = 1500
+            city.scale.set(6,6,6); 
             city.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
@@ -852,7 +875,6 @@
                     }
                 }
             });
-            city.scale.set(4,4,4);
             scene.add(city);
 
             city.updateMatrixWorld(true);
@@ -883,7 +905,52 @@
     }
 
     // =============================================================================
-    // ** 控制与更新... (代码同上，为简洁省略) **
+    // ** 目标箭头更新 **
+    // =============================================================================
+    const _tempDirectionVector = new THREE.Vector3();
+    const _tempCarPosition = new THREE.Vector3();
+    const _tempCarQuaternionInverse = new THREE.Quaternion();
+
+    function updateTargetArrow() {
+        if (!targetArrowMesh || !isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') {
+            if(targetArrowMesh) targetArrowMesh.visible = false;
+            return;
+        }
+
+        // 1. 确定目标位置和颜色
+        let targetPos = null;
+        if (currentMission.status === 'pickup' && currentMission.pickupMesh) {
+            targetPos = currentMission.pickupMesh.position;
+            targetArrowMesh.material.color.setHex(0x00FFFF); // Pick Up: 青色
+        } else if (currentMission.status === 'delivering' && currentMission.deliveryMesh) {
+            targetPos = currentMission.deliveryMesh.position;
+            targetArrowMesh.material.color.setHex(0x00FF00); // Delivering: 绿色
+        } else {
+            targetArrowMesh.visible = false;
+            return;
+        }
+
+        targetArrowMesh.visible = true;
+        
+        // 2. 计算方向向量 (从车到目标)
+        _tempCarPosition.copy(chassisBody.position);
+        _tempDirectionVector.copy(targetPos).sub(_tempCarPosition);
+        _tempDirectionVector.y = 0; // 忽略 Y 轴高度差，只考虑平面方向
+        
+        // 3. 将方向向量转换为车辆局部坐标系
+        _tempCarQuaternionInverse.copy(chassisBody.quaternion).invert();
+        _tempDirectionVector.applyQuaternion(_tempCarQuaternionInverse);
+
+        // 4. 计算箭头模型需要旋转的角度
+        // 箭头模型初始Z轴朝上 (rotation.x = PI/2 后)
+        const angle = Math.atan2(_tempDirectionVector.x, _tempDirectionVector.z);
+        
+        // 5. 更新箭头的局部旋转 (只绕 Y 轴)
+        targetArrowMesh.rotation.y = angle; 
+    }
+
+    // =============================================================================
+    // ** 控制与更新 **
     // =============================================================================
     window.addEventListener('keydown', (event) => {
         if (!isGameRunning) return;
@@ -911,16 +978,6 @@
     function toggleCamera() {
         activeCamera = (activeCamera === cameraChase) ? cameraCockpit : cameraChase;
     }
-
-    function updateControls() { /* ... function body omitted for brevity ... */ }
-    function updateCamera() { /* ... function body omitted for brevity ... */ }
-    function updateHUD(time) { /* ... function body omitted for brevity ... */ }
-    function updateColliders() { /* ... function body omitted for brevity ... */ }
-    function loadCoinPrototype(callback) { /* ... function body omitted for brevity ... */ }
-    function spawnCoinsWhenReady() { /* ... function body omitted for brevity ... */ }
-    function spawnCoins(num) { /* ... function body omitted for brevity ... */ }
-    
-    // ** (为简洁，已省略部分函数体，请保留您的完整实现) **
 
     function updateControls() {
         if (!chassisBody || !isGameRunning) return;
@@ -1032,10 +1089,11 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            if (!obj.added && d <= obj.radius + 120) {
+            // 增加激活范围以配合更大的城市
+            if (!obj.added && d <= obj.radius + 300) { 
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 120) {
+            } else if (obj.added && d > obj.radius + 300) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
@@ -1142,7 +1200,12 @@
 
             updateControls();
             updateColliders();
-            if (isDeliveryModeActive) updateDeliveryMode(); 
+            if (isDeliveryModeActive) {
+                updateDeliveryMode(); 
+                updateTargetArrow(); // ** NEW: 目标箭头更新 **
+            } else if (targetArrowMesh) {
+                targetArrowMesh.visible = false;
+            }
         }
 
         // 模型位置同步
