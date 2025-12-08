@@ -312,7 +312,7 @@
 
     // 车辆物理和视觉参数（已乘以 SCALE_FACTOR）
     // 【关键修改 3】降低基础推力（9000 -> 6000），减少启动时的后仰力矩
-    const maxEngineForce = 6000 * SCALE_FACTOR; 
+    const maxEngineForce = 9000 * SCALE_FACTOR; 
     const brakeForce = 40 * SCALE_FACTOR; 
     const maxSteerVal = 0.7; // 保持不变 (角度)
     const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
@@ -671,7 +671,7 @@
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1 * SCALE_FACTOR, 0.5 * SCALE_FACTOR, 2 * SCALE_FACTOR));
         // 质量相应放大 2500 * 3.0 = 7500
         chassisBody = new CANNON.Body({
-            mass: 2500 * SCALE_FACTOR, 
+            mass: 1500 * SCALE_FACTOR, 
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
