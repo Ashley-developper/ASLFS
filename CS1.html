@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
-         * UI 基础与字体
+         * UI BASE & TYPOGRAPHY
          * ========================================================================= */
         body { 
             margin: 0; 
@@ -19,8 +19,7 @@
         }
         
         /* =========================================================================
-         * HUD (游戏内界面)
-         * (现有样式省略...)
+         * HUD (IN-GAME INTERFACE)
          * ========================================================================= */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -40,6 +39,7 @@
             min-width: 120px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
             border-radius: 4px;
+            /* Improved clipping for a sci-fi look */
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
         }
         
@@ -106,8 +106,7 @@
         .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
 
         /* =========================================================================
-         * Splash / Main Menu UI
-         * (现有样式省略...)
+         * SPLASH / MAIN MENU UI
          * ========================================================================= */
         #splash {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -115,10 +114,11 @@
             z-index: 999;
             display: none; /* Initial hidden */
             cursor: grab;
+            transition: opacity 0.5s; /* UX: Smooth transition when fading out */
         }
         #splash:active { cursor: grabbing; }
 
-        /* 标题区 */
+        /* Title Area */
         .splash-header {
             position: absolute; top: 60px; left: 0; width: 100%;
             text-align: center; pointer-events: none;
@@ -128,14 +128,15 @@
             letter-spacing: 12px; text-transform: uppercase;
             background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            /* UX: More vibrant shadow */
+            text-shadow: 0 0 35px rgba(0, 255, 255, 0.7), 0 0 5px rgba(255, 255, 255, 0.5);
         }
         .splash-subtitle {
             font-family: 'Rajdhani', sans-serif; font-size: 20px; color: rgba(0, 255, 255, 0.8);
             letter-spacing: 6px; margin-top: 10px; font-weight: 600;
         }
 
-        /* 右上角金币显示 */
+        /* Top Right Coin Display */
         .splash-top-right {
             position: absolute; top: 40px; right: 40px;
             text-align: right; pointer-events: none;
@@ -143,7 +144,7 @@
         .splash-top-right .label { font-size: 12px; color: #FFD700; text-shadow: 0 0 10px #FFD700; margin-bottom: 5px;}
         .splash-top-right .value { font-size: 42px; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
 
-        /* 左侧菜单按钮 (SHOP, SETTINGS, INFO) */
+        /* Left Menu Buttons (SHOP, SETTINGS, INFO) */
         .splash-left-menu {
             position: absolute; top: 50%; left: 40px;
             transform: translateY(-50%);
@@ -163,27 +164,28 @@
             box-shadow: 0 0 15px rgba(0,255,255,0.3);
         }
 
-        /* 底部按钮区 */
+        /* Bottom Button Area */
         .splash-footer {
             position: absolute; bottom: 60px; right: 60px;
             display: flex; gap: 20px; align-items: flex-end;
-            pointer-events: none; /* 容器穿透 */
+            pointer-events: none; /* Container penetration */
         }
         
-        /* 通用底部按钮样式 */
+        /* Universal Footer Button Style */
         .splash-footer button { pointer-events: auto; font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.3s; }
 
         #start-button {
             padding: 20px 80px; font-size: 24px; font-weight: 900;
             color: #000000; background: #00FFFF; border: none;
             letter-spacing: 4px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
-            clip-path: polygon(15% 0, 100% 0, 100% 70%, 85% 100%, 0 100%, 0 30%);
+            /* UX: More aggressive clip-path for a sharper look */
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
         }
         #start-button:hover {
             background: #FF00FF; box-shadow: 0 0 50px rgba(255, 0, 255, 0.8); color: #fff; transform: scale(1.05);
         }
 
-        /* Delivery Button now triggers Delivery Mode */
+        /* Delivery Button */
         #delivery-mode-btn { 
             padding: 15px 40px; font-size: 16px; font-weight: 700;
             color: #00FFFF; background: rgba(0, 20, 40, 0.8);
@@ -202,25 +204,28 @@
             transition: opacity 0.5s;
         }
         #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; border-radius: 2px; overflow: hidden; }
-        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; }
+        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; transition: width 0.3s; } /* UX: Smooth progress bar fill */
 
         /* =========================================================================
          * New Menu Pages (Shop, Settings, Info)
          * ========================================================================= */
         .menu-page {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95); /* UX: Slightly darker overlay */
             z-index: 9999;
             display: none; /* Initial hidden */
             align-items: center; justify-content: center;
             flex-direction: column;
             padding: 40px;
             box-sizing: border-box;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px); /* UX: Increased blur */
+            opacity: 0; /* UX: Fade-in animation setup */
+            transition: opacity 0.4s;
         }
+        .menu-page.active { opacity: 1; display: flex; } /* UX: Use active class for visibility */
         .menu-page h2 {
             font-family: 'Orbitron', sans-serif; font-size: 48px; color: #FF00FF;
-            text-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+            text-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
             margin-bottom: 40px;
             text-transform: uppercase;
         }
@@ -240,12 +245,13 @@
         #menu-close-btn {
             position: absolute; top: 40px; right: 40px;
             background: #FF00FF; color: #000; border: none;
-            padding: 10px 20px; font-family: 'Orbitron', sans-serif;
+            padding: 12px 25px; /* UX: Larger close button */
+            font-family: 'Orbitron', sans-serif;
             font-weight: 700; cursor: pointer; transition: 0.2s;
             clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
         }
         #menu-close-btn:hover {
-            background: #00FFFF; box-shadow: 0 0 15px #00FFFF;
+            background: #00FFFF; box-shadow: 0 0 15px #00FFFF; transform: scale(1.05);
         }
 
     </style>
@@ -256,8 +262,7 @@
         <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
         <p style="font-family:'Orbitron'; letter-spacing:2px;">LOADING ASSETS...</p>
         <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%)</p>
-    </div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p> </div>
 
     <div id="shop-page" class="menu-page">
         <button id="menu-close-btn" onclick="hideMenuPages()">BACK TO MENU</button>
@@ -282,7 +287,7 @@
             <div class="detail-line"><strong>ENGINE:</strong> HTML5 (THREE.js + CANNON.js)</div>
         </div>
         <p style="margin-top: 40px; font-size: 18px; color: #00FF00;">
-            WHY CHOOSE US: <br>I USED THE MOST REALISTIC PHYSIC ENGINE: CANNON.JS AND THE OPEN WORLD IS ENOUGH BIG TO EXPLORE.
+            WHY CHOOSE US: <br>I USED THE MOST REALISTIC PHYSIC ENGINE: CANNON.JS AND THE OPEN WORLD IS BIG ENOUGH TO EXPLORE.
         </p>
     </div>
 
@@ -363,8 +368,7 @@
 
     <script>
     // =============================================================================
-    // ** 核心变量 **
-    // (代码省略... 保持原样)
+    // ** CORE VARIABLES **
     // =============================================================================
     let scene, renderer;
     let cameraChase, cameraCockpit, activeCamera;
@@ -386,14 +390,14 @@
     const maxSteerVal = 0.7;
     const VISUAL_Y_OFFSET = -0.9; 
 
-    // ** 车辆初始位置 **
+    // ** Initial Vehicle Position **
     const initialCarPosition = new CANNON.Vec3(90, 0.7, 0);
 
     let staticBodies = [];
     let carMesh = null;
     let tireMeshPrototype = null;
     let flameMesh = null;
-    let targetArrowMesh = null; // ** 目标指示箭头模型 **
+    let targetArrowMesh = null; // ** Target Indicator Arrow Mesh **
     let gltfLoader = null;
     let dracoLoader = null;
 
@@ -408,6 +412,8 @@
     const throttleEl = document.getElementById('hud-throttle');
     const coinCountEl = document.getElementById('coin-count');
     const splashCoinCountEl = document.getElementById('splash-coin-count');
+    const loadingStatusEl = document.getElementById('loading-status'); // UX: Added reference
+    const loadingProgressFillEl = document.getElementById('loading-progress-fill'); // UX: Added reference
 
     // ** Delivery Mode Elements **
     const deliveryHudEl = document.getElementById('delivery-hud');
@@ -425,7 +431,7 @@
     let coinCount = 0;
     const COIN_MIN = 50;
     const COIN_MAX = 80;
-    const COIN_SPAWN_RADIUS = 1500; // 增大到 1500 以拉远任务和金币分布距离
+    const COIN_SPAWN_RADIUS = 1500; 
     const COIN_HEIGHT = 0.7;
 
     // ** Predefined Delivery Points **
@@ -456,8 +462,7 @@
     };
     
     // =============================================================================
-    // ** 交互：Splash 界面拖拽旋转 **
-    // (代码省略... 保持原样)
+    // ** INTERACTION: Splash Screen Drag Rotation **
     // =============================================================================
     document.addEventListener('mousedown', (e) => {
         if (!isGameRunning) {
@@ -483,28 +488,46 @@
     });
 
     // =============================================================================
-    // ** 新增：菜单页面显示/隐藏逻辑 **
+    // ** NEW: Menu Page Show/Hide Logic (UX Enhanced) **
     // =============================================================================
     function showMenuPage(pageId) {
-        document.getElementById('splash').style.display = 'none';
-        document.getElementById(pageId).style.display = 'flex';
+        // Find the page element and apply the active class for fade-in
+        const page = document.getElementById(pageId);
+        if (page) {
+            document.getElementById('splash').style.opacity = '0'; // Start fading splash
+            setTimeout(() => {
+                document.getElementById('splash').style.display = 'none'; // Hide splash when faded
+                page.style.display = 'flex'; // Show page container
+                setTimeout(() => {
+                    page.classList.add('active'); // Start fade-in animation
+                }, 10); // Small delay to trigger CSS transition
+            }, 400); // Match splash opacity transition time
+        }
     }
 
     function hideMenuPages() {
         const pages = document.querySelectorAll('.menu-page');
-        pages.forEach(page => page.style.display = 'none');
-        document.getElementById('splash').style.display = 'block';
+        pages.forEach(page => page.classList.remove('active')); // Start fade-out
+
+        document.getElementById('splash').style.display = 'block'; // Show splash container
+        setTimeout(() => {
+            document.getElementById('splash').style.opacity = '1'; // Fade splash in
+            // Wait for fade-out, then hide the page
+            setTimeout(() => {
+                 pages.forEach(page => page.style.display = 'none');
+            }, 400);
+        }, 10);
     }
 
 
     // =============================================================================
-    // ** DELIVERY MODE 核心逻辑 **
-    // (代码省略... 保持原样)
+    // ** DELIVERY MODE CORE LOGIC **
     // =============================================================================
 
     window.startDeliveryMode = function() {
         if (!chassisBody) {
-            alert("请等待资源加载或先进入游戏。");
+            // UX: Translated alert message
+            alert("Please wait for assets to load or enter the game first."); 
             return;
         }
 
@@ -521,18 +544,19 @@
 
     function generateNewMission() {
         if (DELIVERY_POINTS.length < 2) {
-            missionStatusEl.textContent = 'MISSION ERROR: 任务点不足 (需要至少 2 个)。';
+            // UX: Translated status text
+            missionStatusEl.textContent = 'MISSION ERROR: Not enough mission points (Need at least 2).';
             return;
         }
 
-        // 清理旧任务（如果有）
+        // Cleanup previous mission (if any)
         if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
         if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
         if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
         if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
         chassisBody.removeEventListener('collide', handleMissionCollision); 
 
-        // 1. 从预定义列表中随机选择起点和终点
+        // 1. Randomly select pickup and delivery points
         let idx1 = Math.floor(Math.random() * DELIVERY_POINTS.length);
         let idx2;
         do {
@@ -545,18 +569,18 @@
         const pickupPos = new CANNON.Vec3(pickupData.x, pickupData.y, pickupData.z);
         const deliveryPos = new CANNON.Vec3(deliveryData.x, deliveryData.y, deliveryData.z);
 
-        // 2. 创建 Pickup Point 物理体
+        // 2. Create Pickup Point physics body
         const targetShape = new CANNON.Sphere(TARGET_RADIUS);
         const pickupBody = new CANNON.Body({ mass: 0, position: pickupPos, shape: targetShape });
         pickupBody.collisionResponse = 0; 
         world.addBody(pickupBody);
 
-        // 3. 创建 Delivery Target 物理体
+        // 3. Create Delivery Target physics body
         const deliveryBody = new CANNON.Body({ mass: 0, position: deliveryPos, shape: targetShape });
         deliveryBody.collisionResponse = 0;
         world.addBody(deliveryBody);
 
-        // 4. 创建视觉网格 
+        // 4. Create visual meshes 
         const pickupMesh = createTargetMesh(0x00FFFF);
         pickupMesh.position.copy(pickupPos);
         scene.add(pickupMesh);
@@ -566,7 +590,7 @@
         deliveryMesh.visible = false; 
         scene.add(deliveryMesh); 
 
-        // 5. 更新任务状态
+        // 5. Update mission state
         currentMission = {
             status: 'pickup',
             pickupPoint: pickupBody,
@@ -579,19 +603,19 @@
             deliveryName: deliveryData.name,
         };
 
-        missionStatusEl.textContent = `MISSION: 前往 ${pickupData.name} 取货`;
+        // UX: Translated mission status template
+        missionStatusEl.textContent = `MISSION: Go to ${pickupData.name} for Pickup`;
         missionStatusEl.style.color = '#00FFFF';
 
-        // 6. 添加碰撞监听器
+        // 6. Add collision listener
         chassisBody.addEventListener('collide', handleMissionCollision);
     }
 
     function createTargetMesh(color) {
-        // 使用一个简单的圆柱体作为任务点的标识，避免和箭头混淆
         const geometry = new THREE.CylinderGeometry(TARGET_RADIUS / 2, TARGET_RADIUS / 2, TARGET_RADIUS, 16);
         const material = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.7 });
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.y += TARGET_RADIUS / 2; // 抬升到地面以上
+        mesh.position.y += TARGET_RADIUS / 2; 
         return mesh;
     }
 
@@ -601,16 +625,17 @@
         const otherBody = (e.body === chassisBody) ? e.target : e.body;
 
         if (currentMission.status === 'pickup' && otherBody === currentMission.pickupPoint) {
-            // ** 任务阶段 1: 接单完成 **
+            // Mission Stage 1: Pickup Complete
             currentMission.status = 'delivering';
-            missionStatusEl.textContent = `MISSION: 将货物送至 ${currentMission.deliveryName}`;
+            // UX: Translated mission status template
+            missionStatusEl.textContent = `MISSION: Deliver cargo to ${currentMission.deliveryName}`;
             missionStatusEl.style.color = '#00FF00';
             
             currentMission.pickupMesh.visible = false;
             currentMission.deliveryMesh.visible = true;
 
         } else if (currentMission.status === 'delivering' && otherBody === currentMission.deliveryTarget) {
-            // ** 任务阶段 2: 送货完成 **
+            // Mission Stage 2: Delivery Complete
             completeMission(true);
         }
     }
@@ -629,21 +654,24 @@
             splashCoinCountEl.textContent = coinCount;
             coinCountEl.textContent = coinCount;
 
-            missionStatusEl.textContent = `任务成功！ (+${reward} GOLD)`;
+            // UX: Translated success message
+            missionStatusEl.textContent = `MISSION SUCCESS! (+${reward} GOLD)`;
             missionStatusEl.style.color = '#FFD700';
             
             if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
             if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
             
-            setTimeout(generateNewMission, 5000); 
+            // UX: Shorter delay after success to start next mission
+            setTimeout(generateNewMission, 3000); 
 
         } else {
-            missionStatusEl.textContent = '任务失败！时间耗尽。';
+            // UX: Translated failure message
+            missionStatusEl.textContent = 'MISSION FAILED! Time Expired.';
             missionStatusEl.style.color = '#FF0000';
-            setTimeout(generateNewMission, 5000); 
+            setTimeout(generateNewMission, 3000); // UX: Shorter delay after failure
         }
         
-        // 清理目标物理体
+        // Cleanup target physics bodies
         if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
         if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
         currentMission.status = 'completed';
@@ -665,7 +693,7 @@
         const seconds = Math.floor(timeLeft % 60).toString().padStart(2, '0');
         timerEl.textContent = `${minutes}:${seconds}`;
 
-        // 计算距离
+        // Calculate distance
         let targetBody = null;
         if (currentMission.status === 'pickup') {
             targetBody = currentMission.pickupPoint;
@@ -682,8 +710,7 @@
     }
     
     // =============================================================================
-    // ** THREE.js/Cannon.js 基础设置 **
-    // (代码省略... 保持原样)
+    // ** THREE.js/Cannon.js BASIC SETUP **
     // =============================================================================
     function initThree() {
         scene = new THREE.Scene();
@@ -691,7 +718,7 @@
         scene.fog = new THREE.Fog(daySkyColor, 500, 800);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        // ** 维持最高画质，使用原生像素比例 **
+        // Maintain highest visual quality, use native pixel ratio
         renderer.setPixelRatio(window.devicePixelRatio); 
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
@@ -720,7 +747,7 @@
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
 
-        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10); // 扩大地面
+        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10); // Enlarge ground
         const groundMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
@@ -730,7 +757,7 @@
     }
 
     function initCameraAndLights() {
-        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000); // 增加视野距离
+        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000); // Increase field of view distance
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
 
@@ -743,7 +770,7 @@
         dirLight.shadow.mapSize.width = 4096;
         dirLight.shadow.mapSize.height = 4096;
         dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 1000; // 增加阴影距离
+        dirLight.shadow.camera.far = 1000; // Increase shadow distance
         dirLight.shadow.camera.left = -200;
         dirLight.shadow.camera.right = 200;
         dirLight.shadow.camera.top = 200;
@@ -824,29 +851,29 @@
     }
     
     // =============================================================================
-    // ** 资源加载 **
-    // (代码省略... 保持原样)
+    // ** ASSET LOADING **
     // =============================================================================
     function initLoaders() {
         dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
 
         const loadingManager = new THREE.LoadingManager();
-        const progressFill = document.getElementById('loading-progress-fill');
-        const loadingStatus = document.getElementById('loading-status');
         
         loadingManager.onProgress = function(itemUrl, itemsLoaded, itemsTotal) {
             const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
-            progressFill.style.width = percent + '%';
-            loadingStatus.innerText = `(${percent}%) Loading Assets...`;
+            loadingProgressFillEl.style.width = percent + '%';
+            // UX: More detailed loading status
+            loadingStatusEl.innerText = `(${percent}%) Loading asset: ${itemUrl.substring(itemUrl.lastIndexOf('/') + 1)}...`;
         };
         
         loadingManager.onLoad = function() {
             const loadingScreen = document.getElementById('loading-screen');
             loadingScreen.style.opacity = '0';
+            loadingStatusEl.innerText = `(100%) READY.`; // UX: Final ready status
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
                 document.getElementById('splash').style.display = 'block'; 
+                document.getElementById('splash').style.opacity = '1'; // UX: Fade in splash
             }, 500);
 
             initVehicle();
@@ -873,39 +900,35 @@
             flameMesh.position.set(0, 0, 2.5);
             flameMesh.visible = false;
             carMesh.add(flameMesh);
-
-            // 原始的 ConeGeometry 箭头模型代码已移除，现在由 loadArrowModel 负责加载 arrow.glb
         });
     }
     
-    // ** 修改点 1：调整箭头尺寸 (1.5 -> 1.0) **
+    // MODIFICATION 1: Adjust arrow size
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
 
-            // 调整缩放以使其在场景中可见 (尺寸减小到 1.0)
+            // Reduce scale to 1.0
             targetArrowMesh.scale.set(1.0, 1.0, 1.0); 
             
-            // 遍历模型并设置材质和阴影
+            // Set material and shadows
             targetArrowMesh.traverse((node) => { 
                 if (node.isMesh) {
                     node.castShadow = true; 
-                    // 使用 MeshBasicMaterial 以确保箭头颜色不受光照影响而保持高亮
-                    // 初始颜色设为红色（备用/默认）
                     node.material = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8, depthTest: false });
                 } 
             });
 
-            targetArrowMesh.visible = false; // 初始隐藏
+            targetArrowMesh.visible = false; // Initial hidden
             scene.add(targetArrowMesh);
             
-            // 缓存任务颜色，用于 updateTargetArrow 中快速切换
-            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  // 青色
-            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // 绿色
+            // Cache mission colors
+            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  // Cyan
+            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // Green
 
         }, undefined, (error) => {
             console.error('Failed to load arrow.glb:', error);
-            // 兜底：如果 arrow.glb 加载失败，使用回 ConeGeometry
+            // Fallback: Use ConeGeometry if arrow.glb fails to load
             if (!targetArrowMesh) {
                 const arrowGeometry = new THREE.ConeGeometry(0.4, 2.0, 8); 
                 const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
@@ -927,11 +950,11 @@
         });
     }
 
-    // ** 修改点 3：缩小城市模型和碰撞激活范围 **
+    // MODIFICATION 3: Reduce city model scale and collision activation range
     function loadCity() {
         gltfLoader.load('city.glb', (gltf) => {
             const city = gltf.scene;
-            // 城市模型缩小，以配合 COIN_SPAWN_RADIUS = 1500
+            // Scale down city model to match the COIN_SPAWN_RADIUS = 1500
             city.scale.set(4, 4, 4); 
             city.traverse((node) => {
                 if (node.isMesh) {
@@ -969,7 +992,7 @@
                         body: body,
                         center: new THREE.Vector3().copy(geometry.boundingSphere.center),
                         radius: geometry.boundingSphere.radius,
-                        // 碰撞激活范围从 300 减小到 200
+                        // Reduce activation range from 300 to 200
                         added: false
                     });
                 }
@@ -978,8 +1001,8 @@
     }
 
     // =============================================================================
-    // ** 目标箭头更新 - 修复指向逻辑 (已更新以兼容 GLB 模型) **
-    // ** 更改：箭头往左旋转 90 度 (rotateY(Math.PI / 2)) **
+    // ** Target Arrow Update - Fixed Pointing Logic **
+    // Change: Arrow rotated 90 degrees left
     // =============================================================================
     const _tempDirectionVector = new THREE.Vector3();
     const _tempCarPosition = new THREE.Vector3();
@@ -993,7 +1016,7 @@
         let targetPos = null;
         let targetColor = null;
 
-        // 1. 确定目标位置和颜色
+        // 1. Determine target position and color
         if (currentMission.status === 'pickup') {
             targetPos = currentMission.pickupPoint.position; 
             targetColor = targetArrowMesh.userData.pickupColor;
@@ -1007,42 +1030,41 @@
         
         targetArrowMesh.visible = true;
 
-        // 颜色更新
+        // Color update
         targetArrowMesh.traverse((node) => {
             if (node.isMesh && node.material.color) {
                 node.material.color.copy(targetColor);
             }
         });
 
-        // 2. 更新箭头在世界空间中的位置
+        // 2. Update arrow position in world space
         _tempCarPosition.copy(chassisBody.position);
         targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z); 
         
-        // 3. 旋转逻辑： lookAt + 180度翻转 + 额外旋转
+        // 3. Rotation Logic: lookAt + 180 flip + extra rotation
         const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
         
-        // 重置旋转 (关键步骤，防止 GLB 模型出现多余的旋转)
+        // Reset rotation (crucial step to prevent extra rotations from GLB model)
         targetArrowMesh.rotation.set(0, 0, 0); 
         
-        // lookAt() 会让物体的 -Z 轴指向目标。
+        // lookAt() makes the object's -Z axis point to the target.
         targetArrowMesh.lookAt(lookAtTarget); 
 
-        // 1. 绕 Y 轴旋转 180 度 (将 +Z 轴指向目标)
+        // 1. Rotate 180 degrees around Y-axis (makes +Z axis point to the target)
         targetArrowMesh.rotateY(Math.PI); 
         
-        // 2. 新增：绕 Y 轴额外旋转 +90 度 (左转 90 度，原为 -90 度)
+        // 2. New: Rotate an extra +90 degrees around Y-axis (Rotate 90 degrees left)
         targetArrowMesh.rotateY(Math.PI / 2); 
         
-        // 3. 绕 X 轴旋转 45 度 (向前下方倾斜)
+        // 3. Rotate 45 degrees around X-axis (Tilt forward/downward)
         targetArrowMesh.rotateX(Math.PI / 4); 
         
-        // 4. 稍微抬高箭头，增加视觉效果
+        // 4. Slightly raise the arrow for better visibility
         targetArrowMesh.position.y += 0.5;
     }
 
     // =============================================================================
-    // ** 控制与更新 **
-    // (代码省略... 保持原样)
+    // ** CONTROLS AND UPDATE **
     // =============================================================================
     window.addEventListener('keydown', (event) => {
         if (!isGameRunning) return;
@@ -1181,7 +1203,7 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            // 减小激活范围以配合更小的城市模型
+            // Reduce activation range to match smaller city model
             if (!obj.added && d <= obj.radius + 200) { 
                 world.addBody(obj.body);
                 obj.added = true;
@@ -1263,8 +1285,7 @@
     }
 
     // =============================================================================
-    // ** 主循环 **
-    // (代码省略... 保持原样)
+    // ** MAIN LOOP **
     // =============================================================================
     function animate(time) {
         requestAnimationFrame(animate);
@@ -1292,7 +1313,7 @@
             }
         }
 
-        // 模型位置同步
+        // Model position synchronization
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -1322,8 +1343,7 @@
     }
 
     // =============================================================================
-    // ** 启动逻辑 **
-    // (代码省略... 保持原样)
+    // ** STARTUP LOGIC **
     // =============================================================================
     
     function initSystem() {
@@ -1340,11 +1360,12 @@
         loadTireModel();
         loadCity();
         loadCoinPrototype();
-        loadArrowModel(); // <-- 新增：加载 arrow.glb
+        loadArrowModel(); 
     }
 
     window.enterGame = function() { 
         document.getElementById('splash').style.opacity = '0';
+        // UX: Increased delay for smoother transition
         setTimeout(() => {
             document.getElementById('splash').style.display = 'none';
             document.getElementById('hud-layer').style.display = 'flex';
