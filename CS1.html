@@ -119,7 +119,7 @@
         .splash-top-right .label { font-size: 12px; color: #FFD700; text-shadow: 0 0 10px #FFD700; margin-bottom: 5px;}
         .splash-top-right .value { font-size: 42px; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
 
-        /* 左侧菜单按钮 (SHOP, INFO) */
+        /* 左侧菜单按钮 (SHOP, SETTINGS, INFO) */
         .splash-left-menu {
             position: absolute; top: 50%; left: 40px;
             transform: translateY(-50%);
@@ -203,7 +203,8 @@
 
         <div class="splash-left-menu">
             <button class="menu-btn">SHOP</button>
-            <button class="menu-btn">INFORMATION</button>
+            <button class="menu-btn">SETTINGS</button>
+            <button class="menu-btn">INFO</button>
         </div>
 
         <div class="splash-footer">
@@ -283,9 +284,8 @@
     const maxSteerVal = 0.7;
     const VISUAL_Y_OFFSET = -0.9; 
 
-    // ** 修复穿模核心：将初始高度提高到 2.0 (原为 0.6) **
-    // 这样在Splash界面车子会悬空，点击Play后会掉下来
-    const initialCarPosition = new CANNON.Vec3(90, 2.0, 0);
+    // ** 车辆初始位置修复：根据用户要求设置为 0.0 **
+    const initialCarPosition = new CANNON.Vec3(90, 0.0, 0);
 
     let staticBodies = [];
     let carMesh = null;
