@@ -984,10 +984,10 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
-            if (!obj.added && d <= obj.radius + 120) {
+            if (!obj.added && d <= obj.radius + 9) {
                 world.addBody(obj.body);
                 obj.added = true;
-            } else if (obj.added && d > obj.radius + 120) {
+            } else if (obj.added && d > obj.radius + 9) {
                 world.removeBody(obj.body);
                 obj.added = false;
             }
