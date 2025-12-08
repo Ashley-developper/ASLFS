@@ -311,11 +311,11 @@
     const SCALE_FACTOR = 3.0; 
 
     // 车辆物理和视觉参数（已乘以 SCALE_FACTOR）
-    const maxEngineForce = 9000 * SCALE_FACTOR; 
+    // 【关键修改 3】降低基础推力（9000 -> 6000），减少启动时的后仰力矩
+    const maxEngineForce = 6000 * SCALE_FACTOR; 
     const brakeForce = 40 * SCALE_FACTOR; 
     const maxSteerVal = 0.7; // 保持不变 (角度)
     const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
-    // ** 关键修改: 氮气推力倍数，降低到 1.5 防止过度后仰 **
     const NITRO_BOOST_MULTIPLIER = 1.5; 
 
     // ** 车辆初始位置 ** (Y: 0.7 * 3.0 = 2.1)
@@ -675,7 +675,7 @@
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
-        chassisBody.angularDamping = 0.9; 
+        chassisBody.angularDamping = 0.95; // <-- 【关键修改 4】提高角阻尼，更快恢复平衡
         chassisBody.linearDamping = 0.05;
         world.addBody(chassisBody);
 
@@ -690,13 +690,13 @@
             return {
                 radius: 0.5 * SCALE_FACTOR, 
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 130, // <-- 增加刚度
+                suspensionStiffness: 200, 
                 suspensionRestLength: 0.3 * SCALE_FACTOR, 
-                frictionSlip: 10.0, // <-- 增加摩擦力，防侧滑
+                frictionSlip: 15.0, // <-- 【关键修改 1】提升摩擦力到 15.0
                 dampingRelaxation: 8.0, 
-                dampingCompression: 20.0, // <-- 增加阻尼，防侧翻
+                dampingCompression: 20.0, 
                 maxSuspensionForce: 100000, 
-                rollInfluence: 0.005, // <-- 显著降低侧倾影响，防侧翻
+                rollInfluence: 0.05, // <-- 【关键修改 2】适度增加侧倾影响 (从 0.005 到 0.05)
                 maxSuspensionTravel: 0.3,
                 customSlidingRotationalSpeed: -30, 
                 useCustomSlidingRotationalSpeed: true,
@@ -1010,7 +1010,7 @@
         }
 
         if (inputState.keyShift && engineForce !== 0) {
-            // **【关键修改】使用 NITRO_BOOST_MULTIPLIER (1.5) 防止后仰**
+            // ** 使用 NITRO_BOOST_MULTIPLIER (1.5) **
             engineForce *= NITRO_BOOST_MULTIPLIER;
             if (flameMesh) flameMesh.visible = true;
         } else {
