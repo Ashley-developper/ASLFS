@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ASL Car Simulator - Hyper Drive Edition (with Gold Coins)</title>
+    <title>ASL Car Simulator - Hyper Drive Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
@@ -43,21 +43,16 @@
         .instrument {
             background: rgba(0, 15, 30, 0.7);
             border: 1px solid rgba(0, 255, 255, 0.2);
-            border-left: 5px solid #00FFFF; /* 默认霓虹蓝 */
+            border-left: 5px solid #00FFFF;
             backdrop-filter: blur(10px);
             padding: 12px 22px;
             min-width: 120px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
             border-radius: 4px;
             transition: all 0.2s ease;
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%); /* 切角设计 */
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
         }
         
-        .instrument:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
-        }
-
         /* 标签 */
         .label {
             font-family: 'Orbitron', sans-serif;
@@ -95,7 +90,7 @@
         .gear-color { border-left-color: #FFD700 !important; }
         .throttle-color { border-left-color: #00FF00 !important; }
 
-        /* HUD coin 仪表 - 与原风格一致 */
+        /* HUD coin 仪表 */
         #hud-coin {
             background: rgba(35, 18, 0, 0.7);
             border: 1px solid rgba(255, 215, 0, 0.15);
@@ -107,9 +102,7 @@
         #hud-coin .label { color: #FFD700; text-shadow: 0 0 5px rgba(255, 215, 0, 0.6); }
         #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
 
-        /* =========================================================================
-         * 底部控制提示与版权
-         * ========================================================================= */
+        /* 底部控制提示与版权 */
         #control-hints {
             position: absolute;
             bottom: 30px;
@@ -127,12 +120,7 @@
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
         }
         
-        /* 新增的重生提示的特殊样式 */
-        .respawn-hint {
-            color: #FFD700;
-            font-weight: bold;
-        }
-
+        .respawn-hint { color: #FFD700; font-weight: bold; }
         .hint-title {
             color: #00FF00;
             font-family: 'Orbitron', sans-serif;
@@ -145,7 +133,6 @@
             letter-spacing: 2px;
         }
         
-        /* 版权标识 */
         .copyright-tag {
             position: fixed;
             bottom: 15px;
@@ -158,85 +145,137 @@
         }
 
         /* =========================================================================
-         * 启动画面样式
+         * 新版 Splash UI (全屏覆盖，背景透明)
          * ========================================================================= */
         #splash {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #000000 0%, #0a0a1a 100%);
-            z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            /* 背景透明，透出 Canvas */
+            background: rgba(0, 0, 0, 0.2); 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.8) 100%);
+            z-index: 999; /* 低于 Loading (1000) 但高于 Canvas */
+            display: none; /* 初始隐藏，等Loading完显示 */
+            flex-direction: column; 
+            justify-content: space-between; /* 上下分布 */
+            align-items: center;
             color: white;
-            opacity: 1;
             transition: opacity 0.5s;
+            cursor: grab; /* 提示可拖拽 */
         }
         
-        #splash-three-container {
-            width: 300px; height: 150px; margin-bottom: 20px; position: relative;
+        #splash:active {
+            cursor: grabbing;
+        }
+
+        .splash-header {
+            margin-top: 60px;
+            text-align: center;
+            pointer-events: none; /* 让鼠标事件穿透标题区域 */
         }
 
         h1 {
             font-family: 'Orbitron', sans-serif;
-            font-size: 48px;
+            font-size: 64px;
             margin: 0;
             font-weight: 900;
-            letter-spacing: 10px;
+            letter-spacing: 12px;
             text-transform: uppercase;
-            background: linear-gradient(to right, #00FFFF, #FF00FF);
+            background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+
+        .splash-subtitle {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 20px;
+            color: rgba(0, 255, 255, 0.8);
+            letter-spacing: 6px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .splash-footer {
+            width: 100%;
+            padding: 0 60px 60px 0;
+            display: flex;
+            justify-content: flex-end; /* 右下角 */
+            align-items: flex-end;
+            pointer-events: none; /* 容器穿透 */
+        }
+        
+        .coin-display {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, 150px);
+            font-family: 'Orbitron', sans-serif;
+            color: #FFD700; 
+            font-weight: 700;
+            font-size: 18px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            pointer-events: none;
         }
 
         #start-button {
-            margin-top: 40px;
-            padding: 15px 60px;
+            pointer-events: auto; /* 按钮可点击 */
+            padding: 20px 80px;
             font-family: 'Orbitron', sans-serif;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 24px;
+            font-weight: 900;
             color: #000000;
             background: #00FFFF;
             border: none;
             cursor: pointer;
             transition: 0.3s;
-            letter-spacing: 3px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
-            clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
+            letter-spacing: 4px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            clip-path: polygon(15% 0, 100% 0, 100% 70%, 85% 100%, 0 100%, 0 30%);
         }
 
         #start-button:hover {
             background: #FF00FF;
-            box-shadow: 0 0 40px rgba(255, 0, 255, 1);
+            box-shadow: 0 0 50px rgba(255, 0, 255, 0.8);
             color: #fff;
-        }
-        
-        .splash-subtitle {
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 18px;
-            color: rgba(0, 255, 255, 0.7);
-            letter-spacing: 4px;
+            transform: scale(1.05);
         }
 
-        /* 加载界面 */
+        /* 加载界面 - 最高层级 */
         #loading-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #00FFFF; z-index: 1000;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; transition: opacity 0.5s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 1; transition: opacity 0.5s;
         }
-        #loading-screen p { font-family: 'Orbitron', sans-serif; }
-        #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 10px; border-radius: 2px; overflow: hidden; }
+        #loading-screen p { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; }
+        #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; border-radius: 2px; overflow: hidden; }
         #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; }
 
     </style>
 </head>
 <body>
+
+    <div id="loading-screen">
+        <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
+        <p>LOADING OPEN WORLD ASSETS...</p>
+        <div id="loading-progress-bar">
+            <div id="loading-progress-fill"></div>
+        </div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
+    </div>
+
     <div id="splash">
-        <div id="splash-three-container"></div>
-        <h1>HYPER DRIVE</h1>
-        <p class="splash-subtitle">MADE BY ZHANYI ZHOU</p>
-        <div style="margin-top:16px; color:#FFD700; font-weight:700;">Gold Coin collected: <span id="splash-coin-count">0</span></div>
-        <button id="start-button" onclick="startGame()">PLAY NOW</button>
+        <div class="splash-header">
+            <h1>OPEN WORLD<br>HYPER DRIVE</h1>
+            <p class="splash-subtitle">IMMERSIVE SIMULATION // ZHANYI ZHOU</p>
+        </div>
+
+        <div class="coin-display">
+            TOTAL GOLD: <span id="splash-coin-count">0</span>
+        </div>
+
+        <div class="splash-footer">
+            <button id="start-button" onclick="enterGame()">PLAY NOW</button>
+        </div>
     </div>
 
     <div class="copyright-tag">ZHANYI ZHOU DESIGN © 2025</div>
@@ -282,18 +321,10 @@
                 <div>[SHIFT] NITRO BOOST (MAX TORQUE)</div>
                 <div>[SPACE] HANDBRAKE DRIFT</div>
                 <div>[V] TOGGLE CAMERA</div>
-                <div class="respawn-hint">[R] RESPAWN CAR (RESETS VELOCITY)</div>
+                <div class="respawn-hint">[R] RESPAWN CAR</div>
                 <div>[WASD] DRIVE</div>
             </div>
         </div>
-    </div>
-
-    <div id="loading-screen">
-        <p>LOADING CITY AND ASSETS...</p>
-        <div id="loading-progress-bar">
-            <div id="loading-progress-fill"></div>
-        </div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -311,23 +342,22 @@
     let wheelMeshes = [];
     let lastTime = undefined;
 
-    // ** 环境光/日夜切换变量 (已移除，但保留颜色常量以设置静态环境) **
-    const daySkyColor = new THREE.Color(0x87CEEB); // 静态天空色
+    // 游戏状态控制
+    let isGameRunning = false; // false = Splash Mode, true = Play Mode
+    let splashCameraAngle = 0; // 用于Splash界面的旋转
+    let isDragging = false;
+    let previousMouseX = 0;
+
+    const daySkyColor = new THREE.Color(0x87CEEB);
     const dayHemiSky = new THREE.Color(0xffffff);
     const dayHemiGround = new THREE.Color(0x3b4c5a);
 
-    // ** 物理调整参数 **
     const maxEngineForce = 9000; 
     const brakeForce = 40;
     const maxSteerVal = 0.7;
-
-    // ** 车辆视觉偏移 - 核心修正点 **
     const VISUAL_Y_OFFSET = -0.9; 
-
-    // ** 车辆初始位置 **
     const initialCarPosition = new CANNON.Vec3(90, 0.6, 0);
 
-    // 状态和加载器
     let staticBodies = [];
     let carMesh = null;
     let tireMeshPrototype = null;
@@ -337,34 +367,54 @@
 
     const inputState = { keyW: false, keyS: false, keyA: false, keyD: false, keySpace: false, keyShift: false, keyR: false };
 
-    // 仪表盘元素
+    // UI Elements
     const speedEl = document.getElementById('hud-spd');
     const altitudeEl = document.getElementById('hud-alt');
     const headingEl = document.getElementById('hud-hdg');
     const rpmEl = document.getElementById('hud-rpm');
     const gearEl = document.getElementById('hud-gear');
     const throttleEl = document.getElementById('hud-throttle');
-    // const timeEl = document.getElementById('hud-time'); // REMOVED
     const coinCountEl = document.getElementById('coin-count');
     const splashCoinCountEl = document.getElementById('splash-coin-count');
-
-    // let headlightLeft = null, headlightRight = null; // REMOVED
-    // let headlightFlares = []; // REMOVED
 
     let engineForce = 0;
     let steeringValue = 0;
 
-    // =============================================================================
-    // ** Gold coin 相关状态 **
-    // =============================================================================
-    let coinProto = null;             // 预加载的金币原型（GLTF.scene）
-    let coinMeshes = [];              // Three.js mesh 实例列表
-    let coinBodies = [];              // Cannon.js body 实例实例
-    let coinCount = 0;                // 当前金币数量（持久化到 localStorage）
+    // Coin Vars
+    let coinProto = null;
+    let coinMeshes = [];
+    let coinBodies = [];
+    let coinCount = 0;
     const COIN_MIN = 50;
     const COIN_MAX = 80;
-    const COIN_SPAWN_RADIUS = 800;    // 随机位置半径（相对城市中心）
-    const COIN_HEIGHT = 0.7;          // Y 高度
+    const COIN_SPAWN_RADIUS = 800;
+    const COIN_HEIGHT = 0.7;
+
+    // =============================================================================
+    // ** 交互：Splash 界面拖拽旋转 **
+    // =============================================================================
+    document.addEventListener('mousedown', (e) => {
+        if (!isGameRunning) {
+            isDragging = true;
+            previousMouseX = e.clientX;
+            document.body.style.cursor = 'grabbing';
+            document.getElementById('splash').style.cursor = 'grabbing';
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        document.body.style.cursor = 'default';
+        document.getElementById('splash').style.cursor = 'grab';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isDragging && !isGameRunning) {
+            const deltaX = e.clientX - previousMouseX;
+            splashCameraAngle -= deltaX * 0.005; // 拖拽旋转速度
+            previousMouseX = e.clientX;
+        }
+    });
 
     // =============================================================================
     // ** 加载器初始化 **
@@ -380,20 +430,23 @@
         loadingManager.onProgress = function(itemUrl, itemsLoaded, itemsTotal) {
             const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
             progressFill.style.width = percent + '%';
-            loadingStatus.innerText = `(${percent}%) Loading ${itemsLoaded}/${itemsTotal}`;
+            loadingStatus.innerText = `(${percent}%) Loading Assets...`;
         };
         
         loadingManager.onLoad = function() {
-            // 加载完成：显示 HUD，初始化车辆物理，产生金币，然后启动动画循环
-            cancelAnimationFrame(splashAnimationId);
-            document.getElementById('loading-screen').style.opacity = '0';
+            // 加载完成：
+            // 1. 隐藏 Loading 界面
+            // 2. 显示 Splash UI (背景已经是渲染出来的游戏场景)
+            // 3. 启动动画循环，但在点击 Play 前不更新物理
+            
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.style.opacity = '0';
             setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('hud-layer').style.display = 'flex';
+                loadingScreen.style.display = 'none';
+                document.getElementById('splash').style.display = 'flex'; // 显示新版 Splash
             }, 500);
 
             initVehicle();
-            // 在车辆初始化后生成金币（需要 chassisBody 存在以便碰撞检测）
             spawnCoinsWhenReady();
             requestAnimationFrame(animate);
         };
@@ -403,79 +456,16 @@
     }
 
     // =============================================================================
-    // ** 启动画面 3D 逻辑 **
-    // =============================================================================
-    let splashScene, splashCamera, splashRenderer, splashAnimationId, splashCarModel;
-    function initSplashThree() {
-        const container = document.getElementById('splash-three-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-
-        splashScene = new THREE.Scene();
-        splashCamera = new THREE.PerspectiveCamera(60, width/height, 0.1, 1000);
-        splashRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        splashRenderer.setSize(width, height);
-        splashRenderer.setClearColor(0x000000, 0);
-        container.appendChild(splashRenderer.domElement);
-
-        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-        splashScene.add(ambient);
-        const dir = new THREE.DirectionalLight(0x00FFFF, 1.5);
-        dir.position.set(5,10,7.5);
-        splashScene.add(dir);
-
-        splashCamera.position.set(0, 1, 3);
-        splashCamera.lookAt(0, 0.5, 0);
-
-        function animateSplash() {
-            splashAnimationId = requestAnimationFrame(animateSplash);
-            if (splashCarModel) {
-                splashCarModel.rotation.y += 0.01;
-            }
-            splashRenderer.render(splashScene, splashCamera);
-        }
-        animateSplash();
-    }
-
-    function loadSplashCarModel() {
-        if (!gltfLoader) return;
-        const simpleLoader = new THREE.GLTFLoader();
-        simpleLoader.setDRACOLoader(dracoLoader);
-        simpleLoader.load('car1.glb', (gltf) => {
-            splashCarModel = gltf.scene;
-            splashCarModel.scale.set(104.7,104.7,104.7);
-            splashCarModel.position.set(0,-1.0,0);
-            splashScene.add(splashCarModel);
-        });
-    }
-    
-    // =============================================================================
-    // ** 新增辅助函数：车灯相关 (已移除) **
-    // =============================================================================
-
-    // === 新增核心函数：自动计算位置并添加车灯 (已移除) ===
-    function addSmartHeadlights(carScene) {
-        // REMOVED: Headlight logic removed.
-    }
-
-    // =============================================================================
     // ** 游戏资源加载 **
     // =============================================================================
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            
-            // 1. 移除车灯添加逻辑
-            // addSmartHeadlights(carMesh);
-
-            // 2. 应用缩放
             carMesh.scale.set(104.7, 104.7, 104.7);
             carMesh.rotation.y = Math.PI;
-            
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
             scene.add(carMesh);
 
-            // 原来的“火焰/尾焰” — 已改为白色
             const flameGeometry = new THREE.ConeGeometry(0.3, 1, 16);
             const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.75 });
             flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
@@ -502,17 +492,13 @@
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
-
-                    // Remove city emissive / Keep the city mesh without dynamic lighting changes
                     if (node.material) {
                         const mat = node.material.clone ? node.material.clone() : node.material;
                         if (mat.emissive !== undefined) {
-                            // 保持城市材质的自发光为黑色 (移除夜间发光效果)
                             mat.emissive = new THREE.Color(0x000000);
                             mat.emissiveIntensity = 0;
                         }
                         node.material = mat;
-                        node.userData.isStandardMaterial = true; // Still use this for general material reference if needed
                     }
                 }
             });
@@ -551,7 +537,7 @@
     // =============================================================================
     function initThree() {
         scene = new THREE.Scene();
-        scene.background = daySkyColor.clone(); // 保持静态天空色
+        scene.background = daySkyColor.clone();
         scene.fog = new THREE.Fog(daySkyColor, 500, 800);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -598,11 +584,9 @@
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
 
-        // 静态半球光 (白天)
         hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
         scene.add(hemiLight);
 
-        // 静态定向光 (白天)
         dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
         dirLight.position.set(50,100,50);
         dirLight.castShadow = true;
@@ -618,7 +602,7 @@
     }
 
     // =============================================================================
-    // ** 车辆物理核心 (同步调整物理悬挂点) **
+    // ** 车辆物理核心 **
     // =============================================================================
     function initVehicle() {
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
@@ -655,15 +639,14 @@
                 customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // 物理修改点: y (原为 0) -> -0.3 (同步降低 0.3 米以匹配 GLB)
                 chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
             };
         }
 
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 0: FL
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 1: FR
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // 2: RL
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // 3: RR
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase));
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase));
 
         vehicle.addToWorld(world);
 
@@ -694,26 +677,18 @@
         chassisBody.quaternion.set(0, 0, 0, 1);
         chassisBody.velocity.set(0, 0, 0);
         chassisBody.angularVelocity.set(0, 0, 0);
-
-        vehicle.applyEngineForce(0, 0); 
-        vehicle.applyEngineForce(0, 1); 
-        vehicle.applyEngineForce(0, 2); 
-        vehicle.applyEngineForce(0, 3); 
-        vehicle.setSteeringValue(0, 0);
-        vehicle.setSteeringValue(0, 1);
-        vehicle.setBrake(0, 0);
-        vehicle.setBrake(0, 1);
-        vehicle.setBrake(0, 2);
-        vehicle.setBrake(0, 3);
-
+        vehicle.applyEngineForce(0, 0); vehicle.applyEngineForce(0, 1); 
+        vehicle.applyEngineForce(0, 2); vehicle.applyEngineForce(0, 3); 
+        vehicle.setSteeringValue(0, 0); vehicle.setSteeringValue(0, 1);
+        vehicle.setBrake(0, 0); vehicle.setBrake(0, 1); vehicle.setBrake(0, 2); vehicle.setBrake(0, 3);
         gearEl.textContent = 'P';
-        console.log("Car Respawned to initial position.");
     }
 
     // =============================================================================
-    // ** 控制与更新（保留原逻辑） **
+    // ** 控制与更新 **
     // =============================================================================
     window.addEventListener('keydown', (event) => {
+        if (!isGameRunning) return; // Splash状态下禁止车辆控制
         const k = event.key.toLowerCase();
         if(k==='w') inputState.keyW = true;
         if(k==='s') inputState.keyS = true;
@@ -740,18 +715,13 @@
     }
 
     function updateControls() {
-        if (!chassisBody) return;
+        if (!chassisBody || !isGameRunning) return;
         if (inputState.keyW || inputState.keyS || inputState.keyA || inputState.keyD) {
-            if (chassisBody.sleepState === CANNON.Body.SLEEPING) {
-                chassisBody.wakeUp(); 
-            }
+            if (chassisBody.sleepState === CANNON.Body.SLEEPING) chassisBody.wakeUp(); 
         }
-        engineForce = 0;
-        steeringValue = 0;
-        let brake = 0;
+        engineForce = 0; steeringValue = 0; let brake = 0;
 
         const v = chassisBody.velocity;
-        const currentSpeed = v.length() * 3.6;
         const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
         const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
         const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
@@ -768,7 +738,7 @@
             if (isMovingForward) brake = maxEngineForce * 0.5;
             else { engineForce = maxEngineForce * 0.5; gearEl.textContent = 'R'; }
         } else if (!inputState.keySpace) {
-            gearEl.textContent = (currentSpeed < 1) ? 'P' : 'N';
+            gearEl.textContent = (v.length()*3.6 < 1) ? 'P' : 'N';
         }
 
         if (inputState.keyShift && engineForce !== 0) {
@@ -780,88 +750,77 @@
 
         vehicle.setSteeringValue(steeringValue, 0);
         vehicle.setSteeringValue(steeringValue, 1);
-        vehicle.applyEngineForce(engineForce, 0); 
-        vehicle.applyEngineForce(engineForce, 1); 
-        vehicle.applyEngineForce(engineForce, 2); 
-        vehicle.applyEngineForce(engineForce, 3); 
+        vehicle.applyEngineForce(engineForce, 0); vehicle.applyEngineForce(engineForce, 1); 
+        vehicle.applyEngineForce(engineForce, 2); vehicle.applyEngineForce(engineForce, 3); 
 
         let finalBrakeRL = brake, finalBrakeRR = brake;
         if (inputState.keySpace) {
-            finalBrakeRL = maxEngineForce * 0.8; 
-            finalBrakeRR = maxEngineForce * 0.8;
+            finalBrakeRL = maxEngineForce * 0.8; finalBrakeRR = maxEngineForce * 0.8;
             gearEl.textContent = 'E';
         } else if (brake === 0) {
-            vehicle.setBrake(0, 0);
-            vehicle.setBrake(0, 1);
-            vehicle.setBrake(0, 2);
-            vehicle.setBrake(0, 3);
+            vehicle.setBrake(0, 0); vehicle.setBrake(0, 1); vehicle.setBrake(0, 2); vehicle.setBrake(0, 3);
         }
-
-        vehicle.setBrake(brake, 0);
-        vehicle.setBrake(brake, 1);
-        vehicle.setBrake(finalBrakeRL, 2);
-        vehicle.setBrake(finalBrakeRR, 3);
+        vehicle.setBrake(brake, 0); vehicle.setBrake(brake, 1);
+        vehicle.setBrake(finalBrakeRL, 2); vehicle.setBrake(finalBrakeRR, 3);
     }
 
     function updateCamera() {
         if (!chassisBody) return;
         const chassisPos = new THREE.Vector3().copy(chassisBody.position);
-        const q = chassisBody.quaternion;
-
-        if (activeCamera === cameraChase) {
-            const idealOffset = new THREE.Vector3(0, 3, -7);
-            idealOffset.applyQuaternion(q);
-            idealOffset.add(chassisPos);
-            // 确保相机不会太低，即使车身很低
-            if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
-            cameraChase.position.lerp(idealOffset, 0.1);
-            cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
-        } else {
-            const offset = new THREE.Vector3(0, 0.8, 1.5);
-            offset.applyQuaternion(q);
-            offset.add(chassisPos);
-            cameraCockpit.position.copy(offset);
-            cameraCockpit.quaternion.copy(q);
-            const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI);
-            cameraCockpit.quaternion.multiply(rotation180);
+        
+        // 游戏模式：追尾视角
+        if (isGameRunning) {
+            const q = chassisBody.quaternion;
+            if (activeCamera === cameraChase) {
+                const idealOffset = new THREE.Vector3(0, 3, -7);
+                idealOffset.applyQuaternion(q);
+                idealOffset.add(chassisPos);
+                if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
+                cameraChase.position.lerp(idealOffset, 0.1);
+                cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
+            } else {
+                const offset = new THREE.Vector3(0, 0.8, 1.5);
+                offset.applyQuaternion(q);
+                offset.add(chassisPos);
+                cameraCockpit.position.copy(offset);
+                cameraCockpit.quaternion.copy(q);
+                const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI);
+                cameraCockpit.quaternion.multiply(rotation180);
+            }
+        } 
+        // Splash 模式：轨道旋转视角
+        else {
+            if (!isDragging) {
+                splashCameraAngle += 0.002; // 自动旋转
+            }
+            const radius = 6.0;
+            const height = 2.0;
+            const x = chassisPos.x + Math.sin(splashCameraAngle) * radius;
+            const z = chassisPos.z + Math.cos(splashCameraAngle) * radius;
+            
+            cameraChase.position.set(x, chassisPos.y + height, z);
+            cameraChase.lookAt(chassisPos.x, chassisPos.y, chassisPos.z);
         }
     }
 
     function updateHUD(time) {
         if (!chassisBody) return;
         const v = chassisBody.velocity;
-        const speed = v.length() * 3.6; // KM/H
-        speedEl.textContent = speed.toFixed(0);
+        speedEl.textContent = (v.length() * 3.6).toFixed(0);
         altitudeEl.textContent = chassisBody.position.y.toFixed(0);
         
         const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
         const heading = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-        let h = (heading + 360) % 360;
-        headingEl.textContent = h.toFixed(0).padStart(3, '0');
+        headingEl.textContent = ((heading + 360) % 360).toFixed(0).padStart(3, '0');
         
-        const rpm = Math.min(99, Math.floor(speed * 1.5));
-        rpmEl.textContent = rpm;
+        rpmEl.textContent = Math.min(99, Math.floor(v.length() * 3.6 * 1.5));
         
         let throttlePercent = 0;
-        if (engineForce !== 0) {
-            throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
-            if (throttlePercent > 100) throttlePercent = 100;
-        }
-        throttleEl.textContent = throttlePercent.toFixed(0) + '%';
+        if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
+        throttleEl.textContent = Math.min(100, throttlePercent).toFixed(0) + '%';
 
-        // 移除 updateDayNight(time); 逻辑
-
-        // 同步金币 HUD
         coinCountEl.textContent = coinCount;
     }
-
-    // =============================================================================
-    // ** 移除：日夜切换与车灯触发逻辑 **
-    // =============================================================================
-    /*
-    function setHeadlights(shouldBeOn) { ... }
-    function updateDayNight(time) { ... }
-    */
 
     function updateColliders() {
         if (!chassisBody) return;
@@ -879,35 +838,30 @@
     }
 
     // =============================================================================
-    // ** Gold coin 生成与碰撞处理 **
+    // ** Gold Coin Logic **
     // =============================================================================
     function loadCoinPrototype(callback) {
-        // 先读取持久化金币数（首页、HUD）
         const stored = localStorage.getItem('goldCoinCount');
         coinCount = stored ? parseInt(stored, 10) : 0;
         splashCoinCountEl.textContent = coinCount;
         coinCountEl.textContent = coinCount;
 
-        // 加载 gold_coin.glb（与 car1.glb 同目录）
         const coinLoader = new THREE.GLTFLoader();
         coinLoader.load('gold_coin.glb', (gltf) => {
             coinProto = gltf.scene;
-            // 保证原型不受场景矩阵影响
             coinProto.traverse(node => { if (node.isMesh) node.castShadow = true; });
             if (callback) callback();
         }, undefined, (err) => {
-            console.warn('gold_coin.glb 加载失败，请确认文件存在于同一目录下。', err);
-            if (callback) callback(); // 即使失败也继续（不阻塞游戏）
+            console.warn('gold_coin.glb load failed', err);
+            if (callback) callback();
         });
     }
 
     function spawnCoinsWhenReady() {
-        // 等待 chassisBody 已初始化再生成金币
         if (!chassisBody) {
             setTimeout(spawnCoinsWhenReady, 200);
             return;
         }
-        // 先加载金币原型（如果未加载）
         if (!coinProto) {
             loadCoinPrototype(() => spawnCoins(Math.floor(Math.random()*(COIN_MAX-COIN_MIN+1))+COIN_MIN));
         } else {
@@ -916,16 +870,14 @@
     }
 
     function spawnCoins(num) {
-        if (!coinProto) return; // 未加载原型则跳过
+        if (!coinProto) return;
         for (let i = 0; i < num; i++) {
-            // 随机位置：在城市范围附近随机分布
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.random() * COIN_SPAWN_RADIUS;
-            const x = Math.cos(angle) * radius + (Math.random()-0.5)*20; // 加入一点噪声
+            const x = Math.cos(angle) * radius + (Math.random()-0.5)*20;
             const z = Math.sin(angle) * radius + (Math.random()-0.5)*20;
             const y = COIN_HEIGHT + (Math.random()*0.3 - 0.15);
 
-            // 克隆 mesh
             const coinMesh = coinProto.clone(true);
             coinMesh.scale.set(1.0,1.0,1.0);
             coinMesh.position.set(x, y, z);
@@ -933,29 +885,20 @@
             scene.add(coinMesh);
             coinMeshes.push(coinMesh);
 
-            // 对应的物理体（静态球体，collisionResponse=0，仅触发事件）
             const coinBody = new CANNON.Body({ mass: 0 });
-            const radiusSphere = 0.4;
-            coinBody.addShape(new CANNON.Sphere(radiusSphere));
+            coinBody.addShape(new CANNON.Sphere(0.4));
             coinBody.position.set(x, y, z);
-            coinBody.collisionResponse = 0; // 不产生物理作用，仅用来触发事件
-            // 监听碰撞事件
+            coinBody.collisionResponse = 0;
             coinBody.addEventListener('collide', (e) => {
-                // 检查是否与车辆发生碰撞（考虑到 wheel/车身接触可能使用 chassisBody）
-                const other = e.body;
-                const contact = e.contact;
-                const hitByChassis = (other === chassisBody) || (contact && (contact.bi === chassisBody || contact.bj === chassisBody));
+                const hitByChassis = (e.body === chassisBody) || (e.contact && (e.contact.bi === chassisBody || e.contact.bj === chassisBody));
                 if (hitByChassis) {
-                    // 找到对应 mesh 与 body 在数组中的索引并移除
                     const bIdx = coinBodies.indexOf(coinBody);
                     if (bIdx !== -1) {
-                        // 移除 mesh & body
                         const mesh = coinMeshes[bIdx];
                         if (mesh) scene.remove(mesh);
                         coinMeshes.splice(bIdx, 1);
                         coinBodies.splice(bIdx, 1);
                         try { world.removeBody(coinBody); } catch (err) {}
-                        // 更新计数并持久化
                         coinCount += 1;
                         localStorage.setItem('goldCoinCount', coinCount);
                         coinCountEl.textContent = coinCount;
@@ -970,24 +913,26 @@
     // =============================================================================
     // ** 主循环 **
     // =============================================================================
-    
     function animate(time) {
         requestAnimationFrame(animate);
         if (!chassisBody || !world) return;
-        const fixedTimeStep = 1/60;
-        const maxSubSteps = 1;
         
-        if (lastTime !== undefined) {
-            const dt = (time - lastTime) / 1000;
-            world.step(fixedTimeStep, dt, maxSubSteps);
-        } else {
-            world.step(fixedTimeStep);
+        // 只有游戏开始后才更新物理
+        if (isGameRunning) {
+            const fixedTimeStep = 1/60;
+            const maxSubSteps = 1;
+            if (lastTime !== undefined) {
+                const dt = (time - lastTime) / 1000;
+                world.step(fixedTimeStep, dt, maxSubSteps);
+            } else {
+                world.step(fixedTimeStep);
+            }
+            lastTime = time;
+            updateControls();
+            updateColliders();
         }
-        lastTime = time;
 
-        updateControls();
-        
-        // 模型同步
+        // 模型位置同步 (即使物理暂停，也需要同步一次初始位置)
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -999,23 +944,19 @@
         if (carMesh && chassisBody) {
             carMesh.position.copy(chassisBody.position);
             carMesh.quaternion.copy(chassisBody.quaternion);
-            // 核心修正：在复制物理位置后，应用静态视觉偏移
             carMesh.position.y += VISUAL_Y_OFFSET; 
         }
 
-        // 同步金币 mesh 与 body（如果 body 有位置改变）
         for (let i = 0; i < coinMeshes.length; i++) {
             if (coinBodies[i]) {
                 coinMeshes[i].position.copy(coinBodies[i].position);
                 coinMeshes[i].quaternion.copy(coinBodies[i].quaternion);
-                // 轻微自转视觉（保持可见性）
                 coinMeshes[i].rotation.y += 0.02;
             }
         }
 
         updateCamera();
-        updateHUD(time);
-        updateColliders();
+        if (isGameRunning) updateHUD(time);
 
         renderer.render(scene, activeCamera);
     }
@@ -1023,35 +964,35 @@
     // =============================================================================
     // ** 启动逻辑 **
     // =============================================================================
-    function startGame() {
-        // 首页显示的金币与 localStorage 同步
+    
+    // 1. 系统初始化（页面加载即运行）
+    function initSystem() {
         const stored = localStorage.getItem('goldCoinCount');
         coinCount = stored ? parseInt(stored, 10) : 0;
         splashCoinCountEl.textContent = coinCount;
-        coinCountEl.textContent = coinCount;
 
-        document.getElementById('splash').style.opacity = '0';
-        document.getElementById('loading-screen').style.display = 'flex';
-        setTimeout(() => {
-            document.getElementById('splash').style.display = 'none';
-        }, 500);
-        
-        setupGame();
-    }
-    window.startGame = startGame;
-
-    function setupGame() {
         initThree();
         initCannon();
         initGround();
-        initCameraAndLights(); // 现在只设置静态的白天灯光
-        initLoaders();
-        loadCarModel(); // 不再加载车灯
+        initCameraAndLights();
+        initLoaders(); // 开始加载资源 -> 完成后显示Splash
+        loadCarModel();
         loadTireModel();
         loadCity();
-        // 预加载金币原型（即使未在 city 完成也会尽快准备）
         loadCoinPrototype();
     }
+
+    // 2. 玩家点击 PLAY NOW 触发
+    function enterGame() {
+        document.getElementById('splash').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('hud-layer').style.display = 'flex';
+        }, 500);
+        
+        isGameRunning = true; // 开启物理和控制
+    }
+    window.enterGame = enterGame;
 
     window.addEventListener('resize', () => {
         if (renderer && cameraChase && cameraCockpit) {
@@ -1062,28 +1003,10 @@
             cameraCockpit.aspect = aspect;
             cameraCockpit.updateProjectionMatrix();
         }
-        if (splashRenderer && splashCamera) {
-            const container = document.getElementById('splash-three-container');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            splashRenderer.setSize(width, height);
-            splashCamera.aspect = width / height;
-            splashCamera.updateProjectionMatrix();
-        }
     });
 
-    // 页面初始化：准备 Splash、加载器（点击 PLAY 触发 startGame）
-    document.addEventListener('DOMContentLoaded', () => {
-        // 页面加载时读取本地金币数并显示在首页
-        const stored = localStorage.getItem('goldCoinCount');
-        coinCount = stored ? parseInt(stored, 10) : 0;
-        splashCoinCountEl.textContent = coinCount;
-        coinCountEl.textContent = coinCount;
+    document.addEventListener('DOMContentLoaded', initSystem);
 
-        initLoaders();
-        initSplashThree();
-        loadSplashCarModel();
-    });
     </script>
 </body>
 </html>
