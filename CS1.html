@@ -380,11 +380,6 @@
     let splashCameraAngle = 0; 
     let isDragging = false;
     let previousMouseX = 0;
-    
-    // ** NEW: Maximum render resolution cap (1080p) **
-    const MAX_RENDER_WIDTH = 1920; 
-    const MAX_RENDER_HEIGHT = 1080; 
-    // **********************************************
 
     const daySkyColor = new THREE.Color(0x87CEEB);
     const dayHemiSky = new THREE.Color(0xffffff);
@@ -715,47 +710,6 @@
     }
     
     // =============================================================================
-    // ** RESOLUTION CAPPING FUNCTION **
-    // =============================================================================
-    function updateRendererSize() {
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        
-        let renderW = windowWidth;
-        let renderH = windowHeight;
-
-        // 如果窗口尺寸超出最大限制 (1920x1080)，则按比例缩小渲染分辨率
-        if (windowWidth > MAX_RENDER_WIDTH || windowHeight > MAX_RENDER_HEIGHT) {
-            const widthRatio = MAX_RENDER_WIDTH / windowWidth;
-            const heightRatio = MAX_RENDER_HEIGHT / windowHeight;
-            
-            // 使用最小的比例因子，确保分辨率在任一轴上都不超过限制
-            const scaleFactor = Math.min(widthRatio, heightRatio); 
-            
-            renderW = Math.floor(windowWidth * scaleFactor);
-            renderH = Math.floor(windowHeight * scaleFactor);
-        } 
-        
-        // 1. 设置 Canvas 的显示尺寸 (保持全屏)
-        renderer.setSize(windowWidth, windowHeight);
-        
-        // 2. 设置渲染缓冲区尺寸 (实际渲染分辨率，不超过 1920x1080)
-        renderer.setDrawingBufferSize(renderW, renderH, false);
-
-        // 3. 更新摄像机比例
-        const cameraAspect = windowWidth / windowHeight;
-        if (cameraChase) {
-            cameraChase.aspect = cameraAspect;
-            cameraChase.updateProjectionMatrix();
-        }
-        if (cameraCockpit) {
-            cameraCockpit.aspect = cameraAspect;
-            cameraCockpit.updateProjectionMatrix();
-        }
-    }
-
-
-    // =============================================================================
     // ** THREE.js/Cannon.js BASIC SETUP **
     // =============================================================================
     function initThree() {
@@ -764,13 +718,9 @@
         scene.fog = new THREE.Fog(daySkyColor, 500, 800);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        // CRITICAL: Set pixel ratio to 1.0. This prevents the browser from multiplying 
-        // the resolution on high-DPI screens (like Retina), ensuring our cap works.
-        renderer.setPixelRatio(1); 
-        
-        // Initial size calculation using the new capped function
-        updateRendererSize();
-        
+        // Maintain highest visual quality, use native pixel ratio
+        renderer.setPixelRatio(window.devicePixelRatio); 
+        renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
@@ -1071,7 +1021,7 @@
             targetPos = currentMission.pickupPoint.position; 
             targetColor = targetArrowMesh.userData.pickupColor;
         } else if (currentMission.status === 'delivering') {
-            targetPos = currentMission.targetBody.position; 
+            targetPos = currentMission.deliveryTarget.position; 
             targetColor = targetArrowMesh.userData.deliveryColor;
         } else {
             targetArrowMesh.visible = false;
@@ -1427,8 +1377,12 @@
 
     window.addEventListener('resize', () => {
         if (renderer && cameraChase && cameraCockpit) {
-            // 使用我们新的函数来处理窗口大小调整和分辨率限制
-            updateRendererSize();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const aspect = window.innerWidth / window.innerHeight;
+            cameraChase.aspect = aspect;
+            cameraChase.updateProjectionMatrix();
+            cameraCockpit.aspect = aspect;
+            cameraCockpit.updateProjectionMatrix();
         }
     });
 
