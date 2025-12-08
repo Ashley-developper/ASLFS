@@ -39,6 +39,7 @@
             min-width: 120px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
             border-radius: 4px;
+            /* Improved clipping for a sci-fi look */
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
         }
         
@@ -80,7 +81,7 @@
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
             border-radius: 4px;
             min-width: 250px;
-            display: none;
+            display: none; /* Initial hidden */
         }
         #delivery-hud .mission-title { 
             font-family: 'Orbitron', sans-serif; font-size: 14px; color: #00FF00; 
@@ -111,12 +112,13 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.8) 100%);
             z-index: 999;
-            display: none;
+            display: none; /* Initial hidden */
             cursor: grab;
-            transition: opacity 0.5s;
+            transition: opacity 0.5s; /* UX: Smooth transition when fading out */
         }
         #splash:active { cursor: grabbing; }
 
+        /* Title Area */
         .splash-header {
             position: absolute; top: 60px; left: 0; width: 100%;
             text-align: center; pointer-events: none;
@@ -126,6 +128,7 @@
             letter-spacing: 12px; text-transform: uppercase;
             background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            /* UX: More vibrant shadow */
             text-shadow: 0 0 35px rgba(0, 255, 255, 0.7), 0 0 5px rgba(255, 255, 255, 0.5);
         }
         .splash-subtitle {
@@ -133,6 +136,7 @@
             letter-spacing: 6px; margin-top: 10px; font-weight: 600;
         }
 
+        /* Top Right Coin Display */
         .splash-top-right {
             position: absolute; top: 40px; right: 40px;
             text-align: right; pointer-events: none;
@@ -140,6 +144,7 @@
         .splash-top-right .label { font-size: 12px; color: #FFD700; text-shadow: 0 0 10px #FFD700; margin-bottom: 5px;}
         .splash-top-right .value { font-size: 42px; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
 
+        /* Left Menu Buttons (SHOP, SETTINGS, INFO) */
         .splash-left-menu {
             position: absolute; top: 50%; left: 40px;
             transform: translateY(-50%);
@@ -159,24 +164,28 @@
             box-shadow: 0 0 15px rgba(0,255,255,0.3);
         }
 
+        /* Bottom Button Area */
         .splash-footer {
             position: absolute; bottom: 60px; right: 60px;
             display: flex; gap: 20px; align-items: flex-end;
-            pointer-events: none;
+            pointer-events: none; /* Container penetration */
         }
         
+        /* Universal Footer Button Style */
         .splash-footer button { pointer-events: auto; font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.3s; }
 
         #start-button {
             padding: 20px 80px; font-size: 24px; font-weight: 900;
             color: #000000; background: #00FFFF; border: none;
             letter-spacing: 4px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            /* UX: More aggressive clip-path for a sharper look */
             clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
         }
         #start-button:hover {
             background: #FF00FF; box-shadow: 0 0 50px rgba(255, 0, 255, 0.8); color: #fff; transform: scale(1.05);
         }
 
+        /* Delivery Button */
         #delivery-mode-btn { 
             padding: 15px 40px; font-size: 16px; font-weight: 700;
             color: #00FFFF; background: rgba(0, 20, 40, 0.8);
@@ -195,25 +204,25 @@
             transition: opacity 0.5s;
         }
         #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; border-radius: 2px; overflow: hidden; }
-        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; transition: width 0.3s; }
+        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; transition: width 0.3s; } /* UX: Smooth progress bar fill */
 
         /* =========================================================================
-         * MENU PAGES (Shop, Settings, Info)
+         * New Menu Pages (Shop, Settings, Info)
          * ========================================================================= */
         .menu-page {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.95); /* UX: Slightly darker overlay */
             z-index: 9999;
-            display: none;
+            display: none; /* Initial hidden */
             align-items: center; justify-content: center;
             flex-direction: column;
             padding: 40px;
             box-sizing: border-box;
-            backdrop-filter: blur(8px);
-            opacity: 0;
+            backdrop-filter: blur(8px); /* UX: Increased blur */
+            opacity: 0; /* UX: Fade-in animation setup */
             transition: opacity 0.4s;
         }
-        .menu-page.active { opacity: 1; display: flex; }
+        .menu-page.active { opacity: 1; display: flex; } /* UX: Use active class for visibility */
         .menu-page h2 {
             font-family: 'Orbitron', sans-serif; font-size: 48px; color: #FF00FF;
             text-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
@@ -236,92 +245,13 @@
         #menu-close-btn {
             position: absolute; top: 40px; right: 40px;
             background: #FF00FF; color: #000; border: none;
-            padding: 12px 25px;
+            padding: 12px 25px; /* UX: Larger close button */
             font-family: 'Orbitron', sans-serif;
             font-weight: 700; cursor: pointer; transition: 0.2s;
             clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
         }
         #menu-close-btn:hover {
             background: #00FFFF; box-shadow: 0 0 15px #00FFFF; transform: scale(1.05);
-        }
-
-        /* =========================================================================
-         * SETTINGS PAGE - GRAPHICS QUALITY BUTTONS
-         * ========================================================================= */
-        .graphics-quality-section {
-            margin-top: 40px;
-            padding: 30px;
-            background: rgba(0, 50, 100, 0.3);
-            border: 2px solid rgba(0, 255, 255, 0.2);
-            border-radius: 8px;
-            max-width: 500px;
-            width: 100%;
-        }
-
-        .quality-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
-            color: #00FFFF;
-            text-align: center;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .quality-buttons-container {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .quality-btn {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 16px;
-            font-weight: 700;
-            padding: 15px 35px;
-            letter-spacing: 2px;
-            cursor: pointer;
-            border: 2px solid #00FFFF;
-            background: rgba(0, 50, 100, 0.5);
-            color: #00FFFF;
-            transition: all 0.3s ease;
-            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
-            text-transform: uppercase;
-        }
-
-        .quality-btn:hover {
-            background: rgba(0, 150, 255, 0.3);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .quality-btn.active {
-            background: #00FFFF;
-            color: #000;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
-            transform: scale(1.08);
-        }
-
-        .quality-info {
-            text-align: center;
-            font-size: 14px;
-            color: #00FFFF;
-            margin-top: 15px;
-            padding: 10px;
-            background: rgba(0, 100, 150, 0.2);
-            border-radius: 4px;
-            border-left: 3px solid #00FFFF;
-        }
-
-        .quality-details {
-            font-size: 13px;
-            color: #88FF88;
-            margin-top: 15px;
-            padding: 10px 15px;
-            background: rgba(0, 50, 0, 0.3);
-            border-radius: 4px;
-            line-height: 1.6;
         }
 
     </style>
@@ -332,8 +262,7 @@
         <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
         <p style="font-family:'Orbitron'; letter-spacing:2px;">LOADING ASSETS...</p>
         <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p>
-    </div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p> </div>
 
     <div id="shop-page" class="menu-page">
         <button id="menu-close-btn" onclick="hideMenuPages()">BACK TO MENU</button>
@@ -345,30 +274,8 @@
     <div id="settings-page" class="menu-page">
         <button id="menu-close-btn" onclick="hideMenuPages()">BACK TO MENU</button>
         <h2>GAME SETTINGS</h2>
-        
-        <div class="graphics-quality-section">
-            <div class="quality-title">GRAPHICS QUALITY</div>
-            
-            <div class="quality-buttons-container">
-                <button class="quality-btn" id="quality-sd-btn" onclick="setGraphicsQuality('sd')">
-                    SD (FAST)
-                </button>
-                <button class="quality-btn" id="quality-hd-btn" onclick="setGraphicsQuality('hd')">
-                    HD (BEST)
-                </button>
-            </div>
-
-            <div class="quality-info">
-                Current Quality: <span id="current-quality-label">SD</span>
-            </div>
-
-            <div class="quality-details">
-                <strong>SD Mode:</strong> Lower resolution (60%), reduced shadows for better performance<br>
-                <strong>HD Mode:</strong> Full resolution, enhanced graphics and shadows
-            </div>
-        </div>
-
-        <p style="margin-top: 40px; color: #FFD700;">⚡ Changes apply when you restart the game</p>
+        <p style="color: #00FFFF; font-size: 24px;">SUBSCRIBE FOR FUTURE UPDATES :)</p>
+        <p>Configure graphics, controls, and sound options when settings are implemented.</p>
     </div>
 
     <div id="info-page" class="menu-page">
@@ -378,7 +285,6 @@
             <div class="detail-line"><strong>AUTHOR:</strong> ZHANYI ZHOU</div>
             <div class="detail-line"><strong>GAME NAME:</strong> OPEN WORLD HYPER DRIVE</div>
             <div class="detail-line"><strong>ENGINE:</strong> HTML5 (THREE.js + CANNON.js)</div>
-            <div class="detail-line"><strong>GRAPHICS:</strong> <span id="info-quality-mode">SD</span></div>
         </div>
         <p style="margin-top: 40px; font-size: 18px; color: #00FF00;">
             WHY CHOOSE US: <br>I USED THE MOST REALISTIC PHYSIC ENGINE: CANNON.JS AND THE OPEN WORLD IS BIG ENOUGH TO EXPLORE.
@@ -462,89 +368,6 @@
 
     <script>
     // =============================================================================
-    // ** GRAPHICS QUALITY SYSTEM **
-    // =============================================================================
-    
-    // Graphics quality settings configuration
-    const GRAPHICS_QUALITY = {
-        sd: {
-            name: 'SD',
-            resolutionScale: 0.60, // 60% of original resolution
-            shadowMapSize: 1024,
-            shadowCameraSize: 150,
-            renderPixelRatio: 1,
-            maxRenderWidth: 1152,
-            maxRenderHeight: 648,
-            shadowDarkness: 0.5
-        },
-        hd: {
-            name: 'HD',
-            resolutionScale: 1.0, // 100% resolution
-            shadowMapSize: 4096,
-            shadowCameraSize: 200,
-            renderPixelRatio: 1,
-            maxRenderWidth: 1920,
-            maxRenderHeight: 1080,
-            shadowDarkness: 1.0
-        }
-    };
-
-    let currentGraphicsQuality = 'sd'; // Default to SD
-
-    // Load graphics quality preference from localStorage
-    function loadGraphicsQualityPreference() {
-        const saved = localStorage.getItem('graphicsQuality');
-        if (saved && (saved === 'sd' || saved === 'hd')) {
-            currentGraphicsQuality = saved;
-        } else {
-            currentGraphicsQuality = 'sd'; // Default to SD
-            localStorage.setItem('graphicsQuality', 'sd');
-        }
-        updateQualityButtonUI();
-    }
-
-    // Set graphics quality and save preference
-    window.setGraphicsQuality = function(quality) {
-        if (quality === 'sd' || quality === 'hd') {
-            currentGraphicsQuality = quality;
-            localStorage.setItem('graphicsQuality', quality);
-            updateQualityButtonUI();
-            
-            // Show feedback message
-            const infoDiv = document.querySelector('.quality-info');
-            infoDiv.innerHTML = `Current Quality: <span id="current-quality-label">${quality.toUpperCase()}</span><br><small>⚡ Restart game to apply changes</small>`;
-        }
-    };
-
-    // Update UI buttons to show current quality selection
-    function updateQualityButtonUI() {
-        const sdBtn = document.getElementById('quality-sd-btn');
-        const hdBtn = document.getElementById('quality-hd-btn');
-        const currentLabel = document.getElementById('current-quality-label');
-        const infoQuality = document.getElementById('info-quality-mode');
-        
-        if (sdBtn) {
-            sdBtn.classList.remove('active');
-            hdBtn.classList.remove('active');
-            
-            if (currentGraphicsQuality === 'sd') {
-                sdBtn.classList.add('active');
-                if (currentLabel) currentLabel.textContent = 'SD';
-                if (infoQuality) infoQuality.textContent = 'SD (FAST MODE)';
-            } else {
-                hdBtn.classList.add('active');
-                if (currentLabel) currentLabel.textContent = 'HD';
-                if (infoQuality) infoQuality.textContent = 'HD (BEST MODE)';
-            }
-        }
-    }
-
-    // Get current quality settings
-    function getQualitySettings() {
-        return GRAPHICS_QUALITY[currentGraphicsQuality];
-    }
-
-    // =============================================================================
     // ** CORE VARIABLES **
     // =============================================================================
     let scene, renderer;
@@ -557,6 +380,11 @@
     let splashCameraAngle = 0; 
     let isDragging = false;
     let previousMouseX = 0;
+    
+    // ** NEW: Maximum render resolution cap (1080p) **
+    const MAX_RENDER_WIDTH = 1920; 
+    const MAX_RENDER_HEIGHT = 1080; 
+    // **********************************************
 
     const daySkyColor = new THREE.Color(0x87CEEB);
     const dayHemiSky = new THREE.Color(0xffffff);
@@ -574,7 +402,7 @@
     let carMesh = null;
     let tireMeshPrototype = null;
     let flameMesh = null;
-    let targetArrowMesh = null;
+    let targetArrowMesh = null; // ** Target Indicator Arrow Mesh **
     let gltfLoader = null;
     let dracoLoader = null;
 
@@ -589,8 +417,8 @@
     const throttleEl = document.getElementById('hud-throttle');
     const coinCountEl = document.getElementById('coin-count');
     const splashCoinCountEl = document.getElementById('splash-coin-count');
-    const loadingStatusEl = document.getElementById('loading-status');
-    const loadingProgressFillEl = document.getElementById('loading-progress-fill');
+    const loadingStatusEl = document.getElementById('loading-status'); // UX: Added reference
+    const loadingProgressFillEl = document.getElementById('loading-progress-fill'); // UX: Added reference
 
     // ** Delivery Mode Elements **
     const deliveryHudEl = document.getElementById('delivery-hud');
@@ -665,34 +493,37 @@
     });
 
     // =============================================================================
-    // ** MENU PAGE SHOW/HIDE LOGIC **
+    // ** NEW: Menu Page Show/Hide Logic (UX Enhanced) **
     // =============================================================================
     function showMenuPage(pageId) {
+        // Find the page element and apply the active class for fade-in
         const page = document.getElementById(pageId);
         if (page) {
-            document.getElementById('splash').style.opacity = '0';
+            document.getElementById('splash').style.opacity = '0'; // Start fading splash
             setTimeout(() => {
-                document.getElementById('splash').style.display = 'none';
-                page.style.display = 'flex';
+                document.getElementById('splash').style.display = 'none'; // Hide splash when faded
+                page.style.display = 'flex'; // Show page container
                 setTimeout(() => {
-                    page.classList.add('active');
-                }, 10);
-            }, 400);
+                    page.classList.add('active'); // Start fade-in animation
+                }, 10); // Small delay to trigger CSS transition
+            }, 400); // Match splash opacity transition time
         }
     }
 
     function hideMenuPages() {
         const pages = document.querySelectorAll('.menu-page');
-        pages.forEach(page => page.classList.remove('active'));
+        pages.forEach(page => page.classList.remove('active')); // Start fade-out
 
-        document.getElementById('splash').style.display = 'block';
+        document.getElementById('splash').style.display = 'block'; // Show splash container
         setTimeout(() => {
-            document.getElementById('splash').style.opacity = '1';
+            document.getElementById('splash').style.opacity = '1'; // Fade splash in
+            // Wait for fade-out, then hide the page
             setTimeout(() => {
-                pages.forEach(page => page.style.display = 'none');
+                 pages.forEach(page => page.style.display = 'none');
             }, 400);
         }, 10);
     }
+
 
     // =============================================================================
     // ** DELIVERY MODE CORE LOGIC **
@@ -700,6 +531,7 @@
 
     window.startDeliveryMode = function() {
         if (!chassisBody) {
+            // UX: Translated alert message
             alert("Please wait for assets to load or enter the game first."); 
             return;
         }
@@ -717,16 +549,19 @@
 
     function generateNewMission() {
         if (DELIVERY_POINTS.length < 2) {
+            // UX: Translated status text
             missionStatusEl.textContent = 'MISSION ERROR: Not enough mission points (Need at least 2).';
             return;
         }
 
+        // Cleanup previous mission (if any)
         if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
         if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
         if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
         if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
         chassisBody.removeEventListener('collide', handleMissionCollision); 
 
+        // 1. Randomly select pickup and delivery points
         let idx1 = Math.floor(Math.random() * DELIVERY_POINTS.length);
         let idx2;
         do {
@@ -739,15 +574,18 @@
         const pickupPos = new CANNON.Vec3(pickupData.x, pickupData.y, pickupData.z);
         const deliveryPos = new CANNON.Vec3(deliveryData.x, deliveryData.y, deliveryData.z);
 
+        // 2. Create Pickup Point physics body
         const targetShape = new CANNON.Sphere(TARGET_RADIUS);
         const pickupBody = new CANNON.Body({ mass: 0, position: pickupPos, shape: targetShape });
         pickupBody.collisionResponse = 0; 
         world.addBody(pickupBody);
 
+        // 3. Create Delivery Target physics body
         const deliveryBody = new CANNON.Body({ mass: 0, position: deliveryPos, shape: targetShape });
         deliveryBody.collisionResponse = 0;
         world.addBody(deliveryBody);
 
+        // 4. Create visual meshes 
         const pickupMesh = createTargetMesh(0x00FFFF);
         pickupMesh.position.copy(pickupPos);
         scene.add(pickupMesh);
@@ -757,6 +595,7 @@
         deliveryMesh.visible = false; 
         scene.add(deliveryMesh); 
 
+        // 5. Update mission state
         currentMission = {
             status: 'pickup',
             pickupPoint: pickupBody,
@@ -769,9 +608,11 @@
             deliveryName: deliveryData.name,
         };
 
+        // UX: Translated mission status template
         missionStatusEl.textContent = `MISSION: Go to ${pickupData.name} for Pickup`;
         missionStatusEl.style.color = '#00FFFF';
 
+        // 6. Add collision listener
         chassisBody.addEventListener('collide', handleMissionCollision);
     }
 
@@ -789,7 +630,9 @@
         const otherBody = (e.body === chassisBody) ? e.target : e.body;
 
         if (currentMission.status === 'pickup' && otherBody === currentMission.pickupPoint) {
+            // Mission Stage 1: Pickup Complete
             currentMission.status = 'delivering';
+            // UX: Translated mission status template
             missionStatusEl.textContent = `MISSION: Deliver cargo to ${currentMission.deliveryName}`;
             missionStatusEl.style.color = '#00FF00';
             
@@ -797,6 +640,7 @@
             currentMission.deliveryMesh.visible = true;
 
         } else if (currentMission.status === 'delivering' && otherBody === currentMission.deliveryTarget) {
+            // Mission Stage 2: Delivery Complete
             completeMission(true);
         }
     }
@@ -815,24 +659,29 @@
             splashCoinCountEl.textContent = coinCount;
             coinCountEl.textContent = coinCount;
 
+            // UX: Translated success message
             missionStatusEl.textContent = `MISSION SUCCESS! (+${reward} GOLD)`;
             missionStatusEl.style.color = '#FFD700';
             
             if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
             if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
             
+            // UX: Shorter delay after success to start next mission
             setTimeout(generateNewMission, 3000); 
 
         } else {
+            // UX: Translated failure message
             missionStatusEl.textContent = 'MISSION FAILED! Time Expired.';
             missionStatusEl.style.color = '#FF0000';
-            setTimeout(generateNewMission, 3000);
+            setTimeout(generateNewMission, 3000); // UX: Shorter delay after failure
         }
         
+        // Cleanup target physics bodies
         if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
         if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
         currentMission.status = 'completed';
     }
+
 
     function updateDeliveryMode() {
         if (!isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') return;
@@ -849,6 +698,7 @@
         const seconds = Math.floor(timeLeft % 60).toString().padStart(2, '0');
         timerEl.textContent = `${minutes}:${seconds}`;
 
+        // Calculate distance
         let targetBody = null;
         if (currentMission.status === 'pickup') {
             targetBody = currentMission.pickupPoint;
@@ -865,29 +715,34 @@
     }
     
     // =============================================================================
-    // ** RESOLUTION CAPPING FUNCTION (WITH QUALITY SETTINGS) **
+    // ** RESOLUTION CAPPING FUNCTION **
     // =============================================================================
     function updateRendererSize() {
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
-        const qualitySettings = getQualitySettings();
         
         let renderW = windowWidth;
         let renderH = windowHeight;
 
-        // Apply quality-based resolution scaling
-        if (windowWidth > qualitySettings.maxRenderWidth || windowHeight > qualitySettings.maxRenderHeight) {
-            const widthRatio = qualitySettings.maxRenderWidth / windowWidth;
-            const heightRatio = qualitySettings.maxRenderHeight / windowHeight;
+        // 如果窗口尺寸超出最大限制 (1920x1080)，则按比例缩小渲染分辨率
+        if (windowWidth > MAX_RENDER_WIDTH || windowHeight > MAX_RENDER_HEIGHT) {
+            const widthRatio = MAX_RENDER_WIDTH / windowWidth;
+            const heightRatio = MAX_RENDER_HEIGHT / windowHeight;
+            
+            // 使用最小的比例因子，确保分辨率在任一轴上都不超过限制
             const scaleFactor = Math.min(widthRatio, heightRatio); 
             
             renderW = Math.floor(windowWidth * scaleFactor);
             renderH = Math.floor(windowHeight * scaleFactor);
         } 
         
+        // 1. 设置 Canvas 的显示尺寸 (保持全屏)
         renderer.setSize(windowWidth, windowHeight);
+        
+        // 2. 设置渲染缓冲区尺寸 (实际渲染分辨率，不超过 1920x1080)
         renderer.setDrawingBufferSize(renderW, renderH, false);
 
+        // 3. 更新摄像机比例
         const cameraAspect = windowWidth / windowHeight;
         if (cameraChase) {
             cameraChase.aspect = cameraAspect;
@@ -899,6 +754,7 @@
         }
     }
 
+
     // =============================================================================
     // ** THREE.js/Cannon.js BASIC SETUP **
     // =============================================================================
@@ -908,8 +764,11 @@
         scene.fog = new THREE.Fog(daySkyColor, 500, 800);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(1);
+        // CRITICAL: Set pixel ratio to 1.0. This prevents the browser from multiplying 
+        // the resolution on high-DPI screens (like Retina), ensuring our cap works.
+        renderer.setPixelRatio(1); 
         
+        // Initial size calculation using the new capped function
         updateRendererSize();
         
         renderer.shadowMap.enabled = true;
@@ -938,7 +797,7 @@
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
 
-        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10);
+        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10); // Enlarge ground
         const groundMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
@@ -948,25 +807,24 @@
     }
 
     function initCameraAndLights() {
-        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000);
+        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000); // Increase field of view distance
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
 
         hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
         scene.add(hemiLight);
 
-        const qualitySettings = getQualitySettings();
         dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
         dirLight.position.set(50,100,50);
         dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = qualitySettings.shadowMapSize;
-        dirLight.shadow.mapSize.height = qualitySettings.shadowMapSize;
+        dirLight.shadow.mapSize.width = 4096;
+        dirLight.shadow.mapSize.height = 4096;
         dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 1000;
-        dirLight.shadow.camera.left = -qualitySettings.shadowCameraSize;
-        dirLight.shadow.camera.right = qualitySettings.shadowCameraSize;
-        dirLight.shadow.camera.top = qualitySettings.shadowCameraSize;
-        dirLight.shadow.camera.bottom = -qualitySettings.shadowCameraSize;
+        dirLight.shadow.camera.far = 1000; // Increase shadow distance
+        dirLight.shadow.camera.left = -200;
+        dirLight.shadow.camera.right = 200;
+        dirLight.shadow.camera.top = 200;
+        dirLight.shadow.camera.bottom = -200;
         scene.add(dirLight);
     }
 
@@ -1054,17 +912,18 @@
         loadingManager.onProgress = function(itemUrl, itemsLoaded, itemsTotal) {
             const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
             loadingProgressFillEl.style.width = percent + '%';
+            // UX: More detailed loading status
             loadingStatusEl.innerText = `(${percent}%) Loading asset: ${itemUrl.substring(itemUrl.lastIndexOf('/') + 1)}...`;
         };
         
         loadingManager.onLoad = function() {
             const loadingScreen = document.getElementById('loading-screen');
             loadingScreen.style.opacity = '0';
-            loadingStatusEl.innerText = `(100%) READY.`;
+            loadingStatusEl.innerText = `(100%) READY.`; // UX: Final ready status
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
                 document.getElementById('splash').style.display = 'block'; 
-                document.getElementById('splash').style.opacity = '1';
+                document.getElementById('splash').style.opacity = '1'; // UX: Fade in splash
             }, 500);
 
             initVehicle();
@@ -1094,10 +953,15 @@
         });
     }
     
+    // MODIFICATION 1: Adjust arrow size
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
+
+            // Reduce scale to 1.0
             targetArrowMesh.scale.set(1.0, 1.0, 1.0); 
+            
+            // Set material and shadows
             targetArrowMesh.traverse((node) => { 
                 if (node.isMesh) {
                     node.castShadow = true; 
@@ -1105,14 +969,16 @@
                 } 
             });
 
-            targetArrowMesh.visible = false;
+            targetArrowMesh.visible = false; // Initial hidden
             scene.add(targetArrowMesh);
             
-            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);
-            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00);
+            // Cache mission colors
+            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  // Cyan
+            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // Green
 
         }, undefined, (error) => {
             console.error('Failed to load arrow.glb:', error);
+            // Fallback: Use ConeGeometry if arrow.glb fails to load
             if (!targetArrowMesh) {
                 const arrowGeometry = new THREE.ConeGeometry(0.4, 2.0, 8); 
                 const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
@@ -1134,9 +1000,11 @@
         });
     }
 
+    // MODIFICATION 3: Reduce city model scale and collision activation range
     function loadCity() {
         gltfLoader.load('city.glb', (gltf) => {
             const city = gltf.scene;
+            // Scale down city model to match the COIN_SPAWN_RADIUS = 1500
             city.scale.set(4, 4, 4); 
             city.traverse((node) => {
                 if (node.isMesh) {
@@ -1174,6 +1042,7 @@
                         body: body,
                         center: new THREE.Vector3().copy(geometry.boundingSphere.center),
                         radius: geometry.boundingSphere.radius,
+                        // Reduce activation range from 300 to 200
                         added: false
                     });
                 }
@@ -1182,7 +1051,8 @@
     }
 
     // =============================================================================
-    // ** Target Arrow Update **
+    // ** Target Arrow Update - Fixed Pointing Logic **
+    // Change: Arrow rotated 90 degrees left
     // =============================================================================
     const _tempDirectionVector = new THREE.Vector3();
     const _tempCarPosition = new THREE.Vector3();
@@ -1196,11 +1066,12 @@
         let targetPos = null;
         let targetColor = null;
 
+        // 1. Determine target position and color
         if (currentMission.status === 'pickup') {
             targetPos = currentMission.pickupPoint.position; 
             targetColor = targetArrowMesh.userData.pickupColor;
         } else if (currentMission.status === 'delivering') {
-            targetPos = currentMission.deliveryTarget.position; 
+            targetPos = currentMission.targetBody.position; 
             targetColor = targetArrowMesh.userData.deliveryColor;
         } else {
             targetArrowMesh.visible = false;
@@ -1209,22 +1080,36 @@
         
         targetArrowMesh.visible = true;
 
+        // Color update
         targetArrowMesh.traverse((node) => {
             if (node.isMesh && node.material.color) {
                 node.material.color.copy(targetColor);
             }
         });
 
+        // 2. Update arrow position in world space
         _tempCarPosition.copy(chassisBody.position);
         targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z); 
         
+        // 3. Rotation Logic: lookAt + 180 flip + extra rotation
         const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
         
+        // Reset rotation (crucial step to prevent extra rotations from GLB model)
         targetArrowMesh.rotation.set(0, 0, 0); 
+        
+        // lookAt() makes the object's -Z axis point to the target.
         targetArrowMesh.lookAt(lookAtTarget); 
+
+        // 1. Rotate 180 degrees around Y-axis (makes +Z axis point to the target)
         targetArrowMesh.rotateY(Math.PI); 
+        
+        // 2. New: Rotate an extra +90 degrees around Y-axis (Rotate 90 degrees left)
         targetArrowMesh.rotateY(Math.PI / 2); 
+        
+        // 3. Rotate 45 degrees around X-axis (Tilt forward/downward)
         targetArrowMesh.rotateX(Math.PI / 4); 
+        
+        // 4. Slightly raise the arrow for better visibility
         targetArrowMesh.position.y += 0.5;
     }
 
@@ -1368,6 +1253,7 @@
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
+            // Reduce activation range to match smaller city model
             if (!obj.added && d <= obj.radius + 200) { 
                 world.addBody(obj.body);
                 obj.added = true;
@@ -1477,6 +1363,7 @@
             }
         }
 
+        // Model position synchronization
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -1510,9 +1397,6 @@
     // =============================================================================
     
     function initSystem() {
-        // Load graphics quality preference first
-        loadGraphicsQualityPreference();
-
         const stored = localStorage.getItem('goldCoinCount');
         coinCount = stored ? parseInt(stored, 10) : 0;
         splashCoinCountEl.textContent = coinCount;
@@ -1531,6 +1415,7 @@
 
     window.enterGame = function() { 
         document.getElementById('splash').style.opacity = '0';
+        // UX: Increased delay for smoother transition
         setTimeout(() => {
             document.getElementById('splash').style.display = 'none';
             document.getElementById('hud-layer').style.display = 'flex';
@@ -1542,6 +1427,7 @@
 
     window.addEventListener('resize', () => {
         if (renderer && cameraChase && cameraCockpit) {
+            // 使用我们新的函数来处理窗口大小调整和分辨率限制
             updateRendererSize();
         }
     });
