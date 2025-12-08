@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ASL Car Simulator - Ultra Stable Hyper Drive Edition</title>
+    <title>ASL Car Simulator - Ultra Hyper Drive Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
@@ -307,16 +307,17 @@
     const dayHemiSky = new THREE.Color(0xffffff);
     const dayHemiGround = new THREE.Color(0x3b4c5a);
     
-    // ** 全局缩放因子 (3.0 倍) **
+    // ** 全局缩放因子 (1.5 * 2 = 3.0 倍) **
     const SCALE_FACTOR = 3.0; 
 
     // 车辆物理和视觉参数（已乘以 SCALE_FACTOR）
-    // 【关键修改 3】降低基础推力（9000 -> 6000），减少启动时的后仰力矩
+    // maxEngineForce 原本是 9000, 现为 9000 * 3.0 = 27000
     const maxEngineForce = 9000 * SCALE_FACTOR; 
+    // brakeForce 原本是 40, 现为 40 * 3.0 = 120
     const brakeForce = 40 * SCALE_FACTOR; 
     const maxSteerVal = 0.7; // 保持不变 (角度)
+    // VISUAL_Y_OFFSET 原本是 -0.9, 现为 -0.9 * 3.0 = -2.7
     const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
-    const NITRO_BOOST_MULTIPLIER = 1.5; 
 
     // ** 车辆初始位置 ** (Y: 0.7 * 3.0 = 2.1)
     const initialCarPosition = new CANNON.Vec3(90, 0.7 * SCALE_FACTOR, 0); 
@@ -357,7 +358,9 @@
     let coinCount = 0;
     const COIN_MIN = 50;
     const COIN_MAX = 80;
+    // COIN_SPAWN_RADIUS 原本是 1500, 现为 1500 * 3.0 = 4500
     const COIN_SPAWN_RADIUS = 1500 * SCALE_FACTOR; 
+    // COIN_HEIGHT 原本是 0.7, 现为 0.7 * 3.0 = 2.1
     const COIN_HEIGHT = 0.7 * SCALE_FACTOR; 
 
     // ** Predefined Delivery Points (Y轴位置已乘以 SCALE_FACTOR) **
@@ -374,6 +377,7 @@
     // ** Delivery Mode Variables **
     let isDeliveryModeActive = false;
     const MAX_MISSION_TIME = 240; 
+    // TARGET_RADIUS 原本是 5, 现为 5 * 3.0 = 15
     const TARGET_RADIUS = 5 * SCALE_FACTOR; 
     let currentMission = {
         status: 'none', 
@@ -671,11 +675,11 @@
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1 * SCALE_FACTOR, 0.5 * SCALE_FACTOR, 2 * SCALE_FACTOR));
         // 质量相应放大 2500 * 3.0 = 7500
         chassisBody = new CANNON.Body({
-            mass: 1500 * SCALE_FACTOR, 
+            mass: 2500 * SCALE_FACTOR, 
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
-        chassisBody.angularDamping = 0.95; // <-- 【关键修改 4】提高角阻尼，更快恢复平衡
+        chassisBody.angularDamping = 0.9; 
         chassisBody.linearDamping = 0.05;
         world.addBody(chassisBody);
 
@@ -684,25 +688,20 @@
             indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
         });
 
-        const axleWidth = 1.0 * SCALE_FACTOR; 
-        const wheelBase = 1.5 * SCALE_FACTOR; 
+        const axleWidth = 1.0 * SCALE_FACTOR; // 3.0
+        const wheelBase = 1.5 * SCALE_FACTOR; // 4.5
         function makeWheelOptions(x,y,z) {
             return {
-                radius: 0.5 * SCALE_FACTOR, 
+                radius: 0.5 * SCALE_FACTOR, // 1.5
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 200, 
-                suspensionRestLength: 0.3 * SCALE_FACTOR, 
-                frictionSlip: 15.0, // <-- 【关键修改 1】提升摩擦力到 15.0
-                dampingRelaxation: 8.0, 
-                dampingCompression: 20.0, 
-                maxSuspensionForce: 100000, 
-                rollInfluence: 0.05, // <-- 【关键修改 2】适度增加侧倾影响 (从 0.005 到 0.05)
-                maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30, 
-                useCustomSlidingRotationalSpeed: true,
+                suspensionStiffness: 150, 
+                suspensionRestLength: 0.3 * SCALE_FACTOR, // 0.9
+                frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
+                maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
+                customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // **【关键修改】进一步降低重心 (从 -0.4 降到 -0.7)，增强抗后仰能力**
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.7 * SCALE_FACTOR, z) 
+                // 连接点 Y 坐标 (-0.3) * 3.0 = -0.9
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3 * SCALE_FACTOR, z)
             };
         }
 
@@ -785,7 +784,7 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            // 车身尺寸放大 3.0 倍
+            // 车身尺寸放大 3.0 倍 (104.7 * 3.0 = 314.1)
             carMesh.scale.set(104.7 * SCALE_FACTOR, 104.7 * SCALE_FACTOR, 104.7 * SCALE_FACTOR);
             carMesh.rotation.y = Math.PI;
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
@@ -796,44 +795,44 @@
             const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.75 });
             flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
             flameMesh.rotation.x = -Math.PI / 2;
-            // **【关键修改】火焰位置 Y 坐标调整以适应更低重心**
-            flameMesh.position.set(0, -0.3 * SCALE_FACTOR, 2.5 * SCALE_FACTOR);
+            // 火焰位置 (2.5 * 3.0 = 7.5)
+            flameMesh.position.set(0, 0, 2.5 * SCALE_FACTOR);
             flameMesh.visible = false;
             carMesh.add(flameMesh);
         });
     }
     
-    // ** 新增：加载 arrow.glb 模型 (已调整缩放和材质) **
+    // ** 新增：加载 arrow.glb 模型 (已放大 3.0 倍) **
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
 
-            // 调整缩放以使其在场景中可见 (0.8 * 3.0 = 2.4)
-            targetArrowMesh.scale.set(0.8 * SCALE_FACTOR, 0.8 * SCALE_FACTOR, 0.8 * SCALE_FACTOR); // <-- 缩小箭头尺寸
+            // 调整缩放以使其在场景中可见 (1.5 * 3.0 = 4.5)
+            targetArrowMesh.scale.set(1.5 * SCALE_FACTOR, 1.5 * SCALE_FACTOR, 1.5 * SCALE_FACTOR); 
             
             // 遍历模型并设置材质和阴影
             targetArrowMesh.traverse((node) => { 
                 if (node.isMesh) {
                     node.castShadow = true; 
-                    // 移除透明度
-                    node.material = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: false, opacity: 1.0, depthTest: false }); 
+                    // 使用 MeshBasicMaterial 以确保箭头颜色不受光照影响而保持高亮
+                    // 初始颜色设为红色（备用/默认）
+                    node.material = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8, depthTest: false });
                 } 
             });
 
-            targetArrowMesh.visible = false; 
+            targetArrowMesh.visible = false; // 初始隐藏
             scene.add(targetArrowMesh);
             
-            // 缓存任务颜色
-            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  
-            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); 
+            // 缓存任务颜色，用于 updateTargetArrow 中快速切换
+            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  // 青色
+            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // 绿色
 
         }, undefined, (error) => {
             console.error('Failed to load arrow.glb:', error);
             // 兜底：如果 arrow.glb 加载失败，使用回 ConeGeometry (尺寸也放大)
             if (!targetArrowMesh) {
                 const arrowGeometry = new THREE.ConeGeometry(0.4 * SCALE_FACTOR, 2.0 * SCALE_FACTOR, 8); 
-                // 移除透明度
-                const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: false, opacity: 1.0 }); 
+                const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
                 targetArrowMesh = new THREE.Mesh(arrowGeometry, arrowMaterial);
                 targetArrowMesh.visible = false;
                 scene.add(targetArrowMesh);
@@ -846,7 +845,7 @@
     function loadTireModel() {
         gltfLoader.load('tire1.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
-            // 轮胎尺寸放大 3.0 倍 
+            // 轮胎尺寸放大 3.0 倍 (0.75 * 3.0 = 2.25)
             tireMeshPrototype.scale.set(0.75 * SCALE_FACTOR, 0.75 * SCALE_FACTOR, 0.75 * SCALE_FACTOR);
             tireMeshPrototype.rotation.x = Math.PI / 2;
             tireMeshPrototype.traverse((node) => { if (node.isMesh) node.castShadow = true; });
@@ -902,8 +901,9 @@
     }
 
     // =============================================================================
-    // ** 目标箭头更新 - 修复指向逻辑 **
+    // ** 目标箭头更新 - 修复指向逻辑 (已更新以兼容 GLB 模型) **
     // =============================================================================
+    const _tempDirectionVector = new THREE.Vector3();
     const _tempCarPosition = new THREE.Vector3();
 
     function updateTargetArrow() {
@@ -937,16 +937,16 @@
         });
 
         // 2. 更新箭头在世界空间中的位置
-        // 箭头相对于车体的高度 (1.5 * 3.0 = 4.5) - 降低箭头
+        // 箭头相对于车体的高度 (2.5 * 3.0 = 7.5)
         _tempCarPosition.copy(chassisBody.position);
-        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 1.5 * SCALE_FACTOR, _tempCarPosition.z); 
+        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5 * SCALE_FACTOR, _tempCarPosition.z); 
         
-        // 3. 旋转逻辑： lookAt + 修复 90 度旋转偏差
+        // 3. 旋转逻辑： lookAt + 180度翻转
         const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
         
         targetArrowMesh.rotation.set(0, 0, 0); 
         targetArrowMesh.lookAt(lookAtTarget); 
-        targetArrowMesh.rotateY(Math.PI / 2); // <-- 修复 90 度偏差
+        targetArrowMesh.rotateY(Math.PI); 
         
         // 4. 稍微抬高箭头，增加视觉效果 (0.5 * 3.0 = 1.5)
         targetArrowMesh.position.y += 0.5 * SCALE_FACTOR;
@@ -1010,8 +1010,7 @@
         }
 
         if (inputState.keyShift && engineForce !== 0) {
-            // ** 使用 NITRO_BOOST_MULTIPLIER (1.5) **
-            engineForce *= NITRO_BOOST_MULTIPLIER;
+            engineForce *= 2.5;
             if (flameMesh) flameMesh.visible = true;
         } else {
             if (flameMesh) flameMesh.visible = false;
@@ -1087,8 +1086,8 @@
         rpmEl.textContent = Math.min(99, Math.floor(v.length() * 3.6 * 1.5));
         
         let throttlePercent = 0;
-        // Nitro boost max is (maxEngineForce * NITRO_BOOST_MULTIPLIER)
-        if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * NITRO_BOOST_MULTIPLIER)) * 100);
+        // Nitro boost is 2.5x, so max is (maxEngineForce * 2.5)
+        if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
         throttleEl.textContent = Math.min(100, throttlePercent).toFixed(0) + '%';
 
         coinCountEl.textContent = coinCount;
