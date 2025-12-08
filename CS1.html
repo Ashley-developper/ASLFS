@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ASL Car Simulator - Ultra Hyper Drive Edition</title>
+    <title>ASL Car Simulator - Ultra Stable Hyper Drive Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
@@ -307,16 +307,13 @@
     const dayHemiSky = new THREE.Color(0xffffff);
     const dayHemiGround = new THREE.Color(0x3b4c5a);
     
-    // ** 全局缩放因子 (1.5 * 2 = 3.0 倍) **
+    // ** 全局缩放因子 (3.0 倍) **
     const SCALE_FACTOR = 3.0; 
 
     // 车辆物理和视觉参数（已乘以 SCALE_FACTOR）
-    // maxEngineForce 原本是 9000, 现为 9000 * 3.0 = 27000
     const maxEngineForce = 9000 * SCALE_FACTOR; 
-    // brakeForce 原本是 40, 现为 40 * 3.0 = 120
     const brakeForce = 40 * SCALE_FACTOR; 
     const maxSteerVal = 0.7; // 保持不变 (角度)
-    // VISUAL_Y_OFFSET 原本是 -0.9, 现为 -0.9 * 3.0 = -2.7
     const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
 
     // ** 车辆初始位置 ** (Y: 0.7 * 3.0 = 2.1)
@@ -358,9 +355,7 @@
     let coinCount = 0;
     const COIN_MIN = 50;
     const COIN_MAX = 80;
-    // COIN_SPAWN_RADIUS 原本是 1500, 现为 1500 * 3.0 = 4500
     const COIN_SPAWN_RADIUS = 1500 * SCALE_FACTOR; 
-    // COIN_HEIGHT 原本是 0.7, 现为 0.7 * 3.0 = 2.1
     const COIN_HEIGHT = 0.7 * SCALE_FACTOR; 
 
     // ** Predefined Delivery Points (Y轴位置已乘以 SCALE_FACTOR) **
@@ -377,7 +372,6 @@
     // ** Delivery Mode Variables **
     let isDeliveryModeActive = false;
     const MAX_MISSION_TIME = 240; 
-    // TARGET_RADIUS 原本是 5, 现为 5 * 3.0 = 15
     const TARGET_RADIUS = 5 * SCALE_FACTOR; 
     let currentMission = {
         status: 'none', 
@@ -688,20 +682,25 @@
             indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
         });
 
-        const axleWidth = 1.0 * SCALE_FACTOR; // 3.0
-        const wheelBase = 1.5 * SCALE_FACTOR; // 4.5
+        const axleWidth = 1.0 * SCALE_FACTOR; 
+        const wheelBase = 1.5 * SCALE_FACTOR; 
         function makeWheelOptions(x,y,z) {
             return {
-                radius: 0.5 * SCALE_FACTOR, // 1.5
+                radius: 0.5 * SCALE_FACTOR, 
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150, 
-                suspensionRestLength: 0.3 * SCALE_FACTOR, // 0.9
-                frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
-                maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
+                suspensionStiffness: 200, // <-- 增加刚度
+                suspensionRestLength: 0.3 * SCALE_FACTOR, 
+                frictionSlip: 10.0, // <-- 增加摩擦力，防侧滑
+                dampingRelaxation: 8.0, 
+                dampingCompression: 20.0, // <-- 增加阻尼，防侧翻
+                maxSuspensionForce: 100000, 
+                rollInfluence: 0.005, // <-- 显著降低侧倾影响，防侧翻
+                maxSuspensionTravel: 0.3,
+                customSlidingRotationalSpeed: -30, 
+                useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                // 连接点 Y 坐标 (-0.3) * 3.0 = -0.9
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3 * SCALE_FACTOR, z)
+                // 连接点 Y 坐标 (-0.4 * 3.0 = -1.2) - 略微降低重心
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.4 * SCALE_FACTOR, z) 
             };
         }
 
@@ -784,7 +783,7 @@
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            // 车身尺寸放大 3.0 倍 (104.7 * 3.0 = 314.1)
+            // 车身尺寸放大 3.0 倍
             carMesh.scale.set(104.7 * SCALE_FACTOR, 104.7 * SCALE_FACTOR, 104.7 * SCALE_FACTOR);
             carMesh.rotation.y = Math.PI;
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
@@ -802,37 +801,37 @@
         });
     }
     
-    // ** 新增：加载 arrow.glb 模型 (已放大 3.0 倍) **
+    // ** 新增：加载 arrow.glb 模型 (已调整缩放和材质) **
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
 
-            // 调整缩放以使其在场景中可见 (1.5 * 3.0 = 4.5)
-            targetArrowMesh.scale.set(1.5 * SCALE_FACTOR, 1.5 * SCALE_FACTOR, 1.5 * SCALE_FACTOR); 
+            // 调整缩放以使其在场景中可见 (0.8 * 3.0 = 2.4)
+            targetArrowMesh.scale.set(0.8 * SCALE_FACTOR, 0.8 * SCALE_FACTOR, 0.8 * SCALE_FACTOR); // <-- 缩小箭头尺寸
             
             // 遍历模型并设置材质和阴影
             targetArrowMesh.traverse((node) => { 
                 if (node.isMesh) {
                     node.castShadow = true; 
-                    // 使用 MeshBasicMaterial 以确保箭头颜色不受光照影响而保持高亮
-                    // 初始颜色设为红色（备用/默认）
-                    node.material = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8, depthTest: false });
+                    // 移除透明度
+                    node.material = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: false, opacity: 1.0, depthTest: false }); 
                 } 
             });
 
-            targetArrowMesh.visible = false; // 初始隐藏
+            targetArrowMesh.visible = false; 
             scene.add(targetArrowMesh);
             
-            // 缓存任务颜色，用于 updateTargetArrow 中快速切换
-            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  // 青色
-            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // 绿色
+            // 缓存任务颜色
+            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  
+            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); 
 
         }, undefined, (error) => {
             console.error('Failed to load arrow.glb:', error);
             // 兜底：如果 arrow.glb 加载失败，使用回 ConeGeometry (尺寸也放大)
             if (!targetArrowMesh) {
                 const arrowGeometry = new THREE.ConeGeometry(0.4 * SCALE_FACTOR, 2.0 * SCALE_FACTOR, 8); 
-                const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
+                // 移除透明度
+                const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: false, opacity: 1.0 }); 
                 targetArrowMesh = new THREE.Mesh(arrowGeometry, arrowMaterial);
                 targetArrowMesh.visible = false;
                 scene.add(targetArrowMesh);
@@ -845,7 +844,7 @@
     function loadTireModel() {
         gltfLoader.load('tire1.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
-            // 轮胎尺寸放大 3.0 倍 (0.75 * 3.0 = 2.25)
+            // 轮胎尺寸放大 3.0 倍 
             tireMeshPrototype.scale.set(0.75 * SCALE_FACTOR, 0.75 * SCALE_FACTOR, 0.75 * SCALE_FACTOR);
             tireMeshPrototype.rotation.x = Math.PI / 2;
             tireMeshPrototype.traverse((node) => { if (node.isMesh) node.castShadow = true; });
@@ -901,9 +900,8 @@
     }
 
     // =============================================================================
-    // ** 目标箭头更新 - 修复指向逻辑 (已更新以兼容 GLB 模型) **
+    // ** 目标箭头更新 - 修复指向逻辑 **
     // =============================================================================
-    const _tempDirectionVector = new THREE.Vector3();
     const _tempCarPosition = new THREE.Vector3();
 
     function updateTargetArrow() {
@@ -937,16 +935,16 @@
         });
 
         // 2. 更新箭头在世界空间中的位置
-        // 箭头相对于车体的高度 (2.5 * 3.0 = 7.5)
+        // 箭头相对于车体的高度 (1.5 * 3.0 = 4.5) - 降低箭头
         _tempCarPosition.copy(chassisBody.position);
-        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5 * SCALE_FACTOR, _tempCarPosition.z); 
+        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 1.5 * SCALE_FACTOR, _tempCarPosition.z); 
         
-        // 3. 旋转逻辑： lookAt + 180度翻转
+        // 3. 旋转逻辑： lookAt + 修复 90 度旋转偏差
         const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
         
         targetArrowMesh.rotation.set(0, 0, 0); 
         targetArrowMesh.lookAt(lookAtTarget); 
-        targetArrowMesh.rotateY(Math.PI); 
+        targetArrowMesh.rotateY(Math.PI / 2); // <-- 修复 90 度偏差
         
         // 4. 稍微抬高箭头，增加视觉效果 (0.5 * 3.0 = 1.5)
         targetArrowMesh.position.y += 0.5 * SCALE_FACTOR;
