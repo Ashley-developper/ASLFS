@@ -320,7 +320,7 @@
     const VISUAL_Y_OFFSET = -0.9 * SCALE_FACTOR; 
 
     // ** 车辆初始位置 ** (Y: 0.7 * 3.0 = 2.1)
-    const initialCarPosition = new CANNON.Vec3(90, 1.2 * SCALE_FACTOR, 0); 
+    const initialCarPosition = new CANNON.Vec3(90, 1.9 * SCALE_FACTOR, 0); 
 
     let staticBodies = [];
     let carMesh = null;
@@ -701,7 +701,7 @@
                 customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
                 // 连接点 Y 坐标 (-0.3) * 3.0 = -0.9
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -1.2 * SCALE_FACTOR, z)
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.9 * SCALE_FACTOR, z)
             };
         }
 
