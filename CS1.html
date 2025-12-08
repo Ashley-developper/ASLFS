@@ -19,7 +19,7 @@
         }
         
         /* =========================================================================
-         * HUD 整体布局
+         * HUD (游戏内界面)
          * ========================================================================= */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -27,19 +27,9 @@
             padding: 30px; box-sizing: border-box; z-index: 10;
         }
 
-        .hud-top-left { 
-            display: flex; 
-            gap: 20px; 
-            flex-wrap: wrap; 
-        }
-
-        .hud-top-right {
-            position: absolute;
-            top: 30px;
-            right: 30px;
-        }
+        .hud-top-left { display: flex; gap: 20px; flex-wrap: wrap; }
+        .hud-top-right { position: absolute; top: 30px; right: 30px; }
         
-        /* 仪表盘核心样式 - 赛博朋克霓虹风 */
         .instrument {
             background: rgba(0, 15, 30, 0.7);
             border: 1px solid rgba(0, 255, 255, 0.2);
@@ -49,204 +39,143 @@
             min-width: 120px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
             border-radius: 4px;
-            transition: all 0.2s ease;
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
         }
         
-        /* 标签 */
         .label {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 10px; 
-            color: #00FFFF; 
-            font-weight: 700; 
-            letter-spacing: 2px;
-            margin-bottom: 3px; 
-            display:block; 
-            text-transform: uppercase; 
-            text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+            font-family: 'Orbitron', sans-serif; font-size: 10px; color: #00FFFF; 
+            font-weight: 700; letter-spacing: 2px; margin-bottom: 3px; display:block; 
+            text-transform: uppercase; text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
         }
-        
-        /* 值 */
         .value {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 36px; 
-            font-weight: 900; 
-            letter-spacing: -2px;
-            line-height: 1;
-            color: #FFFFFF;
+            font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; 
+            letter-spacing: -2px; line-height: 1; color: #FFFFFF;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
         }
-        
-        .unit {
-            font-size: 14px; 
-            color: #888888; 
-            margin-left: 6px; 
-            font-weight: 400;
-        }
+        .unit { font-size: 14px; color: #888888; margin-left: 6px; font-weight: 400; }
 
-        /* 特殊颜色 */
         .spd-color { border-left-color: #00FFFF !important; }
         .rpm-color { border-left-color: #FF00FF !important; }
         .gear-color { border-left-color: #FFD700 !important; }
         .throttle-color { border-left-color: #00FF00 !important; }
 
-        /* HUD coin 仪表 */
         #hud-coin {
             background: rgba(35, 18, 0, 0.7);
             border: 1px solid rgba(255, 215, 0, 0.15);
             border-left: 5px solid #FFD700;
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.06);
-            min-width: 140px;
-            margin-bottom: 20px;
+            min-width: 140px; margin-bottom: 20px;
         }
-        #hud-coin .label { color: #FFD700; text-shadow: 0 0 5px rgba(255, 215, 0, 0.6); }
+        #hud-coin .label { color: #FFD700; }
         #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
 
-        /* 底部控制提示与版权 */
         #control-hints {
-            position: absolute;
-            bottom: 30px;
-            left: 30px;
+            position: absolute; bottom: 30px; left: 30px;
             background: rgba(0, 0, 0, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-left: 5px solid #00FF00;
-            backdrop-filter: blur(10px);
-            padding: 18px 25px;
-            color: #eee;
-            font-size: 13px;
-            border-radius: 4px;
-            max-width: 250px;
-            line-height: 1.8;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+            backdrop-filter: blur(10px); padding: 18px 25px;
+            color: #eee; font-size: 13px; border-radius: 4px;
+            max-width: 250px; line-height: 1.8;
         }
-        
         .respawn-hint { color: #FFD700; font-weight: bold; }
-        .hint-title {
-            color: #00FF00;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            font-size: 11px;
-            border-bottom: 1px solid rgba(0, 255, 0, 0.3);
-            padding-bottom: 5px;
-            letter-spacing: 2px;
-        }
-        
-        .copyright-tag {
-            position: fixed;
-            bottom: 15px;
-            right: 15px;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.3);
-            letter-spacing: 1px;
-            z-index: 10;
-        }
+        .hint-title { color: #00FF00; font-family: 'Orbitron', sans-serif; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 0, 0.3); padding-bottom: 5px; }
+        .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
 
         /* =========================================================================
-         * 新版 Splash UI (全屏覆盖，背景透明)
+         * Splash / Main Menu UI
          * ========================================================================= */
         #splash {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            /* 背景透明，透出 Canvas */
-            background: rgba(0, 0, 0, 0.2); 
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.8) 100%);
-            z-index: 999; /* 低于 Loading (1000) 但高于 Canvas */
-            display: none; /* 初始隐藏，等Loading完显示 */
-            flex-direction: column; 
-            justify-content: space-between; /* 上下分布 */
-            align-items: center;
-            color: white;
-            transition: opacity 0.5s;
-            cursor: grab; /* 提示可拖拽 */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.8) 100%);
+            z-index: 999;
+            display: none; /* Initial hidden */
+            cursor: grab;
         }
-        
-        #splash:active {
-            cursor: grabbing;
-        }
+        #splash:active { cursor: grabbing; }
 
+        /* 标题区 */
         .splash-header {
-            margin-top: 60px;
-            text-align: center;
-            pointer-events: none; /* 让鼠标事件穿透标题区域 */
+            position: absolute; top: 60px; left: 0; width: 100%;
+            text-align: center; pointer-events: none;
         }
-
         h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 64px;
-            margin: 0;
-            font-weight: 900;
-            letter-spacing: 12px;
-            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif; font-size: 64px; margin: 0; font-weight: 900;
+            letter-spacing: 12px; text-transform: uppercase;
             background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
         }
-
         .splash-subtitle {
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 20px;
-            color: rgba(0, 255, 255, 0.8);
-            letter-spacing: 6px;
-            margin-top: 10px;
-            font-weight: 600;
+            font-family: 'Rajdhani', sans-serif; font-size: 20px; color: rgba(0, 255, 255, 0.8);
+            letter-spacing: 6px; margin-top: 10px; font-weight: 600;
         }
 
+        /* 右上角金币显示 */
+        .splash-top-right {
+            position: absolute; top: 40px; right: 40px;
+            text-align: right; pointer-events: none;
+        }
+        .splash-top-right .label { font-size: 12px; color: #FFD700; text-shadow: 0 0 10px #FFD700; margin-bottom: 5px;}
+        .splash-top-right .value { font-size: 42px; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+
+        /* 左侧菜单按钮 (SHOP, INFO) */
+        .splash-left-menu {
+            position: absolute; top: 50%; left: 40px;
+            transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        .menu-btn {
+            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 700;
+            color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2); border-left: 3px solid #888;
+            padding: 12px 30px; letter-spacing: 3px; cursor: pointer;
+            transition: 0.3s; width: 200px; text-align: left;
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+        }
+        .menu-btn:hover {
+            background: rgba(0, 255, 255, 0.2); color: #fff;
+            border-left-color: #00FFFF; padding-left: 40px;
+            box-shadow: 0 0 15px rgba(0,255,255,0.3);
+        }
+
+        /* 底部按钮区 */
         .splash-footer {
-            width: 100%;
-            padding: 0 60px 60px 0;
-            display: flex;
-            justify-content: flex-end; /* 右下角 */
-            align-items: flex-end;
+            position: absolute; bottom: 60px; right: 60px;
+            display: flex; gap: 20px; align-items: flex-end;
             pointer-events: none; /* 容器穿透 */
         }
         
-        .coin-display {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, 150px);
-            font-family: 'Orbitron', sans-serif;
-            color: #FFD700; 
-            font-weight: 700;
-            font-size: 18px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            pointer-events: none;
-        }
+        /* 通用底部按钮样式 */
+        .splash-footer button { pointer-events: auto; font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.3s; }
 
         #start-button {
-            pointer-events: auto; /* 按钮可点击 */
-            padding: 20px 80px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
-            font-weight: 900;
-            color: #000000;
-            background: #00FFFF;
-            border: none;
-            cursor: pointer;
-            transition: 0.3s;
-            letter-spacing: 4px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            padding: 20px 80px; font-size: 24px; font-weight: 900;
+            color: #000000; background: #00FFFF; border: none;
+            letter-spacing: 4px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
             clip-path: polygon(15% 0, 100% 0, 100% 70%, 85% 100%, 0 100%, 0 30%);
         }
-
         #start-button:hover {
-            background: #FF00FF;
-            box-shadow: 0 0 50px rgba(255, 0, 255, 0.8);
-            color: #fff;
-            transform: scale(1.05);
+            background: #FF00FF; box-shadow: 0 0 50px rgba(255, 0, 255, 0.8); color: #fff; transform: scale(1.05);
         }
 
-        /* 加载界面 - 最高层级 */
+        .secondary-btn {
+            padding: 15px 40px; font-size: 16px; font-weight: 700;
+            color: #00FFFF; background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #00FFFF; letter-spacing: 2px;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 20%);
+        }
+        .secondary-btn:hover {
+            background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        /* Loading Screen */
         #loading-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: #00FFFF; z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 1; transition: opacity 0.5s;
+            transition: opacity 0.5s;
         }
-        #loading-screen p { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; }
         #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; border-radius: 2px; overflow: hidden; }
         #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; }
 
@@ -256,11 +185,9 @@
 
     <div id="loading-screen">
         <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
-        <p>LOADING OPEN WORLD ASSETS...</p>
-        <div id="loading-progress-bar">
-            <div id="loading-progress-fill"></div>
-        </div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
+        <p style="font-family:'Orbitron'; letter-spacing:2px;">LOADING ASSETS...</p>
+        <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%)</p>
     </div>
 
     <div id="splash">
@@ -269,11 +196,18 @@
             <p class="splash-subtitle">IMMERSIVE SIMULATION // ZHANYI ZHOU</p>
         </div>
 
-        <div class="coin-display">
-            TOTAL GOLD: <span id="splash-coin-count">0</span>
+        <div class="splash-top-right">
+            <span class="label">TOTAL GOLD</span><br>
+            <span class="value" id="splash-coin-count">0</span>
+        </div>
+
+        <div class="splash-left-menu">
+            <button class="menu-btn">SHOP</button>
+            <button class="menu-btn">INFORMATION</button>
         </div>
 
         <div class="splash-footer">
+            <button class="secondary-btn">DELIVERY MODE</button>
             <button id="start-button" onclick="enterGame()">PLAY NOW</button>
         </div>
     </div>
@@ -283,44 +217,37 @@
     <div id="hud-layer" style="display:none;">
         <div class="hud-top-left">
             <div class="instrument spd-color">
-                <span class="label">Speed</span>
-                <span class="value" id="hud-spd">0</span> <span class="unit">KM/H</span>
+                <span class="label">Speed</span> <span class="value" id="hud-spd">0</span> <span class="unit">KM/H</span>
             </div>
             <div class="instrument rpm-color">
-                <span class="label">RPM</span>
-                <span class="value" id="hud-rpm">0</span> <span class="unit">x100</span>
+                <span class="label">RPM</span> <span class="value" id="hud-rpm">0</span> <span class="unit">x100</span>
             </div>
             <div class="instrument gear-color">
-                <span class="label">Gear</span>
-                <span class="value" id="hud-gear">P</span> <span class="unit">MODE</span>
+                <span class="label">Gear</span> <span class="value" id="hud-gear">P</span> <span class="unit">MODE</span>
             </div>
             <div class="instrument throttle-color">
-                <span class="label">Throttle</span>
-                <span class="value" id="hud-throttle">0%</span>
+                <span class="label">Throttle</span> <span class="value" id="hud-throttle">0%</span>
             </div>
             <div class="instrument">
-                <span class="label">Altitude</span>
-                <span class="value" id="hud-alt">0</span> <span class="unit">M</span>
+                <span class="label">Altitude</span> <span class="value" id="hud-alt">0</span> <span class="unit">M</span>
             </div>
             <div class="instrument">
-                <span class="label">Heading</span>
-                <span class="value" id="hud-hdg">000</span> <span class="unit">DEG</span>
+                <span class="label">Heading</span> <span class="value" id="hud-hdg">000</span> <span class="unit">DEG</span>
             </div>
-            </div>
+        </div>
 
         <div class="hud-top-right">
             <div class="instrument" id="hud-coin">
-                <span class="label">GOLD COIN</span>
-                <span class="value" id="coin-count">0</span>
+                <span class="label">GOLD COIN</span> <span class="value" id="coin-count">0</span>
             </div>
         </div>
 
         <div class="hud-bottom">
             <div id="control-hints">
                 <div class="hint-title">SYSTEM CONTROLS</div>
-                <div>[SHIFT] NITRO BOOST (MAX TORQUE)</div>
-                <div>[SPACE] HANDBRAKE DRIFT</div>
-                <div>[V] TOGGLE CAMERA</div>
+                <div>[SHIFT] NITRO BOOST</div>
+                <div>[SPACE] DRIFT / BRAKE</div>
+                <div>[V] CHANGE CAMERA</div>
                 <div class="respawn-hint">[R] RESPAWN CAR</div>
                 <div>[WASD] DRIVE</div>
             </div>
@@ -342,9 +269,8 @@
     let wheelMeshes = [];
     let lastTime = undefined;
 
-    // 游戏状态控制
-    let isGameRunning = false; // false = Splash Mode, true = Play Mode
-    let splashCameraAngle = 0; // 用于Splash界面的旋转
+    let isGameRunning = false; 
+    let splashCameraAngle = 0; 
     let isDragging = false;
     let previousMouseX = 0;
 
@@ -356,7 +282,10 @@
     const brakeForce = 40;
     const maxSteerVal = 0.7;
     const VISUAL_Y_OFFSET = -0.9; 
-    const initialCarPosition = new CANNON.Vec3(90, 0.6, 0);
+
+    // ** 修复穿模核心：将初始高度提高到 2.0 (原为 0.6) **
+    // 这样在Splash界面车子会悬空，点击Play后会掉下来
+    const initialCarPosition = new CANNON.Vec3(90, 2.0, 0);
 
     let staticBodies = [];
     let carMesh = null;
@@ -411,7 +340,7 @@
     document.addEventListener('mousemove', (e) => {
         if (isDragging && !isGameRunning) {
             const deltaX = e.clientX - previousMouseX;
-            splashCameraAngle -= deltaX * 0.005; // 拖拽旋转速度
+            splashCameraAngle -= deltaX * 0.005;
             previousMouseX = e.clientX;
         }
     });
@@ -434,16 +363,11 @@
         };
         
         loadingManager.onLoad = function() {
-            // 加载完成：
-            // 1. 隐藏 Loading 界面
-            // 2. 显示 Splash UI (背景已经是渲染出来的游戏场景)
-            // 3. 启动动画循环，但在点击 Play 前不更新物理
-            
             const loadingScreen = document.getElementById('loading-screen');
             loadingScreen.style.opacity = '0';
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
-                document.getElementById('splash').style.display = 'flex'; // 显示新版 Splash
+                document.getElementById('splash').style.display = 'block'; 
             }, 500);
 
             initVehicle();
@@ -556,8 +480,7 @@
 
         const defaultMaterial = new CANNON.Material('default');
         const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-            friction: 1.0, 
-            restitution: 0.0
+            friction: 1.0, restitution: 0.0
         });
         world.defaultContactMaterial = contactMaterial;
         world.addContactMaterial(contactMaterial);
@@ -617,9 +540,7 @@
 
         vehicle = new CANNON.RaycastVehicle({
             chassisBody: chassisBody,
-            indexRightAxis: 0,
-            indexUpAxis: 1,
-            indexForwardAxis: 2
+            indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
         });
 
         const axleWidth = 1.0;
@@ -628,16 +549,10 @@
             return {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150,
-                suspensionRestLength: 0.3,
-                frictionSlip: 4.0, 
-                dampingRelaxation: 8.0,
-                dampingCompression: 10.0,
-                maxSuspensionForce: 100000,
-                rollInfluence: 0.05, 
-                maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30,
-                useCustomSlidingRotationalSpeed: true,
+                suspensionStiffness: 150, suspensionRestLength: 0.3,
+                frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
+                maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
+                customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
                 chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
             };
@@ -688,7 +603,7 @@
     // ** 控制与更新 **
     // =============================================================================
     window.addEventListener('keydown', (event) => {
-        if (!isGameRunning) return; // Splash状态下禁止车辆控制
+        if (!isGameRunning) return;
         const k = event.key.toLowerCase();
         if(k==='w') inputState.keyW = true;
         if(k==='s') inputState.keyS = true;
@@ -748,8 +663,7 @@
             if (flameMesh) flameMesh.visible = false;
         }
 
-        vehicle.setSteeringValue(steeringValue, 0);
-        vehicle.setSteeringValue(steeringValue, 1);
+        vehicle.setSteeringValue(steeringValue, 0); vehicle.setSteeringValue(steeringValue, 1);
         vehicle.applyEngineForce(engineForce, 0); vehicle.applyEngineForce(engineForce, 1); 
         vehicle.applyEngineForce(engineForce, 2); vehicle.applyEngineForce(engineForce, 3); 
 
@@ -768,7 +682,6 @@
         if (!chassisBody) return;
         const chassisPos = new THREE.Vector3().copy(chassisBody.position);
         
-        // 游戏模式：追尾视角
         if (isGameRunning) {
             const q = chassisBody.quaternion;
             if (activeCamera === cameraChase) {
@@ -788,10 +701,9 @@
                 cameraCockpit.quaternion.multiply(rotation180);
             }
         } 
-        // Splash 模式：轨道旋转视角
         else {
             if (!isDragging) {
-                splashCameraAngle += 0.002; // 自动旋转
+                splashCameraAngle += 0.002; 
             }
             const radius = 6.0;
             const height = 2.0;
@@ -917,7 +829,6 @@
         requestAnimationFrame(animate);
         if (!chassisBody || !world) return;
         
-        // 只有游戏开始后才更新物理
         if (isGameRunning) {
             const fixedTimeStep = 1/60;
             const maxSubSteps = 1;
@@ -932,7 +843,7 @@
             updateColliders();
         }
 
-        // 模型位置同步 (即使物理暂停，也需要同步一次初始位置)
+        // 模型位置同步
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -965,7 +876,6 @@
     // ** 启动逻辑 **
     // =============================================================================
     
-    // 1. 系统初始化（页面加载即运行）
     function initSystem() {
         const stored = localStorage.getItem('goldCoinCount');
         coinCount = stored ? parseInt(stored, 10) : 0;
@@ -975,14 +885,13 @@
         initCannon();
         initGround();
         initCameraAndLights();
-        initLoaders(); // 开始加载资源 -> 完成后显示Splash
+        initLoaders();
         loadCarModel();
         loadTireModel();
         loadCity();
         loadCoinPrototype();
     }
 
-    // 2. 玩家点击 PLAY NOW 触发
     function enterGame() {
         document.getElementById('splash').style.opacity = '0';
         setTimeout(() => {
@@ -990,7 +899,7 @@
             document.getElementById('hud-layer').style.display = 'flex';
         }, 500);
         
-        isGameRunning = true; // 开启物理和控制
+        isGameRunning = true; 
     }
     window.enterGame = enterGame;
 
