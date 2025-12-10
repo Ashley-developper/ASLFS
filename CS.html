@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -510,48 +511,6 @@
         }
     }
 
-    function addBoxCollidersFromGLB(glbScene, world) {
-
-    const temp = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-
-    glbScene.traverse(obj => {
-
-        if (obj.isMesh && obj.geometry) {
-
-            obj.updateWorldMatrix(true, false);
-            obj.geometry.computeBoundingBox();
-
-            const box = obj.geometry.boundingBox;
-
-            // 真实尺寸 = 包围盒 × 世界缩放
-            const scale = obj.getWorldScale(temp);
-
-            const size = new CANNON.Vec3(
-                (box.max.x - box.min.x) * scale.x / 2,
-                (box.max.y - box.min.y) * scale.y / 2,
-                (box.max.z - box.min.z) * scale.z / 2
-            );
-
-            const pos = obj.getWorldPosition(new THREE.Vector3());
-            obj.getWorldQuaternion(quat);
-
-            const body = new CANNON.Body({
-                mass: 0,
-                shape: new CANNON.Box(size),
-                position: new CANNON.Vec3(
-                    pos.x,
-                    pos.y + size.y,
-                    pos.z
-                ),
-                quaternion: new CANNON.Quaternion(quat.x, quat.y, quat.z, quat.w)
-            });
-
-            world.addBody(body);
-        }
-    });
-}
-
     function hideMenuPages() {
         const pages = document.querySelectorAll('.menu-page');
         pages.forEach(page => page.classList.remove('active')); // Start fade-out
@@ -1019,8 +978,6 @@
                 }
             });
             scene.add(city);
-            addBoxCollidersFromGLB(city, world);
-
 
             city.updateMatrixWorld(true);
             city.traverse((node) => {
