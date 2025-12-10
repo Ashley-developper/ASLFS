@@ -510,6 +510,46 @@
         }
     }
 
+    function addBoxCollidersFromGLB(glbScene, world) {
+
+    glbScene.traverse(obj => {
+
+        // 只处理 mesh（楼、物体等）
+        if (obj.isMesh) {
+
+            obj.geometry.computeBoundingBox();
+            const box = obj.geometry.boundingBox;
+
+            // 尺寸：半径
+            const size = new CANNON.Vec3(
+                (box.max.x - box.min.x) / 2,
+                (box.max.y - box.min.y) / 2,
+                (box.max.z - box.min.z) / 2
+            );
+
+            // 物理 shape
+            const shape = new CANNON.Box(size);
+
+            // 获取世界坐标
+            const worldPos = new THREE.Vector3();
+            obj.getWorldPosition(worldPos);
+
+            // 物理 body
+            const body = new CANNON.Body({
+                mass: 0,             // 静态物体（不动）
+                shape: shape,
+                position: new CANNON.Vec3(
+                    worldPos.x,
+                    worldPos.y + size.y,
+                    worldPos.z
+                )
+            });
+
+            world.addBody(body);
+        }
+    });
+}
+
     function hideMenuPages() {
         const pages = document.querySelectorAll('.menu-page');
         pages.forEach(page => page.classList.remove('active')); // Start fade-out
@@ -977,6 +1017,8 @@
                 }
             });
             scene.add(city);
+            addBoxCollidersFromGLB(city, world);
+
 
             city.updateMatrixWorld(true);
             city.traverse((node) => {
