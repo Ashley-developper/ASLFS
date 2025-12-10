@@ -512,37 +512,39 @@
 
     function addBoxCollidersFromGLB(glbScene, world) {
 
+    const temp = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+
     glbScene.traverse(obj => {
 
-        // 只处理 mesh（楼、物体等）
-        if (obj.isMesh) {
+        if (obj.isMesh && obj.geometry) {
 
+            obj.updateWorldMatrix(true, false);
             obj.geometry.computeBoundingBox();
+
             const box = obj.geometry.boundingBox;
 
-            // 尺寸：半径
+            // 真实尺寸 = 包围盒 × 世界缩放
+            const scale = obj.getWorldScale(temp);
+
             const size = new CANNON.Vec3(
-                (box.max.x - box.min.x) / 2,
-                (box.max.y - box.min.y) / 2,
-                (box.max.z - box.min.z) / 2
+                (box.max.x - box.min.x) * scale.x / 2,
+                (box.max.y - box.min.y) * scale.y / 2,
+                (box.max.z - box.min.z) * scale.z / 2
             );
 
-            // 物理 shape
-            const shape = new CANNON.Box(size);
+            const pos = obj.getWorldPosition(new THREE.Vector3());
+            obj.getWorldQuaternion(quat);
 
-            // 获取世界坐标
-            const worldPos = new THREE.Vector3();
-            obj.getWorldPosition(worldPos);
-
-            // 物理 body
             const body = new CANNON.Body({
-                mass: 0,             // 静态物体（不动）
-                shape: shape,
+                mass: 0,
+                shape: new CANNON.Box(size),
                 position: new CANNON.Vec3(
-                    worldPos.x,
-                    worldPos.y + size.y,
-                    worldPos.z
-                )
+                    pos.x,
+                    pos.y + size.y,
+                    pos.z
+                ),
+                quaternion: new CANNON.Quaternion(quat.x, quat.y, quat.z, quat.w)
             });
 
             world.addBody(body);
