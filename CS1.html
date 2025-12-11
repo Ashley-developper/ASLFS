@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <title>OPEN WORLD HYPER DRIVE - REMASTERED</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OPEN WORLD HYPER DRIVE - UPDATED</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
-         * UI BASE & TYPOGRAPHY
+         * CORE STYLES
          * ========================================================================= */
         body { 
             margin: 0; overflow: hidden; background: #000; 
@@ -15,243 +15,253 @@
         }
         
         /* =========================================================================
-         * HUD
+         * HUD (IN-GAME)
          * ========================================================================= */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
             padding: 20px; box-sizing: border-box; z-index: 10;
         }
-
-        .hud-top-left { display: flex; gap: 15px; flex-wrap: wrap; transform: scale(0.9); transform-origin: top left; }
+        .hud-top-left { display: flex; gap: 15px; flex-wrap: wrap; }
         .hud-top-right { position: absolute; top: 20px; right: 20px; text-align: right;}
         
         .instrument {
             background: rgba(0, 15, 30, 0.8);
             border: 1px solid rgba(0, 255, 255, 0.3);
             border-left: 4px solid #00FFFF;
-            backdrop-filter: blur(5px);
-            padding: 10px 18px; min-width: 100px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
-            transform: skewX(-10deg);
+            padding: 10px 15px; min-width: 100px;
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 90% 100%, 0 100%);
         }
-        
-        .label {
-            font-family: 'Orbitron', sans-serif; font-size: 10px; color: #00FFFF; 
-            font-weight: 700; letter-spacing: 1px; display:block; text-transform: uppercase;
-            transform: skewX(10deg);
-        }
-        .value {
-            font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 900; 
-            color: #FFF; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            transform: skewX(10deg); display: inline-block;
-        }
-        .unit { font-size: 12px; color: #888; margin-left: 5px; transform: skewX(10deg); display: inline-block;}
+        .label { font-family: 'Orbitron'; font-size: 10px; color: #00FFFF; letter-spacing: 1px; display:block; }
+        .value { font-family: 'Orbitron'; font-size: 28px; font-weight: 900; color: #FFF; }
+        .unit { font-size: 12px; color: #888; margin-left: 4px; }
 
-        .spd-color { border-left-color: #00FFFF !important; }
-        .rpm-color { border-left-color: #FF00FF !important; }
-        .gear-color { border-left-color: #FFD700 !important; }
+        /* Specific Colors */
+        .spd-color { border-left-color: #00FFFF; }
+        .rpm-color { border-left-color: #FF00FF; }
+        .gear-color { border-left-color: #FFD700; }
 
-        #hud-coin {
-            background: rgba(40, 30, 0, 0.85);
-            border-left: 4px solid #FFD700;
-            min-width: 160px; display: inline-block;
+        #hud-coin { 
+            border-left: 4px solid #FFD700; background: rgba(40, 30, 0, 0.8); 
+            display: inline-block; padding-right: 30px;
         }
-        #hud-coin .label { color: #FFD700; }
         #coin-count { color: #FFD700; }
 
         /* Delivery HUD */
         #delivery-hud {
-            position: absolute; top: 160px; left: 20px;
-            background: rgba(0, 20, 0, 0.8);
-            border-left: 4px solid #00FF00;
-            padding: 15px; width: 280px;
-            display: none; clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+            position: absolute; top: 150px; left: 20px;
+            background: rgba(0, 30, 0, 0.85); border: 1px solid #00FF00; border-left: 4px solid #00FF00;
+            padding: 15px; width: 220px; display: none;
         }
-        .mission-title { color: #00FF00; font-weight: 900; font-family: 'Orbitron'; font-size: 14px; margin-bottom: 5px; border-bottom: 1px solid #004400;}
-        .mission-detail { font-size: 18px; color: #fff; }
+        .mission-title { font-family: 'Orbitron'; color: #00FF00; font-weight: bold; font-size: 12px; margin-bottom: 5px; border-bottom: 1px dashed #00FF00; }
+        
+        /* Notifications (Drift/Reward) */
+        #notification-area {
+            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            text-align: center; pointer-events: none;
+        }
+        .notify-msg {
+            font-family: 'Orbitron'; font-size: 24px; font-weight: 900;
+            color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            margin-bottom: 10px; opacity: 0; transition: opacity 0.5s;
+            animation: popUp 2s forwards;
+        }
+        @keyframes popUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
 
-        /* Controls Hint */
         #control-hints {
             position: absolute; bottom: 20px; left: 20px;
-            font-size: 12px; color: rgba(255,255,255,0.5);
-            background: rgba(0,0,0,0.6); padding: 10px;
-            border-radius: 5px; border: 1px solid #333;
+            background: rgba(0,0,0,0.7); border-left: 3px solid #FFF;
+            padding: 15px; color: #AAA; font-size: 12px;
         }
 
         /* =========================================================================
-         * MENUS & SPLASH
+         * SPLASH & MENUS
          * ========================================================================= */
         #splash {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
-            z-index: 999; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            transition: opacity 0.5s;
+            z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-
+        
         .splash-header h1 {
-            font-family: 'Orbitron', sans-serif; font-size: 72px; margin: 0;
+            font-family: 'Orbitron'; font-size: 72px; margin: 0;
             background: linear-gradient(to right, #00FFFF, #FF00FF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(0,255,255,0.4);
-            text-align: center; line-height: 0.9;
+            text-shadow: 0 0 30px rgba(0,255,255,0.5);
+            text-transform: uppercase; letter-spacing: 5px;
         }
-        .splash-subtitle { color: #888; letter-spacing: 5px; margin-top: 10px; font-weight: 600; text-align: center;}
-
-        /* Menu Buttons */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 50px; }
         
-        .big-btn {
-            font-family: 'Orbitron'; font-size: 24px; font-weight: 900;
-            padding: 20px 40px; border: none; cursor: pointer;
-            background: #00FFFF; color: #000;
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
-            transition: 0.3s; text-transform: uppercase;
+        .main-menu-btns {
+            margin-top: 50px; display: flex; flex-direction: column; gap: 15px; width: 300px;
         }
-        .big-btn:hover { transform: scale(1.05); background: #fff; box-shadow: 0 0 30px #00FFFF; }
-        .big-btn.secondary { background: transparent; border: 2px solid #FF00FF; color: #FF00FF; }
-        .big-btn.secondary:hover { background: #FF00FF; color: #000; box-shadow: 0 0 30px #FF00FF; }
-
-        .small-menu { position: absolute; bottom: 30px; display: flex; gap: 15px; }
-        .icon-btn {
-            background: rgba(255,255,255,0.1); border: 1px solid #555; color: #aaa;
-            padding: 10px 20px; cursor: pointer; font-family: 'Rajdhani'; font-weight: bold;
-            transition: 0.3s;
+        .menu-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.2);
+            color: #FFF; font-family: 'Orbitron'; font-size: 18px; padding: 15px;
+            cursor: pointer; transition: 0.2s; text-align: center;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
         }
-        .icon-btn:hover { background: #333; color: #fff; border-color: #fff; }
+        .menu-btn:hover { background: #00FFFF; color: #000; box-shadow: 0 0 15px #00FFFF; }
+        .btn-play { background: #00FFFF; color: #000; font-weight: 900; font-size: 22px; border: none; }
+        .btn-play:hover { background: #FFF; transform: scale(1.05); }
 
-        /* =========================================================================
-         * SHOP UI (NEW)
-         * ========================================================================= */
+        /* Menu Pages */
         .menu-page {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.92); z-index: 1000;
-            display: none; flex-direction: column; align-items: center; justify-content: flex-start;
-            padding-top: 80px; opacity: 0; transition: opacity 0.3s;
+            background: rgba(0,0,0,0.95); z-index: 1000; display: none;
+            flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 80px;
         }
-        .menu-page.active { opacity: 1; }
-        
-        .shop-container { display: flex; gap: 30px; margin-top: 40px; flex-wrap: wrap; justify-content: center;}
-        
-        .shop-item {
-            background: rgba(20,20,30,0.8); border: 1px solid #333;
-            width: 250px; padding: 20px; text-align: center;
-            border-top: 4px solid #555; transition: 0.3s; position: relative;
+        .menu-page h2 { font-family: 'Orbitron'; color: #FF00FF; font-size: 36px; margin-bottom: 30px; }
+        .close-btn {
+            position: absolute; top: 30px; right: 40px;
+            background: #FF0000; color: #FFF; border: none; padding: 10px 20px;
+            font-family: 'Orbitron'; cursor: pointer; font-weight: bold;
         }
-        .shop-item:hover { transform: translateY(-5px); border-top-color: #00FFFF; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .shop-item.owned { border-top-color: #00FF00; opacity: 0.6; }
-        
-        .item-title { font-family: 'Orbitron'; color: #fff; font-size: 18px; margin-bottom: 10px; }
-        .item-desc { color: #aaa; font-size: 14px; height: 40px; margin-bottom: 20px; }
-        .item-price { color: #FFD700; font-weight: bold; font-size: 20px; margin-bottom: 15px; }
-        
-        .buy-btn {
-            background: #333; color: #fff; border: 1px solid #555; padding: 10px 20px;
-            cursor: pointer; font-family: 'Orbitron'; transition: 0.2s; width: 100%;
-        }
-        .buy-btn:hover:not(:disabled) { background: #FFD700; color: #000; border-color: #FFD700; }
-        .buy-btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
-        #close-menu { 
-            position: absolute; top: 30px; right: 30px; background: none; border: none; 
-            color: #fff; font-size: 30px; cursor: pointer; 
+        /* SHOP GRID */
+        .shop-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .shop-item {
+            background: rgba(255,255,255,0.05); border: 1px solid #333; padding: 20px;
+            width: 200px; text-align: center; transition: 0.2s;
         }
+        .shop-item:hover { border-color: #00FFFF; background: rgba(0,255,255,0.1); }
+        .shop-item h3 { color: #00FFFF; font-family: 'Orbitron'; margin: 0 0 10px 0; font-size: 16px; }
+        .shop-item p { font-size: 14px; color: #BBB; height: 40px;}
+        .shop-price { color: #FFD700; font-weight: bold; font-size: 18px; margin: 10px 0; }
+        .buy-btn {
+            background: #222; color: #FFF; border: 1px solid #555; padding: 8px 15px;
+            font-family: 'Orbitron'; cursor: pointer; width: 100%;
+        }
+        .buy-btn.owned { background: #333; color: #00FF00; border: 1px solid #00FF00; cursor: default; }
+        .buy-btn.can-afford:hover { background: #FFD700; color: #000; }
 
         /* Loading */
         #loading-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 2000; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
+            align-items: center; justify-content: center; color: #00FFFF;
         }
-        #p-bar { width: 300px; height: 4px; background: #333; margin-top: 20px; border-radius: 2px;}
-        #p-fill { width: 0%; height: 100%; background: #00FFFF; transition: width 0.2s; box-shadow: 0 0 10px #00FFFF;}
-
+        #loading-bar { width: 300px; height: 4px; background: #333; margin-top: 20px; }
+        #loading-fill { width: 0%; height: 100%; background: #00FFFF; transition: width 0.2s; }
+        
+        .daily-reward-popup {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9); border: 2px solid #FFD700; padding: 40px;
+            text-align: center; z-index: 1500; display: none;
+            box-shadow: 0 0 50px rgba(255,215,0,0.3);
+        }
     </style>
 </head>
 <body>
 
     <div id="loading-screen">
-        <h2 style="font-family:'Orbitron'; color:white; letter-spacing: 3px;">INITIALIZING SYSTEM</h2>
-        <div id="p-bar"><div id="p-fill"></div></div>
-        <p id="load-text" style="color:#666; font-size: 12px; margin-top: 10px;">Assets loading...</p>
+        <h2 style="font-family:'Orbitron'">SYSTEM INITIALIZING</h2>
+        <div id="loading-bar"><div id="loading-fill"></div></div>
+        <p id="loading-text" style="font-size:12px; margin-top:10px;">Loading Assets...</p>
+    </div>
+
+    <div id="daily-reward" class="daily-reward-popup">
+        <h2 style="color:#FFD700; font-family:'Orbitron'">DAILY LOGIN BONUS!</h2>
+        <p style="font-size:20px;">WELCOME BACK, DRIVER.</p>
+        <p style="font-size:40px; color:#FFD700; font-weight:bold;">+500 CREDITS</p>
+        <button class="menu-btn" onclick="claimDailyReward()">COLLECT</button>
     </div>
 
     <div id="splash">
         <div class="splash-header">
             <h1>OPEN WORLD<br>HYPER DRIVE</h1>
-            <p class="splash-subtitle">V 2.0 // PROGRESS SAVED</p>
+            <p style="color:#888; letter-spacing:4px; font-size:14px;">IMPROVED EDITION v2.0</p>
         </div>
         
-        <div style="position:absolute; top:30px; right:30px; text-align:right;">
-            <div style="color:#FFD700; font-family:'Orbitron'; font-size:24px;">
-                <span id="menu-coins">0</span> 📀
-            </div>
-            <div style="color:#888; font-size:12px;">AVAILABLE FUNDS</div>
+        <div style="position:absolute; top:20px; right:20px; text-align:right;">
+            <div style="font-family:'Orbitron'; color:#FFD700; font-size:12px;">TOTAL CREDITS</div>
+            <div id="menu-coin-display" style="font-family:'Orbitron'; color:#FFF; font-size:32px;">0</div>
         </div>
 
-        <div class="menu-grid">
-            <button class="big-btn" onclick="startDeliveryMode()">START MISSION</button>
-            <button class="big-btn secondary" onclick="openShop()">UPGRADE SHOP</button>
-        </div>
-
-        <div class="small-menu">
-            <button class="icon-btn" onclick="enterGame()">FREE ROAM</button>
-            <button class="icon-btn" onclick="alert('Controls:\nWASD - Drive\nSHIFT - Nitro\nSPACE - Drift/Brake\nV - Camera\nR - Respawn')">CONTROLS</button>
+        <div class="main-menu-btns">
+            <button class="menu-btn btn-play" onclick="startGame()">ENTER WORLD</button>
+            <button class="menu-btn" onclick="openShop()">GARAGE / SHOP</button>
+            <button class="menu-btn" onclick="resetProgress()">RESET DATA</button>
         </div>
         
-        <div style="position: absolute; bottom: 10px; font-size: 10px; color: #444;">ZHANYI ZHOU DESIGN © 2025</div>
+        <div style="position:absolute; bottom:20px; color:#555; font-size:10px;">
+            ASSETS COPYRIGHT © RESPECTIVE OWNERS. CODE OPTIMIZED FOR CRAZYGAMES.
+        </div>
     </div>
 
     <div id="shop-page" class="menu-page">
-        <button id="close-menu" onclick="closeShop()">×</button>
-        <h2 style="font-family:'Orbitron'; font-size: 40px; color:#FF00FF; text-shadow:0 0 20px #FF00FF;">PERFORMANCE SHOP</h2>
-        <div style="color:#FFD700; font-family:'Orbitron'; margin-bottom: 20px;">BALANCE: <span id="shop-balance">0</span></div>
+        <button class="close-btn" onclick="closeShop()">CLOSE</button>
+        <h2>PERFORMANCE & VISUALS</h2>
+        <div style="color:#FFD700; font-family:'Orbitron'; font-size:24px; margin-bottom:20px;">
+            CREDITS: <span id="shop-coin-display">0</span>
+        </div>
         
-        <div class="shop-container">
-            <div class="shop-item" id="item-engine">
-                <div class="item-title">TURBO CHARGER V2</div>
-                <div class="item-desc">Increases top speed and acceleration by 30%.</div>
-                <div class="item-price">500 Gold</div>
-                <button class="buy-btn" onclick="buyItem('engine')">PURCHASE</button>
+        <div class="shop-grid">
+            <div class="shop-item">
+                <h3>ENGINE STAGE 2</h3>
+                <p>Increase top speed and acceleration.</p>
+                <div class="shop-price">500 C</div>
+                <button id="btn-upgrade-engine" class="buy-btn" onclick="buyEngineUpgrade()">BUY</button>
             </div>
             
-            <div class="shop-item" id="item-multiplier">
-                <div class="item-title">COIN MAGNET CHIP</div>
-                <div class="item-desc">Double (2x) all gold earned from missions.</div>
-                <div class="item-price">1000 Gold</div>
-                <button class="buy-btn" onclick="buyItem('multiplier')">PURCHASE</button>
+            <div class="shop-item">
+                <h3>NEON BLUE</h3>
+                <div style="width:100%; height:20px; background:#00FFFF; margin:5px 0;"></div>
+                <div class="shop-price">200 C</div>
+                <button id="btn-color-cyan" class="buy-btn" onclick="buyColor('cyan', 200)">BUY</button>
             </div>
             
-            <div class="shop-item" id="item-skin">
-                <div class="item-title">NEON BLUE PAINT</div>
-                <div class="item-desc">Apply a custom Midnight Blue neon coating.</div>
-                <div class="item-price">250 Gold</div>
-                <button class="buy-btn" onclick="buyItem('skin')">PURCHASE</button>
+            <div class="shop-item">
+                <h3>HOT PINK</h3>
+                <div style="width:100%; height:20px; background:#FF00FF; margin:5px 0;"></div>
+                <div class="shop-price">200 C</div>
+                <button id="btn-color-magenta" class="buy-btn" onclick="buyColor('magenta', 200)">BUY</button>
+            </div>
+
+            <div class="shop-item">
+                <h3>LIME GREEN</h3>
+                <div style="width:100%; height:20px; background:#00FF00; margin:5px 0;"></div>
+                <div class="shop-price">300 C</div>
+                <button id="btn-color-lime" class="buy-btn" onclick="buyColor('lime', 300)">BUY</button>
             </div>
         </div>
+        <p id="shop-msg" style="color:#FF0000; height:20px; margin-top:20px;"></p>
     </div>
 
     <div id="hud-layer" style="display:none;">
         <div class="hud-top-left">
-            <div class="instrument spd-color"><span class="label">KM/H</span><span class="value" id="hud-spd">0</span></div>
+            <div class="instrument spd-color"><span class="label">SPEED</span><span class="value" id="hud-spd">0</span></div>
             <div class="instrument rpm-color"><span class="label">RPM</span><span class="value" id="hud-rpm">0</span></div>
             <div class="instrument gear-color"><span class="label">GEAR</span><span class="value" id="hud-gear">N</span></div>
         </div>
-
+        
         <div class="hud-top-right">
             <div class="instrument" id="hud-coin">
                 <span class="label">CREDITS</span><span class="value" id="coin-count">0</span>
             </div>
         </div>
 
+        <div id="notification-area"></div>
+
         <div id="delivery-hud">
-            <div class="mission-title" id="mission-status">NO MISSION</div>
-            <div class="mission-detail"><span id="dist-val">0</span>m | <span id="time-val" style="color:#FFD700;">00:00</span></div>
+            <div class="mission-title" id="mission-text">NO MISSION</div>
+            <div style="color:#FFF;">DIST: <span id="dist-val">0</span>m</div>
+            <div style="color:#FFD700;">TIME: <span id="time-val">--:--</span></div>
         </div>
 
         <div id="control-hints">
-            [WASD] DRIVE | [SHIFT] NITRO | [SPACE] BRAKE | [V] CAM | [R] RESET
+            <div style="color:#00FFFF; font-weight:bold; margin-bottom:5px;">CONTROLS</div>
+            WASD / ARROWS : Drive<br>
+            SPACE : Handbrake / Drift<br>
+            SHIFT : Nitro (Cost Fuel)<br>
+            V : Camera View<br>
+            R : Respawn<br>
+            P : Start Delivery Mission
         </div>
     </div>
 
@@ -261,532 +271,537 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 
     <script>
-    // =============================================================================
-    // ** GAME STATE & SAVING (CRITICAL FOR RETENTION) **
-    // =============================================================================
-    const GameState = {
+    // =========================================================================
+    // ** 1. GAME DATA & SAVE SYSTEM (CRITICAL FOR RETENTION) **
+    // =========================================================================
+    const SAVE_KEY = 'OWHD_SAVE_V2';
+    
+    let playerData = {
         coins: 0,
-        upgrades: {
-            engine: false,     // Level 2 Engine
-            multiplier: false, // 2x Coins
-            skinBlue: false    // Blue Skin
-        },
-        activeSkin: 'default'
+        engineLevel: 1, // 1 = normal, 2 = sport
+        colorsOwned: ['default'],
+        currentColor: 'default', // 'default', 'cyan', 'magenta', 'lime'
+        lastLogin: 0
     };
 
-    function loadGame() {
-        const saved = localStorage.getItem('hyperDriveSave');
+    function loadData() {
+        const saved = localStorage.getItem(SAVE_KEY);
         if (saved) {
-            const parsed = JSON.parse(saved);
-            GameState.coins = parsed.coins || 0;
-            GameState.upgrades = parsed.upgrades || GameState.upgrades;
-            GameState.activeSkin = parsed.activeSkin || 'default';
+            try {
+                playerData = JSON.parse(saved);
+            } catch(e) { console.error('Save Corrupt'); }
         }
         updateUI();
     }
 
-    function saveGame() {
-        localStorage.setItem('hyperDriveSave', JSON.stringify(GameState));
+    function saveData() {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(playerData));
         updateUI();
     }
 
     function updateUI() {
-        document.getElementById('menu-coins').innerText = GameState.coins;
-        document.getElementById('shop-balance').innerText = GameState.coins;
-        document.getElementById('coin-count').innerText = GameState.coins;
+        document.getElementById('menu-coin-display').innerText = playerData.coins;
+        document.getElementById('shop-coin-display').innerText = playerData.coins;
+        document.getElementById('coin-count').innerText = playerData.coins;
         
-        // Update Shop Buttons
-        checkShopState('engine', GameState.upgrades.engine);
-        checkShopState('multiplier', GameState.upgrades.multiplier);
-        checkShopState('skin', GameState.upgrades.skinBlue);
+        // Update Shop Buttons State
+        updateShopButton('btn-upgrade-engine', playerData.engineLevel >= 2);
+        updateShopButton('btn-color-cyan', playerData.colorsOwned.includes('cyan'), playerData.currentColor === 'cyan');
+        updateShopButton('btn-color-magenta', playerData.colorsOwned.includes('magenta'), playerData.currentColor === 'magenta');
+        updateShopButton('btn-color-lime', playerData.colorsOwned.includes('lime'), playerData.currentColor === 'lime');
     }
 
-    function checkShopState(id, isOwned) {
-        const btn = document.querySelector(`#item-${id} .buy-btn`);
-        const item = document.getElementById(`item-${id}`);
-        if (isOwned) {
-            btn.innerText = "OWNED";
-            btn.disabled = true;
-            item.classList.add('owned');
+    function updateShopButton(id, isOwned, isEquipped) {
+        const btn = document.getElementById(id);
+        if(!btn) return;
+        if (isEquipped) {
+            btn.innerText = "EQUIPPED";
+            btn.className = "buy-btn owned";
+            btn.onclick = null;
+        } else if (isOwned) {
+            btn.innerText = "EQUIP";
+            btn.className = "buy-btn can-afford"; // Re-use style for equip
+            btn.onclick = function() { equipItem(id); };
         }
     }
 
-    // =============================================================================
-    // ** SHOP LOGIC **
-    // =============================================================================
-    const PRICES = { engine: 500, multiplier: 1000, skin: 250 };
+    function resetProgress() {
+        if(confirm("Reset all progress and coins?")) {
+            localStorage.removeItem(SAVE_KEY);
+            location.reload();
+        }
+    }
 
-    window.openShop = function() {
-        document.getElementById('shop-page').style.display = 'flex';
-        setTimeout(() => document.getElementById('shop-page').classList.add('active'), 10);
-    };
+    // =========================================================================
+    // ** 2. SHOP LOGIC **
+    // =========================================================================
+    function openShop() { document.getElementById('shop-page').style.display = 'flex'; updateUI(); }
+    function closeShop() { document.getElementById('shop-page').style.display = 'none'; }
 
-    window.closeShop = function() {
-        document.getElementById('shop-page').classList.remove('active');
-        setTimeout(() => document.getElementById('shop-page').style.display = 'none', 300);
-    };
-
-    window.buyItem = function(type) {
-        if (GameState.coins >= PRICES[type]) {
-            GameState.coins -= PRICES[type];
-            if (type === 'engine') GameState.upgrades.engine = true;
-            if (type === 'multiplier') GameState.upgrades.multiplier = true;
-            if (type === 'skin') {
-                GameState.upgrades.skinBlue = true;
-                GameState.activeSkin = 'blue';
-                applyCarSkin();
-            }
-            saveGame();
-            alert("UPGRADE SUCCESSFUL!");
+    function buyEngineUpgrade() {
+        if (playerData.engineLevel >= 2) return;
+        if (playerData.coins >= 500) {
+            playerData.coins -= 500;
+            playerData.engineLevel = 2;
+            saveData();
+            showShopMsg("ENGINE UPGRADED!", "#00FF00");
         } else {
-            alert("INSUFFICIENT FUNDS! Go Play Missions!");
+            showShopMsg("NOT ENOUGH CREDITS", "#FF0000");
         }
-    };
+    }
 
-    // =============================================================================
-    // ** CORE VARIABLES **
-    // =============================================================================
-    let scene, renderer, camera, world, vehicle, chassisBody;
-    let isGameRunning = false;
-    let cameraMode = 0; // 0: Chase, 1: Cockpit
-    
-    // Physics Config (Dynamic based on upgrades)
-    let maxEngineForce = 1500; 
-    let maxSteerVal = 0.5;
-    let brakeForce = 25;
-    
-    // Assets
-    let carMesh, arrowMesh, cityMesh;
-    let coinMeshes = [], coinBodies = [];
-    
-    // Inputs
-    const keys = { w:false, a:false, s:false, d:false, shift:false, space:false };
+    function buyColor(color, cost) {
+        if (playerData.colorsOwned.includes(color)) {
+            equipColor(color);
+            return;
+        }
+        if (playerData.coins >= cost) {
+            playerData.coins -= cost;
+            playerData.colorsOwned.push(color);
+            equipColor(color);
+            saveData();
+            showShopMsg("COLOR PURCHASED!", "#00FF00");
+        } else {
+            showShopMsg("NOT ENOUGH CREDITS", "#FF0000");
+        }
+    }
 
-    // Delivery Config
-    const DELIVERY_LOCS = [
-        {x: 50, z: 50, n:"Downtown"}, {x: -200, z: 100, n:"Docks"},
-        {x: 150, z: -200, n:"Suburbs"}, {x: -150, z: -150, n:"Factory"},
-        {x: 300, z: 0, n:"Highway"}, {x: 0, z: 300, n:"Hills"}
-    ];
-    let mission = { active: false, target: null, type: 'none', timer: 0 }; // type: 'pickup' | 'dropoff'
+    function equipItem(btnId) {
+        if(btnId.includes('color-cyan')) equipColor('cyan');
+        if(btnId.includes('color-magenta')) equipColor('magenta');
+        if(btnId.includes('color-lime')) equipColor('lime');
+    }
 
-    // =============================================================================
-    // ** THREE JS & CANNON INIT **
-    // =============================================================================
+    function equipColor(color) {
+        playerData.currentColor = color;
+        saveData();
+        updateUI();
+        if(carMesh) applyCarColor(); // Apply immediately if mesh loaded
+    }
+
+    function showShopMsg(txt, color) {
+        const el = document.getElementById('shop-msg');
+        el.innerText = txt; el.style.color = color;
+        setTimeout(() => el.innerText = "", 2000);
+    }
+
+    function claimDailyReward() {
+        playerData.coins += 500;
+        playerData.lastLogin = Date.now();
+        saveData();
+        document.getElementById('daily-reward').style.display = 'none';
+        
+        // Visual flair
+        showNotification("+500 DAILY BONUS!");
+    }
+
+    function checkDailyReward() {
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000;
+        // If first time or more than 24 hours
+        if (playerData.lastLogin === 0 || (now - playerData.lastLogin) > oneDay) {
+            document.getElementById('daily-reward').style.display = 'block';
+        }
+    }
+
+    // =========================================================================
+    // ** 3. GAME ENGINE (THREE.JS + CANNON) **
+    // =========================================================================
+    let scene, camera, renderer, world, vehicle, chassisBody;
+    let isGameActive = false;
+    let carMesh, coinMeshProto;
+    let coins = [];
+    
+    // Physics Config
+    let maxEngineForce = 1500; // Will be scaled by upgrades
+    let maxSteerVal = 0.6;
+    let brakeForce = 50;
+
+    const input = { w:0, a:0, s:0, d:0, space:0, shift:0 };
+
     function init() {
-        loadGame();
+        loadData();
+        checkDailyReward();
 
         // Scene
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111);
-        scene.fog = new THREE.FogExp2(0x111111, 0.002);
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 200, 1000);
 
-        // Lights
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-        scene.add(hemiLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(100, 200, 100);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.top = 200; dirLight.shadow.camera.bottom = -200;
-        dirLight.shadow.camera.left = -200; dirLight.shadow.camera.right = 200;
-        scene.add(dirLight);
+        // Camera
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 5, -10);
 
         // Renderer
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Optimization
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Optim
         document.body.appendChild(renderer.domElement);
 
-        // Camera
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
+        // Lights
+        const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        scene.add(hemi);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(100, 200, 100);
+        dir.castShadow = true;
+        dir.shadow.camera.top = 200; dir.shadow.camera.bottom = -200;
+        dir.shadow.camera.left = -200; dir.shadow.camera.right = 200;
+        dir.shadow.mapSize.width = 2048; dir.shadow.mapSize.height = 2048;
+        scene.add(dir);
 
         // Physics World
         world = new CANNON.World();
         world.gravity.set(0, -9.82, 0);
         world.broadphase = new CANNON.SAPBroadphase(world);
-        world.defaultContactMaterial.friction = 0.1;
 
         // Ground
-        const groundMat = new CANNON.Material();
-        const groundBody = new CANNON.Body({ mass: 0, material: groundMat });
-        groundBody.addShape(new CANNON.Plane());
-        groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
-        world.addBody(groundBody);
-
-        const gridHelper = new THREE.GridHelper(2000, 100, 0x222222, 0x222222);
-        scene.add(gridHelper);
-        
-        const groundMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(2000, 2000),
-            new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 })
-        );
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+        const groundGeo = new THREE.PlaneGeometry(5000, 5000);
+        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI/2;
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
 
-        initCar();
+        const groundPhys = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+        groundPhys.quaternion.setFromEuler(-Math.PI/2, 0, 0);
+        world.addBody(groundPhys);
+
+        // Load Assets
         loadAssets();
-        animate();
+
+        // Listeners
+        window.addEventListener('resize', onResize);
+        window.addEventListener('keydown', e => handleKey(e, true));
+        window.addEventListener('keyup', e => handleKey(e, false));
+
+        // Start Loop
+        requestAnimationFrame(animate);
     }
 
-    function initCar() {
-        // Upgrade Check
-        if (GameState.upgrades.engine) maxEngineForce = 3000; // Boost speed if upgraded
-
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
-        chassisBody = new CANNON.Body({ mass: 150 });
-        chassisBody.addShape(chassisShape, new CANNON.Vec3(0, 0.5, 0)); // Center of mass fix
-        chassisBody.position.set(0, 2, 0);
-        chassisBody.angularDamping = 0.5;
-        
-        vehicle = new CANNON.RaycastVehicle({
-            chassisBody: chassisBody,
-            indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
-        });
-        
-        const wheelOpts = {
-            radius: 0.4, directionLocal: new CANNON.Vec3(0, -1, 0),
-            suspensionStiffness: 30, suspensionRestLength: 0.3,
-            frictionSlip: 2.5, dampingRelaxation: 2.3, dampingCompression: 4.4,
-            maxSuspensionForce: 100000, rollInfluence: 0.01,
-            axleLocal: new CANNON.Vec3(1, 0, 0),
-            chassisConnectionPointLocal: new CANNON.Vec3(1, 1, 0),
-            maxSuspensionTravel: 0.3, customSlidingRotationalSpeed: -30,
-            useCustomSlidingRotationalSpeed: true
-        };
-
-        vehicle.addWheel({...wheelOpts, chassisConnectionPointLocal: new CANNON.Vec3(-1, 0, 1.2)});
-        vehicle.addWheel({...wheelOpts, chassisConnectionPointLocal: new CANNON.Vec3(1, 0, 1.2)});
-        vehicle.addWheel({...wheelOpts, chassisConnectionPointLocal: new CANNON.Vec3(-1, 0, -1.2)});
-        vehicle.addWheel({...wheelOpts, chassisConnectionPointLocal: new CANNON.Vec3(1, 0, -1.2)});
-
-        vehicle.addToWorld(world);
-        
-        // Wheel Bodies (Visuals)
-        const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 24);
-        wheelGeo.rotateZ(Math.PI/2);
-        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        
-        vehicle.wheelInfos.forEach(w => {
-            const mesh = new THREE.Mesh(wheelGeo, wheelMat);
-            scene.add(mesh);
-            w.mesh = mesh; // Link for update
-        });
-    }
-
-    // =============================================================================
-    // ** ASSET LOADING (WITH FALLBACKS) **
-    // =============================================================================
     function loadAssets() {
         const loader = new THREE.GLTFLoader();
         const draco = new THREE.DRACOLoader();
         draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
         loader.setDRACOLoader(draco);
 
-        let itemsLoaded = 0;
-        const totalItems = 3; 
-        const updateLoad = () => {
-            itemsLoaded++;
-            document.getElementById('p-fill').style.width = (itemsLoaded/totalItems)*100 + '%';
-            if(itemsLoaded >= totalItems) {
-                setTimeout(() => {
-                    document.getElementById('loading-screen').style.display = 'none';
-                }, 500);
-            }
+        const manager = new THREE.LoadingManager();
+        manager.onProgress = (url, loaded, total) => {
+            const pct = Math.floor((loaded/total)*100);
+            document.getElementById('loading-fill').style.width = pct + "%";
+            document.getElementById('loading-text').innerText = "Loading: " + pct + "%";
+        };
+        manager.onLoad = () => {
+            document.getElementById('loading-screen').style.display = 'none';
         };
 
-        // 1. CAR
-        loader.load('./car1.glb', (gltf) => { // EXPECTS LOCAL FILE
+        const safeLoader = new THREE.GLTFLoader(manager);
+        safeLoader.setDRACOLoader(draco);
+
+        // 1. CAR (Assume car1.glb exists or use fallback)
+        safeLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
-            carMesh.scale.set(1,1,1); // Adjust based on your model
+            carMesh.scale.set(100,100,100); // Original scale preserved
             carMesh.rotation.y = Math.PI;
             scene.add(carMesh);
-            applyCarSkin();
-            updateLoad();
-        }, undefined, () => {
-            // Fallback if no file
-            console.warn("Car model not found, using box.");
-            const geo = new THREE.BoxGeometry(2, 1, 4);
-            const mat = new THREE.MeshStandardMaterial({ color: 0x00FFFF, wireframe: true });
-            carMesh = new THREE.Mesh(geo, mat);
+            initPhysicsCar();
+            applyCarColor(); // Apply color on load
+        }, undefined, (err) => {
+            console.log("Using Box Fallback for Car");
+            const box = new THREE.Mesh(new THREE.BoxGeometry(2,1,4), new THREE.MeshNormalMaterial());
+            carMesh = box;
             scene.add(carMesh);
-            updateLoad();
+            initPhysicsCar();
         });
 
-        // 2. CITY / ENV
-        // NOTE: Downloading the city to local assets is HIGHLY recommended for performance
-        loader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
-            cityMesh = gltf.scene;
-            cityMesh.scale.set(3,3,3);
-            scene.add(cityMesh);
-            
-            // Generate basic physics from city (Simplified)
-            // Ideally, you should load a separate physics mesh or just simple boxes
-            updateLoad();
-        }, undefined, () => {
-            // Fallback environment
-            const bGeo = new THREE.BoxGeometry(10, 20, 10);
-            const bMat = new THREE.MeshStandardMaterial({color: 0x555555});
-            for(let i=0; i<20; i++) {
-                const m = new THREE.Mesh(bGeo, bMat);
-                m.position.set((Math.random()-0.5)*400, 10, (Math.random()-0.5)*400);
-                scene.add(m);
-                // Add physics
-                const shape = new CANNON.Box(new CANNON.Vec3(5, 10, 5));
-                const b = new CANNON.Body({mass:0, position: new CANNON.Vec3(m.position.x, 10, m.position.z)});
-                b.addShape(shape);
-                world.addBody(b);
-            }
-            updateLoad();
+        // 2. CITY (Using external fallback if local fails, but PRIORITIZING local)
+        // ** INSTRUCTION: Change this to './city.glb' for production **
+        const cityUrl = 'https://ashley-developper.github.io/ASLFS/city.glb'; 
+        safeLoader.load(cityUrl, (gltf) => {
+            const city = gltf.scene;
+            city.scale.set(4,4,4);
+            scene.add(city);
+            // Create simple physics for city (optimization: just ground plane for now to save FPS)
         });
 
-        // 3. ARROW
-        loader.load('./arrow.glb', (gltf) => {
-            arrowMesh = gltf.scene;
-            arrowMesh.visible = false;
-            scene.add(arrowMesh);
-            updateLoad();
+        // 3. COIN
+        safeLoader.load('gold_coin.glb', (gltf) => {
+            coinMeshProto = gltf.scene;
+            spawnCoins();
         }, undefined, () => {
-            const geo = new THREE.ConeGeometry(1, 3, 8);
-            const mat = new THREE.MeshBasicMaterial({color: 0x00FF00, transparent:true, opacity:0.8});
-            arrowMesh = new THREE.Mesh(geo, mat);
-            arrowMesh.visible = false;
-            arrowMesh.rotation.x = Math.PI; // Point down
-            scene.add(arrowMesh);
-            updateLoad();
+            // Fallback coin
+            coinMeshProto = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.1,16), new THREE.MeshStandardMaterial({color:0xFFD700}));
+            coinMeshProto.rotation.x = Math.PI/2;
+            spawnCoins();
         });
     }
 
-    function applyCarSkin() {
-        if(!carMesh) return;
-        carMesh.traverse((child) => {
-            if(child.isMesh) {
-                if(GameState.activeSkin === 'blue') {
-                    child.material = new THREE.MeshStandardMaterial({ 
-                        color: 0x001133, emissive: 0x0000FF, emissiveIntensity: 0.5, roughness: 0.2
-                    });
-                }
-            }
-        });
-    }
+    function initPhysicsCar() {
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
+        chassisBody = new CANNON.Body({ mass: 1500 });
+        chassisBody.addShape(chassisShape, new CANNON.Vec3(0,0.5,0)); // Offset center of mass
+        chassisBody.position.set(0, 5, 0);
+        chassisBody.angularDamping = 0.5;
 
-    // =============================================================================
-    // ** DELIVERY & GAMEPLAY LOGIC **
-    // =============================================================================
-    window.startDeliveryMode = function() {
-        if(!isGameRunning) enterGame();
-        
-        const loc = DELIVERY_LOCS[Math.floor(Math.random() * DELIVERY_LOCS.length)];
-        mission = {
-            active: true,
-            target: new CANNON.Vec3(loc.x, 0, loc.z),
-            type: 'pickup',
-            timer: 120, // 2 minutes
-            name: loc.n
+        vehicle = new CANNON.RaycastVehicle({
+            chassisBody: chassisBody,
+            indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
+        });
+
+        const opts = {
+            radius: 0.5, directionLocal: new CANNON.Vec3(0, -1, 0),
+            suspensionStiffness: 30, suspensionRestLength: 0.3,
+            frictionSlip: 2.0, dampingRelaxation: 2.3, dampingCompression: 4.4,
+            maxSuspensionForce: 100000, rollInfluence: 0.01,
+            axleLocal: new CANNON.Vec3(1, 0, 0),
+            chassisConnectionPointLocal: new CANNON.Vec3(1, 0, 1),
+            maxSuspensionTravel: 0.3, customSlidingRotationalSpeed: -30,
+            useCustomSlidingRotationalSpeed: true
         };
-        
-        document.getElementById('delivery-hud').style.display = 'block';
-        updateMissionUI();
-    };
 
-    function updateMissionUI() {
-        const title = document.getElementById('mission-status');
-        if(mission.type === 'pickup') {
-            title.innerText = "GO TO: " + mission.name;
-            title.style.color = "#00FFFF";
-            if(arrowMesh) arrowMesh.children[0].material.color.setHex(0x00FFFF);
-        } else if(mission.type === 'dropoff') {
-            title.innerText = "DELIVER TO: " + mission.name;
-            title.style.color = "#00FF00";
-            if(arrowMesh) arrowMesh.children[0].material.color.setHex(0x00FF00);
-        }
+        vehicle.addWheel({...opts, chassisConnectionPointLocal: new CANNON.Vec3(-1, 0, 1.5)});
+        vehicle.addWheel({...opts, chassisConnectionPointLocal: new CANNON.Vec3( 1, 0, 1.5)});
+        vehicle.addWheel({...opts, chassisConnectionPointLocal: new CANNON.Vec3(-1, 0, -1.5)});
+        vehicle.addWheel({...opts, chassisConnectionPointLocal: new CANNON.Vec3( 1, 0, -1.5)});
+
+        vehicle.addToWorld(world);
+        
+        // Add simple wheel visuals
+        const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 24);
+        wheelGeo.rotateZ(Math.PI/2);
+        const wheelMat = new THREE.MeshStandardMaterial({color:0x111111});
+        
+        vehicle.wheelInfos.forEach((w) => {
+            const mesh = new THREE.Mesh(wheelGeo, wheelMat);
+            scene.add(mesh);
+            w.mesh = mesh; // Link physics wheel to visual mesh
+        });
     }
 
-    function checkMissionLogic() {
-        if(!mission.active) return;
+    // =========================================================================
+    // ** 4. GAMEPLAY MECHANICS **
+    // =========================================================================
 
-        mission.timer -= 1/60;
-        if(mission.timer <= 0) {
-            mission.active = false;
-            alert("MISSION FAILED: Time Over");
-            document.getElementById('delivery-hud').style.display = 'none';
-            return;
-        }
+    function applyCarColor() {
+        if(!carMesh) return;
+        let hex = 0xFFFFFF; // default
+        if (playerData.currentColor === 'cyan') hex = 0x00FFFF;
+        if (playerData.currentColor === 'magenta') hex = 0xFF00FF;
+        if (playerData.currentColor === 'lime') hex = 0x00FF00;
 
-        // Arrow Logic
-        if(arrowMesh) {
-            arrowMesh.visible = true;
-            arrowMesh.position.copy(chassisBody.position);
-            arrowMesh.position.y += 4;
-            arrowMesh.lookAt(mission.target.x, arrowMesh.position.y, mission.target.z);
-            arrowMesh.rotation.x = Math.PI/2; // Fix rotation depending on your GLB
-        }
-
-        const dist = chassisBody.position.distanceTo(mission.target);
-        document.getElementById('dist-val').innerText = Math.floor(dist);
-        
-        // Format Timer
-        let m = Math.floor(mission.timer / 60);
-        let s = Math.floor(mission.timer % 60);
-        document.getElementById('time-val').innerText = `${m}:${s<10?'0'+s:s}`;
-
-        if(dist < 8) {
-            if(mission.type === 'pickup') {
-                // Switch to Dropoff
-                const loc = DELIVERY_LOCS[Math.floor(Math.random() * DELIVERY_LOCS.length)];
-                mission.target.set(loc.x, 0, loc.z);
-                mission.type = 'dropoff';
-                mission.name = loc.n;
-                mission.timer += 60; // Bonus time
-                updateMissionUI();
-                // Visual feedback (Flash HUD)
-                document.getElementById('delivery-hud').style.backgroundColor = "#004400";
-                setTimeout(()=>document.getElementById('delivery-hud').style.backgroundColor = "rgba(0,20,0,0.8)", 500);
-
-            } else {
-                // Complete
-                completeMission();
+        // Traverse mesh to find the body paint material (Usually standard material)
+        carMesh.traverse((o) => {
+            if (o.isMesh) {
+                // Heuristic: The largest mesh is usually the body, or specific names
+                // For this generic code, we clone material and tint it
+                o.material = o.material.clone();
+                o.material.color.setHex(hex);
             }
+        });
+    }
+
+    function spawnCoins() {
+        for(let i=0; i<30; i++) {
+            const x = (Math.random()-0.5)*1000;
+            const z = (Math.random()-0.5)*1000;
+            
+            const mesh = coinMeshProto.clone();
+            mesh.position.set(x, 1, z);
+            mesh.scale.set(2,2,2);
+            scene.add(mesh);
+
+            coins.push({ mesh: mesh, active: true, radius: 2 });
         }
     }
 
-    function completeMission() {
-        let reward = 100;
-        if(GameState.upgrades.multiplier) reward *= 2; // COIN MULTIPLIER UPGRADE LOGIC
-        
-        GameState.coins += reward;
-        saveGame();
-        
-        mission.active = false;
-        arrowMesh.visible = false;
-        document.getElementById('delivery-hud').style.display = 'none';
-        
-        alert(`MISSION COMPLETE!\nEARNED: ${reward} GOLD`);
-    }
-
-    window.enterGame = function() {
-        document.getElementById('splash').style.opacity = 0;
-        setTimeout(() => document.getElementById('splash').style.display = 'none', 500);
+    function startGame() {
+        document.getElementById('splash').style.display = 'none';
         document.getElementById('hud-layer').style.display = 'flex';
-        isGameRunning = true;
+        isGameActive = true;
         
         // Reset Car
-        chassisBody.position.set(0, 2, 0);
+        chassisBody.position.set(0,2,0);
         chassisBody.velocity.set(0,0,0);
+        chassisBody.angularVelocity.set(0,0,0);
         chassisBody.quaternion.set(0,0,0,1);
-    };
+    }
 
-    // =============================================================================
-    // ** INPUT & LOOP **
-    // =============================================================================
-    window.addEventListener('keydown', e => {
+    function handleKey(e, down) {
+        if(!isGameActive) return;
         const k = e.key.toLowerCase();
-        if(k === 'w') keys.w = true;
-        if(k === 'a') keys.a = true;
-        if(k === 's') keys.s = true;
-        if(k === 'd') keys.d = true;
-        if(k === 'shift') keys.shift = true;
-        if(k === ' ') keys.space = true;
-        if(k === 'v') cameraMode = 1 - cameraMode;
-        if(k === 'r') {
-            chassisBody.position.y += 2;
-            chassisBody.quaternion.set(0,0,0,1);
-            chassisBody.velocity.set(0,0,0);
-            chassisBody.angularVelocity.set(0,0,0);
+        if(k==='w' || k==='arrowup') input.w = down;
+        if(k==='s' || k==='arrowdown') input.s = down;
+        if(k==='a' || k==='arrowleft') input.a = down;
+        if(k==='d' || k==='arrowright') input.d = down;
+        if(k===' ') input.space = down;
+        if(k==='shift') input.shift = down;
+        if(k==='r' && down) startGame();
+        if(k==='p' && down) startMission();
+    }
+
+    // Drift Logic
+    let driftScore = 0;
+    function checkDrift() {
+        if(!chassisBody) return;
+        const speed = chassisBody.velocity.length();
+        // If turning hard and moving fast
+        if(Math.abs(vehicle.getSteeringValue(0)) > 0.4 && speed > 15) {
+            driftScore++;
+            if(driftScore > 60 && driftScore % 60 === 0) { // Every ~1 sec of drifting
+                const bonus = 10;
+                playerData.coins += bonus;
+                saveData();
+                showNotification("DRIFT BONUS! +" + bonus);
+            }
+        } else {
+            driftScore = 0;
         }
-    });
-    window.addEventListener('keyup', e => {
-        const k = e.key.toLowerCase();
-        if(k === 'w') keys.w = false;
-        if(k === 'a') keys.a = false;
-        if(k === 's') keys.s = false;
-        if(k === 'd') keys.d = false;
-        if(k === 'shift') keys.shift = false;
-        if(k === ' ') keys.space = false;
-    });
+    }
+
+    function showNotification(text) {
+        const area = document.getElementById('notification-area');
+        const div = document.createElement('div');
+        div.className = 'notify-msg';
+        div.innerText = text;
+        area.appendChild(div);
+        setTimeout(() => div.remove(), 2000);
+    }
+
+    // =========================================================================
+    // ** 5. DELIVERY MODE (Simplified for Stability) **
+    // =========================================================================
+    let mission = { active: false, dest: null, timer: 0 };
+    const destPoints = [
+        new CANNON.Vec3(200, 0, 200),
+        new CANNON.Vec3(-200, 0, 200),
+        new CANNON.Vec3(300, 0, -100)
+    ];
+
+    function startMission() {
+        if(mission.active) return;
+        const pt = destPoints[Math.floor(Math.random()*destPoints.length)];
+        mission = {
+            active: true,
+            dest: pt,
+            timer: 60 // 60 seconds
+        };
+        document.getElementById('delivery-hud').style.display = 'block';
+        document.getElementById('mission-text').innerText = "DELIVER PACKAGE!";
+    }
+
+    function updateMission(dt) {
+        if(!mission.active) return;
+        mission.timer -= dt;
+        
+        const dist = chassisBody.position.distanceTo(mission.dest);
+        document.getElementById('dist-val').innerText = Math.floor(dist);
+        document.getElementById('time-val').innerText = Math.floor(mission.timer);
+
+        if(dist < 10) {
+            // Success
+            playerData.coins += 200;
+            saveData();
+            showNotification("MISSION COMPLETE! +200");
+            mission.active = false;
+            document.getElementById('delivery-hud').style.display = 'none';
+        }
+
+        if(mission.timer <= 0) {
+            showNotification("MISSION FAILED");
+            mission.active = false;
+            document.getElementById('delivery-hud').style.display = 'none';
+        }
+    }
+
+
+    // =========================================================================
+    // ** 6. MAIN LOOP **
+    // =========================================================================
+    const clock = new THREE.Clock();
 
     function animate() {
         requestAnimationFrame(animate);
-        
-        const dt = 1/60;
-        if(isGameRunning) {
-            world.step(dt);
+        const dt = clock.getDelta();
 
-            // Car Physics App
-            let engine = 0;
-            let brake = 0;
+        if (world) world.step(1/60);
+
+        if (isGameActive && vehicle) {
+            // Upgrade Logic: Stage 2 engine has 2x power
+            const engineMult = (playerData.engineLevel === 2) ? 1.8 : 1.0;
+            
+            let force = 0;
+            if (input.w) force = -maxEngineForce * engineMult;
+            if (input.s) force = maxEngineForce * 0.5;
+            
+            vehicle.applyEngineForce(force, 2);
+            vehicle.applyEngineForce(force, 3);
+
             let steer = 0;
-
-            if(keys.w) engine = -maxEngineForce;
-            if(keys.s) engine = maxEngineForce / 2;
-            if(keys.shift && keys.w) engine *= 1.5; // NITRO LOGIC
-            
-            if(keys.a) steer = maxSteerVal;
-            if(keys.d) steer = -maxSteerVal;
-            
-            if(keys.space) brake = brakeForce;
-
-            vehicle.applyEngineForce(engine, 2);
-            vehicle.applyEngineForce(engine, 3);
+            if (input.a) steer = maxSteerVal;
+            if (input.d) steer = -maxSteerVal;
             vehicle.setSteeringValue(steer, 0);
             vehicle.setSteeringValue(steer, 1);
-            vehicle.setBrake(brake, 0);
-            vehicle.setBrake(brake, 1);
-            vehicle.setBrake(brake, 2);
-            vehicle.setBrake(brake, 3);
+
+            let brake = input.space ? 100 : 0;
+            vehicle.setBrake(brake, 0); vehicle.setBrake(brake, 1);
+            vehicle.setBrake(brake, 2); vehicle.setBrake(brake, 3);
+
+            // Sync Visuals
+            if (carMesh) {
+                carMesh.position.copy(chassisBody.position);
+                carMesh.quaternion.copy(chassisBody.quaternion);
+                carMesh.position.y -= 0.5; // Visual offset
+            }
+            
+            // Sync Wheels
+            for(let i=0; i<vehicle.wheelInfos.length; i++) {
+                vehicle.updateWheelTransform(i);
+                const t = vehicle.wheelInfos[i].worldTransform;
+                if(vehicle.wheelInfos[i].mesh) {
+                    vehicle.wheelInfos[i].mesh.position.copy(t.position);
+                    vehicle.wheelInfos[i].mesh.quaternion.copy(t.quaternion);
+                }
+            }
+
+            // Camera Chase
+            const camOffset = new THREE.Vector3(0, 4, -8).applyQuaternion(chassisBody.quaternion).add(chassisBody.position);
+            camera.position.lerp(camOffset, 0.1);
+            camera.lookAt(chassisBody.position);
 
             // HUD
-            document.getElementById('hud-spd').innerText = Math.floor(chassisBody.velocity.length() * 3.6);
-            document.getElementById('hud-rpm').innerText = Math.floor(Math.abs(engine) / 10);
-            
-            checkMissionLogic();
-        }
+            const speed = (chassisBody.velocity.length() * 3.6).toFixed(0);
+            document.getElementById('hud-spd').innerText = speed;
+            document.getElementById('hud-rpm').innerText = Math.floor(speed * 30);
 
-        // Sync Meshes
-        for(let i=0; i<vehicle.wheelInfos.length; i++) {
-            vehicle.updateWheelTransform(i);
-            const t = vehicle.wheelInfos[i].worldTransform;
-            vehicle.wheelInfos[i].mesh.position.copy(t.position);
-            vehicle.wheelInfos[i].mesh.quaternion.copy(t.quaternion);
-        }
+            // Coin Logic
+            coins.forEach(c => {
+                if(c.active) {
+                    c.mesh.rotation.y += 0.05;
+                    if(chassisBody.position.distanceTo(c.mesh.position) < 3) {
+                        c.active = false;
+                        c.mesh.visible = false;
+                        playerData.coins += 10;
+                        saveData();
+                        showNotification("+10");
+                    }
+                }
+            });
 
-        if(carMesh) {
-            carMesh.position.copy(chassisBody.position);
-            carMesh.quaternion.copy(chassisBody.quaternion);
-            carMesh.position.y -= 0.5; // Offset
-        }
-
-        // Camera Follow
-        if(carMesh) {
-            if(cameraMode === 0) { // Chase
-                const offset = new THREE.Vector3(0, 3, 6);
-                offset.applyQuaternion(chassisBody.quaternion);
-                offset.add(chassisBody.position);
-                camera.position.lerp(offset, 0.1);
-                camera.lookAt(chassisBody.position.x, chassisBody.position.y + 1, chassisBody.position.z);
-            } else { // Cockpit
-                const offset = new THREE.Vector3(0, 1.2, 0.5);
-                offset.applyQuaternion(chassisBody.quaternion);
-                offset.add(chassisBody.position);
-                camera.position.copy(offset);
-                camera.rotation.copy(carMesh.rotation);
-                camera.rotation.y += Math.PI;
-            }
+            checkDrift();
+            updateMission(dt);
         }
 
         renderer.render(scene, camera);
     }
 
-    window.addEventListener('resize', () => {
+    // Start
+    window.onload = init;
+
+    function onResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    window.onload = init;
+    }
 
     </script>
 </body>
