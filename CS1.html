@@ -1174,7 +1174,7 @@
         const dist = playerPos.distanceTo(policePos);
         const policeSpeed = policeChassis.velocity.length() * 3.6; // KM/H
         
-        // 1. Steering Logic (Same as before)
+        // 1. Steering Logic (IMPROVED with Damping and Dead Zone)
         const targetVec = new CANNON.Vec3(playerPos.x - policePos.x, 0, playerPos.z - policePos.z);
         const policeQuat = new THREE.Quaternion(policeChassis.quaternion.x, policeChassis.quaternion.y, policeChassis.quaternion.z, policeChassis.quaternion.w);
         const forward = new THREE.Vector3(0,0,1).applyQuaternion(policeQuat);
@@ -1182,39 +1182,62 @@
         
         let angle = forward.angleTo(targetThree);
         const cross = new THREE.Vector3().crossVectors(forward, targetThree);
-        if(cross.y > 0) angle = -angle;
+        if(cross.y > 0) angle = -angle; // Determine direction (+/-)
         
-        let steer = angle * 2.5; // Aggressive steering
-        if(steer > maxSteerVal) steer = maxSteerVal;
-        if(steer < -maxSteerVal) steer = -maxSteerVal;
+        let steer = angle; // Base steer is proportional to the angle
 
-        // 2. Engine Force Logic (IMPROVED)
+        // ** Dead Zone & Multiplier Adjustment **
+        const DEAD_ZONE = 0.05; // 5% angle dead zone (approx 2.8 degrees)
+        if (Math.abs(angle) < DEAD_ZONE) {
+            steer = 0; // Prevent high-frequency jittering when almost aligned
+        } else {
+            // Distance-weighted steering multiplier: Milder turn far away, aggressive turn up close
+            // Multiplier from 1.5 (far) to 3.0 (close)
+            const steerMultiplier = 1.5 + Math.max(0, (1 - dist / 150) * 1.5);
+            steer *= steerMultiplier; 
+        }
+
+        // Limit steering value
+        if(policeSpeed > 80) {
+            // High speed damping: reduce max turn angle at high speeds
+            steer = THREE.MathUtils.clamp(steer, -maxSteerVal * 0.5, maxSteerVal * 0.5);
+        } else {
+            steer = THREE.MathUtils.clamp(steer, -maxSteerVal, maxSteerVal);
+        }
+
+
+        // 2. Engine Force Logic 
         let force = 0;
         let brakeForce = 0;
         
         const MAX_POLICE_FORCE = 20000;
         const CLOSE_RANGE_FORCE = 5000;
 
-        if(dist > 70) { // Far away: Full throttle
+        if(dist > 70) { 
             force = -MAX_POLICE_FORCE; 
-        } else if (dist > 15) { // Mid range: Moderate throttle
+        } else if (dist > 15) { 
             force = -MAX_POLICE_FORCE * 0.7;
-        } else { // Close range (< 15m): Low throttle to match player
+        } else { 
             force = -CLOSE_RANGE_FORCE; 
             
-            // If police car is too fast right next to player, brake
-            if (policeSpeed > 50) { 
+            // Braking condition: If too close AND going too fast
+            if (policeSpeed > 50 && dist < 15) { 
                 brakeForce = MAX_POLICE_FORCE * 0.5;
             }
             
-            // If player is directly behind police (dist is small, but police has moved past)
-            if (policeSpeed < 10 && dist > 10) { 
-                 // If police is stuck, full reverse/forward to escape
-                 force = -MAX_POLICE_FORCE; 
+            // If stuck (low speed, but large distance to target - implies player got behind)
+            if (policeSpeed < 10 && dist > 20) { 
+                 force = -MAX_POLICE_FORCE; // Full acceleration to get moving
             }
         }
+        
+        // ** Emergency Brake on High Angle Turn (Prevent drifting/stuck turning) **
+        if (Math.abs(angle) > 0.5 && policeSpeed > 60) {
+             brakeForce = MAX_POLICE_FORCE * 0.2; // Tap the brakes during sharp turns
+        }
 
-        // 3. Self-righting mechanism: 
+
+        // 3. Self-righting mechanism: (Keep this)
         const up = new THREE.Vector3(0,1,0).applyQuaternion(policeQuat);
         if(up.y < 0.2) {
              policeChassis.position.y += 2;
@@ -1223,30 +1246,27 @@
              policeChassis.angularVelocity.set(0,0,0);
         }
 
-        // 4. Apply Controls
+        // 4. Apply Controls (Keep this)
         policeVehicle.setSteeringValue(steer, 0);
         policeVehicle.setSteeringValue(steer, 1);
         
-        // Set all engine forces and remove any old brake forces first
         policeVehicle.applyEngineForce(0, 0); policeVehicle.applyEngineForce(0, 1);
         policeVehicle.applyEngineForce(0, 2); policeVehicle.applyEngineForce(0, 3);
         policeVehicle.setBrake(0, 0); policeVehicle.setBrake(0, 1);
         policeVehicle.setBrake(0, 2); policeVehicle.setBrake(0, 3);
 
-        // Apply new engine force
         policeVehicle.applyEngineForce(force, 0);
         policeVehicle.applyEngineForce(force, 1);
         policeVehicle.applyEngineForce(force, 2);
         policeVehicle.applyEngineForce(force, 3);
         
-        // Apply braking to all wheels
         policeVehicle.setBrake(brakeForce, 0);
         policeVehicle.setBrake(brakeForce, 1);
         policeVehicle.setBrake(brakeForce, 2);
         policeVehicle.setBrake(brakeForce, 3);
 
         
-        // 5. Update Visuals (Synchronization)
+        // 5. Update Visuals (Synchronization) (Keep this)
         for(let i=0; i<policeVehicle.wheelInfos.length; i++){
             policeVehicle.updateWheelTransform(i);
             let t = policeVehicle.wheelInfos[i].worldTransform;
