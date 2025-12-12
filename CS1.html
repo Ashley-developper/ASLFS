@@ -1166,7 +1166,7 @@
         });
     }
 
-    function updatePoliceAI() {
+   function updatePoliceAI() {
         if(!policeActive || !policeChassis) return;
 
         const playerPos = chassisBody.position;
@@ -1174,6 +1174,15 @@
         const dist = playerPos.distanceTo(policePos);
         const policeSpeed = policeChassis.velocity.length() * 3.6; // KM/H
         
+        // ************ MOVED DECLARATIONS TO THE TOP ************
+        // Declare force and brakeForce at the start of the function scope
+        let force = 0;
+        let brakeForce = 0;
+        const MAX_POLICE_FORCE = 20000;
+        const CLOSE_RANGE_FORCE = 5000;
+        // *******************************************************
+
+
         // 1. Steering Logic (IMPROVED with Damping and Dead Zone)
         const targetVec = new CANNON.Vec3(playerPos.x - policePos.x, 0, playerPos.z - policePos.z);
         const policeQuat = new THREE.Quaternion(policeChassis.quaternion.x, policeChassis.quaternion.y, policeChassis.quaternion.z, policeChassis.quaternion.w);
@@ -1205,22 +1214,7 @@
             steer = THREE.MathUtils.clamp(steer, -maxSteerVal, maxSteerVal);
         }
 
-        // ************ THE FIX IS HERE ************
-        // If the police are going in reverse direction (backwards chase logic implied by negative force), 
-        // we must flip the steering input for it to turn correctly relative to its current movement vector.
-        if (force < 0) { 
-            steer *= -1; 
-        }
-        // *****************************************
-
-
-        // 2. Engine Force Logic 
-        let force = 0;
-        let brakeForce = 0;
-        
-        const MAX_POLICE_FORCE = 20000;
-        const CLOSE_RANGE_FORCE = 5000;
-
+        // 2. Engine Force Logic (Now safe to define force values)
         if(dist > 70) { 
             force = -MAX_POLICE_FORCE; 
         } else if (dist > 15) { 
@@ -1243,7 +1237,6 @@
         if (Math.abs(angle) > 0.5 && policeSpeed > 60) {
              brakeForce = MAX_POLICE_FORCE * 0.2; // Tap the brakes during sharp turns
         }
-
 
         // 3. Self-righting mechanism: (Keep this)
         const up = new THREE.Vector3(0,1,0).applyQuaternion(policeQuat);
@@ -1310,6 +1303,7 @@
         document.getElementById('busted-screen').style.display = 'flex';
         // Stop physics loops by setting flag
     }
+
 
 
 
