@@ -308,7 +308,7 @@
             background: #FF00FF; color: #000; border: none;
             padding: 12px 25px; 
             font-family: 'Orbitron', sans-serif;
-            font-weight: 700; cursor: pointer; transition: 0.2s;
+            font-weight: 70s0; cursor: pointer; transition: 0.2s;
             clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
         }
         #menu-close-btn:hover {
@@ -345,7 +345,7 @@
 
     <div id="loading-screen">
         <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
-        <p style="font-family:'Orbitron'; letter-spacing:2px;">HOTWHEELS</p>
+        <p style="font-family:'Orbitron'; letter-spacing:2px;">HYPER DRIVE</p>
         <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
         <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p> 
     </div>
@@ -832,20 +832,11 @@
     // =============================================================================
     window.startDeliveryMode = function() {
         if (!chassisBody) { alert("Loading assets..."); return; }
-        
-        // --- MODE SETUP ---
+        if (!isGameRunning) enterGame();
         isDeliveryModeActive = true;
-        isPoliceModeActive = false; 
-        policeActive = false;
-        
-        // --- HUD SETUP ---
-        document.getElementById('police-hud').style.display = 'none';
+        isPoliceModeActive = false; // Disable police
         deliveryHudEl.style.display = 'block';
-        
-        // --- GAME START ---
-        enterGame();
-        
-        // --- MISSION START ---
+        document.getElementById('police-hud').style.display = 'none'; // Ensure police HUD is off
         respawnCar();
         generateNewMission();
     }
@@ -999,25 +990,19 @@
     // =============================================================================
     window.startPoliceMode = function() {
         if (!chassisBody) { alert("Loading assets..."); return; }
+        if (!isGameRunning) enterGame();
         
-        // --- MODE SETUP ---
         isDeliveryModeActive = false;
         isPoliceModeActive = true;
         policeActive = false;
         policeSpawnTime = performance.now() + POLICE_DELAY;
 
-        // --- HUD SETUP ---
-        if(deliveryHudEl) deliveryHudEl.style.display = 'none';
         document.getElementById('police-hud').style.display = 'block';
         document.getElementById('police-alert').innerText = "POLICE INBOUND";
         document.getElementById('police-alert').style.color = "#FFD700"; // Warn color
         
-        // --- GAME START & RESPAWN ---
-        enterGame();
+        if(deliveryHudEl) deliveryHudEl.style.display = 'none';
         respawnCar();
-        
-        // Ensure police vehicle structure is created
-        if(!policeChassis) createPoliceVehicle();
     }
 
     function createPoliceVehicle() {
@@ -1088,7 +1073,7 @@
             policeLight = { red: redLight, blue: blueLight, state: 0 };
             scene.add(policeMesh);
         } else {
-            // Fallback box
+            // Fallback box (If model failed to load)
             const boxGeo = new THREE.BoxGeometry(2,1,4);
             const boxMat = new THREE.MeshBasicMaterial({color:0x0000FF});
             policeMesh = new THREE.Mesh(boxGeo, boxMat);
@@ -1106,42 +1091,42 @@
             policeWheelMeshes.push(m);
         }
         
-        // Initially hide police car and wheels
+        // Set to hidden initially until spawn
         policeMesh.visible = false;
-        policeWheelMeshes.forEach(m => m.visible=false);
+        policeWheelMeshes.forEach(m => m.visible = false);
     }
 
     function spawnPolice() {
-        if(!policeChassis) {
-            console.error("Police chassis not initialized yet!");
-            createPoliceVehicle(); // Attempt to create it now
-            if(!policeChassis) return;
-        }
+        if(!policeChassis) createPoliceVehicle();
         
         // Spawn behind player but close
         const playerPos = chassisBody.position;
-        // Calculate player's forward direction using a temp vector/quaternion
-        const playerQuat = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
-        const playerDir = new THREE.Vector3(0,0,1).applyQuaternion(playerQuat);
+        const playerDir = new THREE.Vector3(0,0,1).applyQuaternion(chassisBody.quaternion);
         
         // -50 units behind player
         const spawnPos = new CANNON.Vec3(
             playerPos.x - (playerDir.x * 50),
-            playerPos.y + 2, // Start slightly above ground
+            playerPos.y + 2, // Spawn slightly above ground to drop down
             playerPos.z - (playerDir.z * 50)
         );
+        
+        // *** DEBUG LOG ***
+        console.log("POLICE SPAWN: Attempting to spawn police vehicle at:", spawnPos.x.toFixed(2), spawnPos.z.toFixed(2)); 
 
         policeChassis.position.copy(spawnPos);
         policeChassis.velocity.set(0,0,0);
-        policeChassis.angularVelocity.set(0,0,0);
         policeChassis.quaternion.copy(chassisBody.quaternion); // Face same way
         
-        // Only add to world if not already in world (check needed if respawning police later)
+        // Important: Only add to world if not already added (prevents error if called twice)
         if (!world.bodies.includes(policeChassis)) {
              world.addBody(policeChassis);
              policeVehicle.addToWorld(world);
+        } else {
+             // If already in world, reset the vehicle state
+             policeVehicle.removeVehicle();
+             policeVehicle.addToWorld(world);
         }
-        
+
         policeMesh.visible = true;
         policeWheelMeshes.forEach(m => m.visible=true);
         policeActive = true;
@@ -1154,7 +1139,7 @@
             if(e.body === chassisBody) {
                 // Check relative velocity impact
                 const impact = e.contact.getImpactVelocityAlongNormal();
-                if(Math.abs(impact) > 5) { // Impact threshold for a "Busted" collision
+                if(Math.abs(impact) > 5) { // Only bust on hard impact
                     gameOverPolice();
                 }
             }
@@ -1177,15 +1162,15 @@
         const cross = new THREE.Vector3().crossVectors(forward, targetThree);
         if(cross.y > 0) angle = -angle;
         
-        let steer = angle;
-        if(steer > 0.5) steer = 0.5;
-        if(steer < -0.5) steer = -0.5;
+        let steer = angle * 2.5; // Aggressive steering
+        if(steer > 0.7) steer = 0.7;
+        if(steer < -0.7) steer = -0.7;
 
         // 2. Engine Logic
         const dist = playerPos.distanceTo(policePos);
         let force = 0;
         
-        // If car flips, reset
+        // Self-righting mechanism: If car flips, reset (prevents police from being stuck upside down)
         const up = new THREE.Vector3(0,1,0).applyQuaternion(policeQuat);
         if(up.y < 0.2) {
              policeChassis.position.y += 2;
@@ -1194,11 +1179,8 @@
              policeChassis.angularVelocity.set(0,0,0);
         }
 
-        if(dist > 10) {
-            force = -12000; 
-        } else {
-             force = -15000; // Ramming speed
-        }
+        // Apply constant forward force (negative is forward)
+        force = -15000; 
 
         // 3. Apply Controls
         policeVehicle.setSteeringValue(steer, 0);
@@ -1208,7 +1190,7 @@
         policeVehicle.applyEngineForce(force, 2);
         policeVehicle.applyEngineForce(force, 3);
         
-        // 4. Update Visuals
+        // 4. Update Visuals (Synchronization)
         for(let i=0; i<policeVehicle.wheelInfos.length; i++){
             policeVehicle.updateWheelTransform(i);
             let t = policeVehicle.wheelInfos[i].worldTransform;
@@ -1228,12 +1210,10 @@
                 if(policeSirenTimer > 10) {
                     policeSirenTimer = 0;
                     policeLight.state = !policeLight.state;
+                    // Flash between bright and dim to simulate light
                     policeLight.red.material.color.setHex(policeLight.state ? 0xff0000 : 0x330000);
                     policeLight.blue.material.color.setHex(!policeLight.state ? 0x0000ff : 0x000033);
                 }
-                // Also update the physical light position
-                const lightBar = policeMesh.children.find(c => c.children.length === 2);
-                if (lightBar) lightBar.position.y = 0.8 + Math.sin(time / 100) * 0.05; // Gentle bounce
             }
         }
         
@@ -1399,22 +1379,6 @@
         vehicle.setSteeringValue(0, 0); vehicle.setSteeringValue(0, 1);
         vehicle.setBrake(0, 0); vehicle.setBrake(0, 1); vehicle.setBrake(0, 2); vehicle.setBrake(0, 3);
         gearEl.textContent = 'P';
-        
-        // Reset police car if active
-        if (policeChassis && policeVehicle) {
-             policeVehicle.removeFromWorld(world);
-             world.removeBody(policeChassis);
-             policeActive = false;
-             if (policeMesh) policeMesh.visible = false;
-             policeWheelMeshes.forEach(m => m.visible=false);
-             
-             if(isPoliceModeActive) {
-                // Re-arm timer if the player manually respawns during police mode
-                policeSpawnTime = performance.now() + POLICE_DELAY;
-                document.getElementById('police-alert').innerText = "POLICE INBOUND";
-                document.getElementById('police-alert').style.color = "#FFD700";
-             }
-        }
     }
     
     // =============================================================================
@@ -1444,8 +1408,8 @@
             }, 500);
 
             initVehicle();
-            createPoliceVehicle(); // Ensure police parts are created immediately after player's
             spawnCoinsWhenReady();
+            createPoliceVehicle(); // Initialize police components early
             requestAnimationFrame(animate);
         };
 
@@ -1662,7 +1626,7 @@
             }
             if (Math.random() < 0.05) { 
                  const bonus = (gameData.upgrades.gold > 0) ? 2 : 1;
-                 gameData.coins += bonus;
+                 gameData.coins += (1 * bonus);
                  saveGameData(); 
             }
         } else {
@@ -1891,8 +1855,8 @@
                 targetArrowMesh.visible = false;
             }
 
-            if (isPoliceModeActive && policeActive) {
-                updatePoliceAI(time);
+            if (isPoliceModeActive) {
+                if(policeActive) updatePoliceAI();
             }
         }
 
@@ -1910,25 +1874,14 @@
             carMesh.quaternion.copy(chassisBody.quaternion);
             carMesh.position.y += VISUAL_Y_OFFSET; 
         }
-        
-        // Police synchronization
-        if (policeActive && policeChassis) {
-            // Police vehicle wheels must be updated every frame too
-             for(let i=0; i<policeVehicle.wheelInfos.length; i++){
-                policeVehicle.updateWheelTransform(i);
-                let t = policeVehicle.wheelInfos[i].worldTransform;
-                if(policeWheelMeshes[i]) {
-                    policeWheelMeshes[i].position.copy(t.position);
-                    policeWheelMeshes[i].quaternion.copy(t.quaternion);
-                }
-            }
-            // Police mesh update is handled inside updatePoliceAI, but we ensure position sync here as fallback
-            if(policeMesh) {
-                policeMesh.position.copy(policeChassis.position);
-                policeMesh.quaternion.copy(policeChassis.quaternion);
-                policeMesh.position.y += VISUAL_Y_OFFSET;
-            }
+
+        // Police Car Synchronization (always runs if policeMesh exists)
+        if (policeMesh && policeActive) {
+            policeMesh.position.copy(policeChassis.position);
+            policeMesh.quaternion.copy(policeChassis.quaternion);
+            policeMesh.position.y += VISUAL_Y_OFFSET;
         }
+
 
         for (let i = 0; i < coinMeshes.length; i++) {
             if (coinBodies[i]) {
@@ -1972,15 +1925,10 @@
             document.getElementById('hud-layer').style.display = 'flex';
         }, 500);
         
-        // --- BASE GAME STARTUP ---
         isGameRunning = true; 
-        
-        // --- MODE CLEANUP ---
-        isDeliveryModeActive = false;
-        isPoliceModeActive = false;
-        
-        if(deliveryHudEl) deliveryHudEl.style.display = 'none';
-        document.getElementById('police-hud').style.display = 'none';
+        isPoliceModeActive = false; // Reset modes
+        if(isDeliveryModeActive) deliveryHudEl.style.display = 'block';
+        document.getElementById('police-hud').style.display = 'none'; // Ensure police HUD is off when not in mode
     }
 
     window.addEventListener('resize', () => {
