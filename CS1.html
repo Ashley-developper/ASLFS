@@ -591,117 +591,147 @@
             engineOsc = audioCtx.createOscillator();
             engineOsc.type = 'sawtooth';
             engineOsc.frequency.value = 100;
-            
-            engineGain = audioCtx.createGain();
-            engineGain.gain.value = 0;
-            
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 400;
 
-            engineOsc.connect(filter);
-            filter.connect(engineGain);
+            engineGain = audioCtx.createGain();
+            engineGain.gain.value = 0; // Start silent
+
+            engineOsc.connect(engineGain);
             engineGain.connect(audioCtx.destination);
             
             engineOsc.start();
             audioEnabled = true;
-        } catch (e) { console.warn("Audio init failed", e); }
+
+            // Simple music loop (optional)
+            // if(audioCtx.state === 'running') {
+            //     const bgmOsc = audioCtx.createOscillator();
+            //     bgmOsc.frequency.value = 440;
+            //     bgmOsc.type = 'square';
+            //     const bgmGain = audioCtx.createGain();
+            //     bgmGain.gain.value = 0.05;
+            //     bgmOsc.connect(bgmGain).connect(audioCtx.destination);
+            //     bgmOsc.start();
+            // }
+
+        } catch(e) {
+            console.warn("Web Audio API not supported or failed to initialize.");
+        }
     }
 
-    function updateEngineSound(speed, isGas) {
-        if(!audioEnabled || !engineOsc) return;
-        const minFreq = 80;
-        const maxFreq = 400;
-        const speedFactor = Math.min(speed / 200, 1);
+    function updateEngineSound(rpm, throttle) {
+        if (!audioEnabled) return;
         
-        const targetFreq = minFreq + (speedFactor * (maxFreq - minFreq));
-        engineOsc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
-        
-        let targetVol = 0.05 + (speedFactor * 0.1);
-        if(isGas) targetVol += 0.05;
-        engineGain.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.1);
-    }
+        // Map RPM (0-1000) to Frequency (100-800 Hz)
+        const minFreq = 100;
+        const maxFreq = 800;
+        const freq = minFreq + (rpm / 1000) * (maxFreq - minFreq);
+        engineOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
 
-    function playCoinSound() {
-        if(!audioEnabled) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
-    }
-
-    function playDriftSound(volume) {
-        if(!audioEnabled) return;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-        gain.gain.setValueAtTime(volume * 0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(volume * 0.05, audioCtx.currentTime + 0.1);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-    }
-
-    function playSiren(state) {
-        if(!audioEnabled || !isPoliceModeActive) return;
-        // Simple tone for siren
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        const freq = state === 0 ? 800 : 1200;
-        
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.5);
+        // Map Throttle (0-100%) to Volume (0-0.3)
+        const maxGain = 0.3;
+        const gain = maxGain * (throttle / 100);
+        engineGain.gain.setValueAtTime(gain, audioCtx.currentTime);
     }
 
     // =============================================================================
-    // ** THREE.JS SCENE SETUP **
+    // ** MENU AND UI LOGIC **
     // =============================================================================
-    let scene, cameraChase, cameraCockpit, currentCamera, renderer;
-    let world, chassisBody, vehicle;
-    let lastTime;
     let isGameRunning = false;
     let isDragging = false;
-    let splashCameraAngle = 0;
     let previousMouseX = 0;
-    
-    // Day Lighting Colors
-    const daySkyColor = new THREE.Color(0x87CEEB); 
-    const dayHemiSky = new THREE.Color(0xffffff); 
-    const dayHemiGround = new THREE.Color(0x3b4c5a); 
 
-    // Physics constants (Adjusted for better feel)
+    function setupMobileControls() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if(isMobile) {
+            document.getElementById('mobile-controls').style.display = 'block';
+            document.getElementById('control-hints').style.display = 'none';
+
+            const bindBtn = (id, key) => {
+                const btn = document.getElementById(id);
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    inputState[key] = true;
+                    if(!audioCtx) initAudio();
+                });
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    inputState[key] = false;
+                });
+            };
+
+            bindBtn('btn-gas', 'keyW');
+            bindBtn('btn-brake', 'keyS');
+            bindBtn('btn-left', 'keyA');
+            bindBtn('btn-right', 'keyD');
+            
+            document.getElementById('btn-respawn-mob').addEventListener('touchstart', (e)=>{ 
+                e.preventDefault();
+                respawnCar();
+            });
+            document.getElementById('btn-camera-mob').addEventListener('touchstart', (e)=>{ 
+                e.preventDefault();
+                toggleCamera();
+            });
+        }
+    }
+
+    function showMenuPage(pageId) {
+        if(!audioCtx) initAudio();
+        const page = document.getElementById(pageId);
+        document.querySelectorAll('.menu-page').forEach(p => p.classList.remove('active'));
+        page.classList.add('active');
+        document.getElementById('splash').style.opacity = '0'; 
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+        }, 400);
+    }
+
+    window.hideMenuPages = function() {
+        document.querySelectorAll('.menu-page').forEach(p => p.classList.remove('active'));
+        document.getElementById('splash').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('splash').style.opacity = '1';
+        }, 10);
+    }
+
+    window.enterGame = function() { 
+        if(!audioCtx) initAudio(); 
+        document.getElementById('splash').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('hud-layer').style.display = 'flex';
+        }, 500);
+        
+        isGameRunning = true; 
+        isPoliceModeActive = false; // Reset modes
+        if(isDeliveryModeActive) deliveryHudEl.style.display = 'block';
+        document.getElementById('police-hud').style.display = 'none'; // Ensure police HUD is off when not in mode
+    }
+
+    // =============================================================================
+    // ** THREE.JS / CANNON.JS SETUP **
+    // =============================================================================
+    let scene, cameraChase, cameraCockpit, cameraCurrent, renderer, world;
+    let chassisBody, vehicle;
+    let wheelMeshes = [];
+    let mixer, clock = new THREE.Clock();
+
+    // Game Constants
+    const daySkyColor = new THREE.Color(0x87CEEB);
+    const dayHemiSky = new THREE.Color(0xffffff);
+    const dayHemiGround = new THREE.Color(0x3b4c5a);
     let baseEngineForce = 9000;
     let maxEngineForce = 9000;
     const brakeForce = 40;
     const maxSteerVal = 0.7;
     const VISUAL_Y_OFFSET = -0.9;
-    
     const initialCarPosition = new CANNON.Vec3(-3320, 1, -20);
     let staticBodies = [];
-    
     let carMesh = null;
     let tireMeshPrototype = null;
     let flameMesh = null;
     let targetArrowMesh = null;
-    
     let gltfLoader = null;
     let dracoLoader = null;
-
     const inputState = { 
         keyW: false, keyS: false, keyA: false, keyD: false, 
         keySpace: false, keyShift: false, keyR: false 
@@ -731,28 +761,30 @@
 
     // Coin Vars
     let coinProto = null;
-    let coinMeshes = [];
-    let coinBodies = [];
-    const COIN_MIN_DIST = 100;
-    const COIN_COUNT = 50;
+    let coins = [];
+    const NUM_COINS = 50;
+    const COIN_SPAWN_RADIUS = 5000; 
+    const COIN_VERTICAL_OFFSET = 1.0;
+    let driftCheckTimer = 0;
+    let isDrifting = false;
 
-    // Camera Modes
-    const CAMERA_MODE_CHASE = 0;
-    const CAMERA_MODE_COCKPIT = 1;
-    let cameraMode = CAMERA_MODE_CHASE;
-
-    // Delivery Vars
+    // Delivery Mode Vars
     let isDeliveryModeActive = false;
-    let currentMission = { status: 'none' };
-    const TARGET_RADIUS = 5;
     const MAX_MISSION_TIME = 180; // 3 minutes
+    let currentMission = { status: 'none' };
+    const TARGET_RADIUS = 20;
+    const cityPOI = [
+        { name: "Downtown Tower", pos: new CANNON.Vec3(0, 1, 0) },
+        { name: "Harbor Docks", pos: new CANNON.Vec3(500, 1, 500) },
+        { name: "Industrial Zone", pos: new CANNON.Vec3(-1000, 1, 200) },
+        { name: "Financial District", pos: new CANNON.Vec3(-200, 1, -800) },
+        { name: "Mountain View", pos: new CANNON.Vec3(1500, 1, -1500) },
+    ];
 
-    // Police Vars
+    // Police Mode Vars
     let isPoliceModeActive = false;
-    let policeSpawned = false;
-    let policeActive = false;
     let policeSpawnTime = 0;
-    
+    let policeActive = false;
     let policeVehicle = null;
     let policeChassis = null;
     let policeMesh = null;
@@ -788,119 +820,79 @@
         }
     });
 
-    function setupMobileControls() {
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if(isMobile) {
-            document.getElementById('mobile-controls').style.display = 'block';
-            document.getElementById('control-hints').style.display = 'none';
-            
-            const bindBtn = (id, key) => {
-                const btn = document.getElementById(id);
-                btn.addEventListener('touchstart', (e) => { 
-                    e.preventDefault(); 
-                    inputState[key] = true;
-                    if(!audioCtx) initAudio();
-                });
-                btn.addEventListener('touchend', (e) => { 
-                    e.preventDefault(); 
-                    inputState[key] = false; 
-                });
-            };
-
-            bindBtn('btn-gas', 'keyW');
-            bindBtn('btn-brake', 'keyS');
-            bindBtn('btn-left', 'keyA');
-            bindBtn('btn-right', 'keyD');
-            
-            document.getElementById('btn-respawn-mob').addEventListener('touchstart', (e)=>{ e.preventDefault(); respawnCar();});
-            document.getElementById('btn-camera-mob').addEventListener('touchstart', (e)=>{ e.preventDefault(); toggleCamera();});
-        }
-    }
-
-    function showMenuPage(pageId) {
-        if(!audioCtx) initAudio();
-        const page = document.getElementById(pageId);
-        if (page) {
-            document.getElementById('splash').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('splash').style.display = 'none';
-                page.classList.add('active');
-            }, 400);
-        }
-    }
-
-    window.hideMenuPages = function() {
-        document.querySelectorAll('.menu-page').forEach(page => page.classList.remove('active'));
-        document.getElementById('splash').style.display = 'flex';
-        setTimeout(() => {
-            document.getElementById('splash').style.opacity = '1';
-        }, 50);
-    }
-    
     // =============================================================================
-    // ** THREE.JS / CANNON.JS INITIALIZATION **
+    // ** GAME INITIALIZATION **
     // =============================================================================
+
     function initThree() {
         scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0x3b4c5a, 100, 700);
+        scene.fog = new THREE.Fog(0x000000, 50, 6000); 
 
-        const aspect = window.innerWidth / window.innerHeight;
-        // Chase Camera (Far away, behind the car)
-        cameraChase = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-        cameraChase.position.set(0, 5, -10);
+        // Chase Camera
+        cameraChase = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        cameraChase.position.set(0, 10, -20);
         cameraChase.lookAt(0, 0, 0);
 
-        // Cockpit Camera (Inside the car)
-        cameraCockpit = new THREE.PerspectiveCamera(90, aspect, 0.1, 1000);
-        cameraCockpit.position.set(0, 0.5, -0.5); 
+        // Cockpit Camera (Placeholder position, will be updated)
+        cameraCockpit = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        cameraCockpit.position.set(0, 0.5, 1.5); 
         
-        currentCamera = cameraChase;
+        cameraCurrent = cameraChase;
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.setClearColor(daySkyColor);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
         document.body.appendChild(renderer.domElement);
-
-        // Splash Camera Setup (Only used before game start)
-        window.splashCamera = new THREE.PerspectiveCamera(60, aspect, 0.1, 100);
-        window.splashCamera.position.set(0, 5, 15);
-        window.splashCamera.lookAt(0, 0, 0);
     }
 
     function initCannon() {
         world = new CANNON.World();
-        world.gravity.set(0, -9.82, 0); // Standard gravity
+        world.gravity.set(0, -9.82, 0); 
         world.broadphase = new CANNON.SAPBroadphase(world);
-        world.allowSleep = true; // Optimization
+        world.allowSleep = true;
     }
 
     function initGround() {
-        // Flat Ground Plane (For shadows and collision base)
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0, shape: groundShape });
-        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate to lie flat
+        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
         world.addBody(groundBody);
-        
-        // Visual Ground Mesh (Simple large plane)
-        const groundGeo = new THREE.PlaneGeometry(8000, 8000);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b4c5a, side: THREE.DoubleSide });
-        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-        groundMesh.rotation.x = Math.PI / 2;
-        groundMesh.receiveShadow = true;
-        scene.add(groundMesh);
+
+        // Visual ground (large plane)
+        const planeSize = 10000;
+        const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+        const texture = new THREE.TextureLoader().load('asphalt.jpg');
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(planeSize / 100, planeSize / 100); 
+        const material = new THREE.MeshStandardMaterial({ 
+            map: texture, 
+            color: 0x444444,
+            metalness: 0.1,
+            roughness: 0.8
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
     }
 
     function initCameraAndLights() {
-        const hemiLight = new THREE.HemisphereLight(dayHemiSky, dayHemiGround, 0.6);
+        // Ambient Light
+        scene.add(new THREE.AmbientLight(0x404040, 1.5)); 
+        
+        // Hemisphere Light (Sky)
+        const hemiLight = new THREE.HemisphereLight(dayHemiSky, dayHemiGround, 0.8);
         scene.add(hemiLight);
 
-        // Directional Light for Shadows
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        dirLight.position.set(200, 300, 100);
+        // Directional Light (Sun)
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(150, 200, 100);
         dirLight.castShadow = true;
         
+        // Shadow map settings
         dirLight.shadow.mapSize.width = 2048;
         dirLight.shadow.mapSize.height = 2048;
         dirLight.shadow.camera.near = 0.5;
@@ -914,10 +906,10 @@
 
     function initVehicle() {
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
-        chassisBody = new CANNON.Body({
-            mass: 2500,
-            shape: chassisShape,
-            position: initialCarPosition.clone()
+        chassisBody = new CANNON.Body({ 
+            mass: 2500, 
+            shape: chassisShape, 
+            position: initialCarPosition.clone() 
         });
         chassisBody.angularDamping = 0.9;
         chassisBody.linearDamping = 0.05;
@@ -932,64 +924,97 @@
 
         const axleWidth = 1.0;
         const wheelBase = 1.5;
-
-        // ** 修改后的 makeWheelOptions 函数 **
+        
         function makeWheelOptions(x,y,z) {
-            // 检查 z 坐标，z > 0 是前轮，z < 0 是后轮
-            const isRear = z < 0; 
-            
             return {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                // 悬挂硬度：后轮 200，前轮 150 (以减少加速后仰/抬头)
-                suspensionStiffness: isRear ? 200 : 150, 
+                suspensionStiffness: 150,
                 suspensionRestLength: 0.3,
-                frictionSlip: 4.0, 
-                dampingRelaxation: 8.0, 
-                dampingCompression: 10.0, 
-                maxSuspensionForce: 100000, 
-                rollInfluence: 0.05, 
+                frictionSlip: 4.0,
+                dampingRelaxation: 8.0,
+                dampingCompression: 10.0,
+                maxSuspensionForce: 100000,
+                rollInfluence: 0.05,
                 maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30, 
+                customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
                 chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
             };
         }
-        // ** 结束修改 **
 
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // Front Left (0)
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // Front Right (1)
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // Rear Left (2)
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // Rear Right (3)
-        
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // Front Left
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // Front Right
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // Back Left
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // Back Right
+
         vehicle.addToWorld(world);
+
+        // Visual wheels
+        wheelMeshes = [];
+        const cylGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 32);
+        cylGeo.rotateZ(Math.PI/2);
+        const wheelMat = new THREE.MeshStandardMaterial({color:0x111111});
+        for(let i=0; i<4; i++){
+            let m = new THREE.Mesh(cylGeo, wheelMat);
+            scene.add(m);
+            wheelMeshes.push(m);
+        }
+
+        // Apply visual paint upgrade
+        applyUpgrades();
+    }
+
+    function applyUpgrades() {
+        if (!carMesh) return;
+        
+        // Engine Upgrade
+        if (gameData.upgrades.engine > 0) {
+            maxEngineForce = baseEngineForce * 2.0; // Double the force
+        } else {
+            maxEngineForce = baseEngineForce;
+        }
+
+        // Paint Upgrade
+        if (gameData.upgrades.paint > 0) {
+             carMesh.traverse((node) => {
+                if (node.isMesh) {
+                    node.material = new THREE.MeshStandardMaterial({ color: 0xFF0055, metalness: 0.8, roughness: 0.3 });
+                }
+            });
+        } else {
+             carMesh.traverse((node) => {
+                if (node.isMesh) {
+                    // Reset to a default metallic blue/cyan
+                    node.material = new THREE.MeshStandardMaterial({ color: 0x00FFFF, metalness: 0.7, roughness: 0.4 });
+                }
+            });
+        }
     }
 
     function initLoaders() {
         const loadingManager = new THREE.LoadingManager();
-        loadingManager.onProgress = (url, loaded, total) => {
-            const percent = Math.min(99, Math.floor(loaded / total * 100));
-            loadingProgressFillEl.style.width = `${percent}%`;
-            loadingStatusEl.textContent = `(${percent}%) Loading ${url.substring(url.lastIndexOf('/') + 1)}`;
+        loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+            const progress = (itemsLoaded / itemsTotal) * 100;
+            loadingProgressFillEl.style.width = `${progress.toFixed(0)}%`;
+            loadingStatusEl.textContent = `(${progress.toFixed(0)}%) Loading: ${url.split('/').pop()}`;
         };
-        loadingManager.onLoad = () => {
-            loadingProgressFillEl.style.width = '100%';
-            loadingStatusEl.textContent = '(100%) Initialization Complete.';
+        loadingManager.onLoad = function () {
+            document.getElementById('loading-screen').style.opacity = '0';
             setTimeout(() => {
-                document.getElementById('loading-screen').style.opacity = 0;
-                document.getElementById('splash').style.display = 'flex';
-                setTimeout(() => {
-                    document.getElementById('loading-screen').style.display = 'none';
-                }, 500);
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('splash').style.display = 'block';
+                document.getElementById('splash').style.opacity = '1';
+                // Final initializations after everything is loaded
+                initVehicle(); 
+                createPoliceVehicle(); // Initialize police components early
+                requestAnimationFrame(animate);
             }, 500);
-            initVehicle(); // Initialize vehicle physics once assets are loaded
-            createPoliceVehicle(); // Initialize police components early
-            requestAnimationFrame(animate);
         };
 
         dracoLoader = new THREE.DRACOLoader();
-        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
         
         gltfLoader = new THREE.GLTFLoader(loadingManager);
         gltfLoader.setDRACOLoader(dracoLoader);
@@ -1002,14 +1027,9 @@
             carMesh.rotation.y = Math.PI;
             carMesh.traverse((node) => {
                 if (node.isMesh) node.castShadow = true;
-                // Apply optional paint upgrade
-                if (gameData.upgrades.paint === 1 && node.name.includes("body")) {
-                     node.material.color.set(0xFF0055); 
-                }
             });
             scene.add(carMesh);
 
-            // Exhaust flame visualization
             const flameGeometry = new THREE.ConeGeometry(0.3, 1, 16);
             const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.75 });
             flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
@@ -1018,6 +1038,7 @@
             flameMesh.visible = false;
             carMesh.add(flameMesh);
 
+            applyUpgrades(); // Apply paint now that mesh is loaded
         }, undefined, (e) => {
             console.warn("Using placeholder car.");
             const boxGeo = new THREE.BoxGeometry(2, 0.5, 4);
@@ -1025,30 +1046,143 @@
             carMesh = new THREE.Mesh(boxGeo, boxMat);
             carMesh.castShadow = true;
             scene.add(carMesh);
+            applyUpgrades();
         });
     }
 
     function loadTireModel() {
-        gltfLoader.load('wheel.glb', (gltf) => {
+         gltfLoader.load('wheel.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
-            tireMeshPrototype.scale.set(104.7, 104.7, 104.7);
+            tireMeshPrototype.scale.set(104.7, 104.7, 104.7); // Match car scale
             tireMeshPrototype.traverse((node) => {
                 if (node.isMesh) node.castShadow = true;
             });
-            // The actual wheel meshes are created and added to the scene in animate()
+            
+            // Replace placeholder wheels with the model
+            for(let i = 0; i < 4; i++) {
+                scene.remove(wheelMeshes[i]);
+                const tire = tireMeshPrototype.clone();
+                scene.add(tire);
+                wheelMeshes[i] = tire;
+            }
         }, undefined, (e) => {
             console.warn("Using placeholder tires.");
-            const cylGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 32);
-            cylGeo.rotateZ(Math.PI/2);
-            const wheelMat = new THREE.MeshStandardMaterial({color:0x111111});
-            tireMeshPrototype = new THREE.Mesh(cylGeo, wheelMat);
         });
+    }
+
+    // Load static city models
+    function loadCity() {
+        gltfLoader.load('city_buildings.glb', (gltf) => {
+            gltf.scene.scale.set(100, 100, 100);
+            gltf.scene.position.y = 0;
+            gltf.scene.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+                    // For better performance, remove shadows from far-away static geometry
+                    node.matrixAutoUpdate = false;
+                    node.updateMatrix();
+                    
+                    // Create CANNON.js bodies for collision
+                    const position = new THREE.Vector3();
+                    const quaternion = new THREE.Quaternion();
+                    const scale = new THREE.Vector3();
+                    node.matrixWorld.decompose(position, quaternion, scale);
+                    
+                    const bbox = new THREE.Box3().setFromObject(node);
+                    const size = new THREE.Vector3();
+                    bbox.getSize(size);
+                    
+                    const shape = new CANNON.Box(new CANNON.Vec3(size.x/2, size.y/2, size.z/2));
+                    const body = new CANNON.Body({ mass: 0, shape: shape });
+                    
+                    // Convert Three.js position/rotation to Cannon.js
+                    body.position.set(position.x, position.y + size.y/2, position.z);
+                    body.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+                    
+                    // Store the static body for later addition/removal (culling)
+                    staticBodies.push({
+                        body: body,
+                        center: body.position,
+                        radius: bbox.getBoundingSphere(new THREE.Sphere()).radius,
+                        added: false 
+                    });
+                }
+            });
+            scene.add(gltf.scene);
+        }, undefined, (e) => {
+             console.error("Error loading city model", e);
+        });
+    }
+
+    function loadCoinPrototype(callback) {
+        const coinLoader = new THREE.GLTFLoader();
+        coinLoader.load('gold_coin.glb', (gltf) => {
+            coinProto = gltf.scene;
+            coinProto.traverse(node => {
+                if (node.isMesh) node.castShadow = true;
+            });
+            if (callback) callback();
+        }, undefined, (err) => {
+            console.warn('gold_coin.glb failed to load. Using placeholder.');
+            const geo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 32);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xFFD700 });
+            coinProto = new THREE.Mesh(geo, mat);
+            if (callback) callback();
+        });
+    }
+
+    function spawnCoin() {
+        if (!coinProto) return;
+
+        // Random position within radius
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * COIN_SPAWN_RADIUS;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const y = COIN_VERTICAL_OFFSET; 
+
+        const mesh = coinProto.clone();
+        mesh.position.set(x, y, z);
+        scene.add(mesh);
+
+        const shape = new CANNON.Cylinder(0.5, 0.5, 0.1, 16);
+        const body = new CANNON.Body({ mass: 0, shape: shape, position: new CANNON.Vec3(x, y, z) });
+        body.collisionResponse = 0; // Don't physically interact
+        world.addBody(body);
+
+        body.addEventListener('collide', (e) => handleCoinCollision(e, mesh, body));
+
+        coins.push({ mesh, body });
+    }
+
+    function handleCoinCollision(e, mesh, body) {
+        if (e.body === chassisBody) {
+            // Check if coin is still active
+            const index = coins.findIndex(c => c.body === body);
+            if (index !== -1) {
+                // Collect coin
+                world.removeBody(body);
+                scene.remove(mesh);
+                coins.splice(index, 1);
+                
+                const bonus = (gameData.upgrades.gold > 0) ? 2 : 1;
+                gameData.coins += (1 * bonus);
+                saveGameData();
+
+                // Respawn a new coin
+                spawnCoin();
+            }
+        }
     }
 
     function loadArrowModel() {
         gltfLoader.load('arrow.glb', (gltf) => {
             targetArrowMesh = gltf.scene;
             targetArrowMesh.scale.set(1.0, 1.0, 1.0);
+            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);
+            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00);
+
             targetArrowMesh.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
@@ -1057,108 +1191,58 @@
             });
             targetArrowMesh.visible = false;
             scene.add(targetArrowMesh);
-            
-            // Store colors for later use
-            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF); // Cyan for pickup
-            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // Green for delivery
+        }, undefined, (e) => {
+             console.warn("Using placeholder arrow model.");
+             const geo = new THREE.ConeGeometry(1, 4, 32);
+             const mat = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8, depthTest: false });
+             targetArrowMesh = new THREE.Mesh(geo, mat);
+             targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);
+             targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00);
+             targetArrowMesh.visible = false;
+             scene.add(targetArrowMesh);
         });
-    }
-
-    function loadCity() {
-        gltfLoader.load('cyberpunk_city_free.glb', (gltf) => {
-            const city = gltf.scene;
-            const SCALE_FACTOR = 1000;
-            city.scale.set(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
-            city.traverse((node) => {
-                if (node.isMesh) {
-                    node.receiveShadow = true;
-                    node.castShadow = true;
-                    
-                    // Create CANNON.js bodies for large static meshes for collision
-                    if (node.name.startsWith("Building") || node.name.startsWith("Road")) {
-                        const geometry = node.geometry;
-                        geometry.computeBoundingBox();
-                        const size = new THREE.Vector3();
-                        geometry.boundingBox.getSize(size);
-                        
-                        // Use a Box shape for collision
-                        const shape = new CANNON.Box(new CANNON.Vec3(size.x / 2 * SCALE_FACTOR, size.y / 2 * SCALE_FACTOR, size.z / 2 * SCALE_FACTOR));
-                        const body = new CANNON.Body({ mass: 0, shape: shape });
-                        
-                        // Copy visual position and rotation to physics body
-                        const worldPos = new THREE.Vector3();
-                        const worldQuat = new THREE.Quaternion();
-                        node.getWorldPosition(worldPos);
-                        node.getWorldQuaternion(worldQuat);
-                        
-                        body.position.set(worldPos.x, worldPos.y, worldPos.z);
-                        body.quaternion.set(worldQuat.x, worldQuat.y, worldQuat.z, worldQuat.w);
-
-                        // Store for lazy loading/unloading
-                        staticBodies.push({
-                            body: body,
-                            center: worldPos,
-                            radius: geometry.boundingSphere.radius * SCALE_FACTOR,
-                            added: false
-                        });
-                    }
-                }
-            });
-            scene.add(city);
-        });
-    }
-
-    function applyUpgrades() {
-        maxEngineForce = baseEngineForce * (1 + gameData.upgrades.engine * 0.5); // 50% increase per level
-        if(carMesh) {
-             carMesh.traverse((node) => {
-                if (gameData.upgrades.paint === 1 && node.name.includes("body")) {
-                     node.material.color.set(0xFF0055); // Neon Red
-                }
-            });
-        }
     }
 
     // =============================================================================
     // ** DELIVERY MODE LOGIC **
     // =============================================================================
-    const missionLocations = [
-        { name: "Downtown Office", pos: new CANNON.Vec3(-3400, 1, -100) },
-        { name: "Industrial Zone", pos: new CANNON.Vec3(-2000, 1, 1500) },
-        { name: "Rooftop Hub", pos: new CANNON.Vec3(1000, 1, 3000) },
-        { name: "Cyber Cafe", pos: new CANNON.Vec3(500, 1, -200) }
-    ];
-
     window.startDeliveryMode = function() {
-        if (!chassisBody) { alert("Loading assets..."); return; }
+        if (!chassisBody) {
+            alert("Loading assets...");
+            return;
+        }
         if (!isGameRunning) enterGame();
-        
         isDeliveryModeActive = true;
         isPoliceModeActive = false;
         
-        if(document.getElementById('police-hud')) document.getElementById('police-hud').style.display = 'none';
         if(deliveryHudEl) deliveryHudEl.style.display = 'block';
-        
-        respawnCar();
+        if(document.getElementById('police-hud')) document.getElementById('police-hud').style.display = 'none';
+
         startNewMission();
     }
 
     function startNewMission() {
-        // Clean up previous mission meshes/bodies if they exist
+        // Clear previous mission's meshes/bodies
         if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
         if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
         if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
         if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
-
-        // Pick two random, unique locations
-        let locations = [...missionLocations];
-        const pickupData = locations.splice(Math.floor(Math.random() * locations.length), 1)[0];
-        const deliveryData = locations.splice(Math.floor(Math.random() * locations.length), 1)[0];
-
-        const pickupPos = pickupData.pos.clone();
-        const deliveryPos = deliveryData.pos.clone();
         
-        const targetShape = new CANNON.Sphere(TARGET_RADIUS);
+        // 1. Pick two random, different points of interest (POI)
+        let pickupIndex, deliveryIndex;
+        do {
+            pickupIndex = Math.floor(Math.random() * cityPOI.length);
+            deliveryIndex = Math.floor(Math.random() * cityPOI.length);
+        } while (pickupIndex === deliveryIndex);
+
+        const pickupData = cityPOI[pickupIndex];
+        const deliveryData = cityPOI[deliveryIndex];
+        
+        const pickupPos = new CANNON.Vec3(pickupData.pos.x, 1, pickupData.pos.z);
+        const deliveryPos = new CANNON.Vec3(deliveryData.pos.x, 1, deliveryData.pos.z);
+
+        // 2. Create invisible target bodies
+        const targetShape = new CANNON.Cylinder(TARGET_RADIUS, TARGET_RADIUS, 5, 16);
 
         const pickupBody = new CANNON.Body({ mass: 0, position: pickupPos, shape: targetShape });
         pickupBody.collisionResponse = 0;
@@ -1167,16 +1251,18 @@
         const deliveryBody = new CANNON.Body({ mass: 0, position: deliveryPos, shape: targetShape });
         deliveryBody.collisionResponse = 0;
         world.addBody(deliveryBody);
-
+        
+        // 3. Create visual meshes (rings/markers)
         const pickupMesh = createTargetMesh(0x00FFFF);
         pickupMesh.position.copy(pickupPos);
         scene.add(pickupMesh);
-        
+
         const deliveryMesh = createTargetMesh(0x00FF00);
         deliveryMesh.position.copy(deliveryPos);
         deliveryMesh.visible = false;
         scene.add(deliveryMesh);
 
+        // 4. Set mission state
         currentMission = {
             status: 'pickup',
             pickupPoint: pickupBody,
@@ -1188,9 +1274,10 @@
             pickupName: pickupData.name,
             deliveryName: deliveryData.name,
         };
+
         missionStatusEl.textContent = `MISSION: Go to ${pickupData.name} for Pickup`;
         missionStatusEl.style.color = '#00FFFF';
-        
+
         chassisBody.addEventListener('collide', handleMissionCollision);
     }
 
@@ -1208,62 +1295,67 @@
         const otherBody = (e.body === chassisBody) ? e.target : e.body;
 
         if (currentMission.status === 'pickup' && otherBody === currentMission.pickupPoint) {
+            // PICKUP COMPLETE
             currentMission.status = 'delivering';
-            missionStatusEl.textContent = `MISSION: Deliver cargo to ${currentMission.deliveryName}`;
+            missionStatusEl.textContent = `DELIVERING: Go to ${currentMission.deliveryName}`;
             missionStatusEl.style.color = '#00FF00';
             currentMission.pickupMesh.visible = false;
             currentMission.deliveryMesh.visible = true;
-            playCoinSound(); // Use coin sound as pickup success sound
-
-        } else if (currentMission.status === 'delivering' && otherBody === currentMission.deliveryTarget) {
+            world.removeBody(currentMission.pickupPoint);
+        } 
+        else if (currentMission.status === 'delivering' && otherBody === currentMission.deliveryTarget) {
+            // DELIVERY COMPLETE
             currentMission.status = 'completed';
-            missionStatusEl.textContent = "MISSION COMPLETE!";
+            missionStatusEl.textContent = `MISSION COMPLETE! +10 Gold`;
             missionStatusEl.style.color = '#FFD700';
+            currentMission.deliveryMesh.visible = false;
+            world.removeBody(currentMission.deliveryTarget);
 
-            // Calculate reward based on time left
-            const timeElapsed = (performance.now() - currentMission.timeStarted) / 1000;
-            const rewardTime = Math.max(0, currentMission.timeLimit - timeElapsed);
-            const baseReward = 100;
-            const timeBonus = Math.floor(rewardTime / 10) * 5; // 5 points per 10 seconds remaining
-            
-            const totalReward = baseReward + timeBonus;
-            
-            gameData.coins += totalReward * (gameData.upgrades.gold === 1 ? 2 : 1);
+            // Reward
+            gameData.coins += 10;
             saveGameData();
 
-            alert(`Mission Complete! Reward: ${totalReward} Gold!`);
-
-            scene.remove(currentMission.deliveryMesh);
-            world.removeBody(currentMission.deliveryTarget);
-            
-            // Start next mission after a delay
-            setTimeout(startNewMission, 5000); 
+            // Auto-start new mission after a delay
+            setTimeout(startNewMission, 5000);
         }
     }
 
     function updateDeliveryMode() {
-        if (!isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') return;
-
-        // Update Timer
-        const timeElapsed = (performance.now() - currentMission.timeStarted) / 1000;
-        const timeLeft = Math.max(0, currentMission.timeLimit - timeElapsed);
-
-        if (timeLeft <= 0) {
-            currentMission.status = 'failed';
-            missionStatusEl.textContent = "MISSION FAILED: TIME OUT";
-            missionStatusEl.style.color = '#FF0000';
-            timerEl.textContent = '00:00';
-            if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
-            if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
-            setTimeout(startNewMission, 5000); // Retry mission
+        if (currentMission.status === 'none' || currentMission.status === 'completed') {
+            distanceEl.textContent = '0';
+            timerEl.textContent = '--:--';
             return;
         }
 
-        const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-        const seconds = Math.floor(timeLeft % 60).toString().padStart(2, '0');
-        timerEl.textContent = `${minutes}:${seconds}`;
+        const elapsed = (performance.now() - currentMission.timeStarted) / 1000;
+        const timeLeft = Math.max(0, currentMission.timeLimit - elapsed);
+        
+        // Timer Update
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = Math.floor(timeLeft % 60);
+        timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        if (timeLeft <= 30) {
+            timerEl.style.color = '#FF0000'; // Red alert
+        } else {
+            timerEl.style.color = '#FFD700';
+        }
 
-        // Update Distance
+        if (timeLeft === 0) {
+            // MISSION FAILED
+            currentMission.status = 'failed';
+            missionStatusEl.textContent = 'MISSION FAILED: Time Expired';
+            missionStatusEl.style.color = '#FF0000';
+            
+            if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
+            if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
+            if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
+            if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
+            
+            setTimeout(startNewMission, 5000); // Try again
+        }
+
+        // Distance Update
         let targetBody = null;
         if (currentMission.status === 'pickup') {
             targetBody = currentMission.pickupPoint;
@@ -1279,13 +1371,57 @@
         }
     }
 
+    function updateTargetArrow() {
+        if (!targetArrowMesh || !isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') {
+            if(targetArrowMesh) targetArrowMesh.visible = false;
+            return;
+        }
+
+        let targetPos = null;
+        let targetColor = null;
+
+        if (currentMission.status === 'pickup') {
+            targetPos = currentMission.pickupPoint.position;
+            targetColor = targetArrowMesh.userData.pickupColor;
+        } else if (currentMission.status === 'delivering') {
+            targetPos = currentMission.deliveryTarget.position;
+            targetColor = targetArrowMesh.userData.deliveryColor;
+        } else {
+            targetArrowMesh.visible = false;
+            return;
+        }
+
+        targetArrowMesh.visible = true;
+
+        targetArrowMesh.traverse((node) => {
+            if (node.isMesh && node.material.color) {
+                node.material.color.copy(targetColor);
+            }
+        });
+
+        const _tempCarPosition = chassisBody.position;
+        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z);
+        
+        const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
+        targetArrowMesh.rotation.set(0, 0, 0); 
+        targetArrowMesh.lookAt(lookAtTarget);
+        targetArrowMesh.rotateY(Math.PI); 
+        targetArrowMesh.rotateY(Math.PI / 2); 
+        targetArrowMesh.rotateX(Math.PI / 4); 
+        targetArrowMesh.position.y += 0.5;
+    }
+
     // =============================================================================
     // ** POLICE MODE LOGIC (NEW) **
     // =============================================================================
+    const SCALE_FACTOR = 104.7;
+
     window.startPoliceMode = function() {
-        if (!chassisBody) { alert("Loading assets..."); return; }
+        if (!chassisBody) {
+            alert("Loading assets...");
+            return;
+        }
         if (!isGameRunning) enterGame();
-        
         isDeliveryModeActive = false;
         isPoliceModeActive = true;
         policeActive = false;
@@ -1296,6 +1432,7 @@
         document.getElementById('police-alert').style.color = "#FFD700"; // Warn color
         
         if(deliveryHudEl) deliveryHudEl.style.display = 'none';
+
         respawnCar();
     }
 
@@ -1303,9 +1440,9 @@
         if(policeChassis) return; // Already created
 
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
-        policeChassis = new CANNON.Body({
+        policeChassis = new CANNON.Body({ 
             mass: 3000, // Heavier than player
-            shape: chassisShape
+            shape: chassisShape 
         });
         policeChassis.angularDamping = 0.9;
         policeChassis.linearDamping = 0.05;
@@ -1319,82 +1456,87 @@
 
         const axleWidth = 1.0;
         const wheelBase = 1.5;
-
+        
         function makeWheelOptions(x,y,z) {
             return {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150, 
-                suspensionRestLength: 0.3, 
-                frictionSlip: 4.0, 
-                dampingRelaxation: 8.0, 
-                dampingCompression: 10.0, 
-                maxSuspensionForce: 100000, 
-                rollInfluence: 0.05, 
+                suspensionStiffness: 150,
+                suspensionRestLength: 0.3,
+                frictionSlip: 4.0,
+                dampingRelaxation: 8.0,
+                dampingCompression: 10.0,
+                maxSuspensionForce: 100000,
+                rollInfluence: 0.05,
                 maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30, 
+                customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
                 chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
             };
         }
 
-        policeVehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); 
-        policeVehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); 
-        policeVehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); 
-        policeVehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); 
+        policeVehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // Front Left
+        policeVehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // Front Right
+        policeVehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // Back Left
+        policeVehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // Back Right
 
         policeVehicle.addToWorld(world);
-        
-        // Visual Model
-        const SCALE_FACTOR = 1.05; // Slightly larger for visual presence
-        if(gltfLoader) {
-             gltfLoader.load('police_car.glb', (gltf) => {
-                policeMesh = gltf.scene;
-                policeMesh.scale.set(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
-                policeMesh.rotation.y = Math.PI;
-                policeMesh.traverse((node) => {
-                    if (node.isMesh) node.castShadow = true;
-                });
 
-                // Red and Blue Lights
-                const lightBarGeo = new THREE.BoxGeometry(0.3 * SCALE_FACTOR, 0.11 * SCALE_FACTOR, 0.21 * SCALE_FACTOR);
-                const lightBar = new THREE.Group();
-                lightBar.position.y = 0.55; 
-                lightBar.position.z = -0.5;
-
-                const redMat = new THREE.MeshBasicMaterial({ color: 0xff0000, toneMapped: false });
-                const redLight = new THREE.Mesh(lightBarGeo, redMat);
-                redLight.position.x = -0.0035; // X position, close to center
-
-                const blueMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, toneMapped: false });
-                const blueLight = new THREE.Mesh(lightBarGeo, blueMat);
-                blueLight.position.x = 0.0035;
-
-                lightBar.add(redLight);
-                lightBar.add(blueLight);
-                policeMesh.add(lightBar);
-
-                policeLight = { red: redLight, blue: blueLight, state: 0 };
-
-                scene.add(policeMesh);
-
-            }, undefined, () => {
-                // Fallback box (If model failed to load)
-                const boxGeo = new THREE.BoxGeometry(2,1,4);
-                const boxMat = new THREE.MeshStandardMaterial({color:0x0000FF});
-                policeMesh = new THREE.Mesh(boxGeo, boxMat);
-                scene.add(policeMesh);
+        // Load Police Car Model
+        gltfLoader.load('police_car.glb', (gltf) => {
+            policeMesh = gltf.scene;
+            policeMesh.scale.set(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+            policeMesh.rotation.y = Math.PI; 
+            policeMesh.traverse((node) => {
+                if (node.isMesh) node.castShadow = true;
             });
-        }
-        
+
+            // Light Bar (positioned relative to the scaled model)
+            const lightBarGeo = new THREE.BoxGeometry(1.5 * SCALE_FACTOR, 0.1 * SCALE_FACTOR, 0.25 * SCALE_FACTOR);
+            const lightBarMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const lightBar = new THREE.Mesh(lightBarGeo, lightBarMat);
+            lightBar.position.y = 0.5 * SCALE_FACTOR; // Position on top of the scaled model.
+            
+            // Red and Blue Lights
+            const lightGeo = new THREE.BoxGeometry(0.3 * SCALE_FACTOR, 0.11 * SCALE_FACTOR, 0.21 * SCALE_FACTOR);
+            const redMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const redLight = new THREE.Mesh(lightGeo, redMat);
+            redLight.position.x = -0.0035; // X position, close to center
+
+            const blueMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            const blueLight = new THREE.Mesh(lightGeo, blueMat);
+            blueLight.position.x = 0.0035;
+
+            lightBar.add(redLight);
+            lightBar.add(blueLight);
+            policeMesh.add(lightBar);
+
+            policeLight = { red: redLight, blue: blueLight, state: 0 };
+
+            scene.add(policeMesh);
+        }, undefined, () => {
+            // Fallback box (If model failed to load)
+            console.warn("Using placeholder police car.");
+            const boxGeo = new THREE.BoxGeometry(2,1,4);
+            const boxMat = new THREE.MeshBasicMaterial({color:0x0000FF});
+            policeMesh = new THREE.Mesh(boxGeo, boxMat);
+            scene.add(policeMesh);
+        });
+
         // Wheels
         policeWheelMeshes = [];
         const cylGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 32);
         cylGeo.rotateZ(Math.PI/2);
         const wheelMat = new THREE.MeshStandardMaterial({color:0x111111});
         for(let i=0; i<4; i++){
-            let m = new THREE.Mesh(cylGeo, wheelMat);
+            // Use the tire model prototype if loaded, otherwise use placeholder
+            let m;
+            if (tireMeshPrototype) {
+                m = tireMeshPrototype.clone();
+            } else {
+                m = new THREE.Mesh(cylGeo, wheelMat);
+            }
             scene.add(m);
             policeWheelMeshes.push(m);
         }
@@ -1402,64 +1544,85 @@
         // Set to hidden initially until spawn
         if(policeMesh) policeMesh.visible = false;
         policeWheelMeshes.forEach(m => m.visible = false);
-
-        // Busted collision check
-        policeChassis.addEventListener('collide', (e) => {
-            if (e.body === chassisBody) {
-                // The police car hit the player car (or vice versa)
-                if (policeActive) {
-                    // Check if police car has momentum toward player (simple velocity check)
-                    const playerSpeed = chassisBody.velocity.length();
-                    if (playerSpeed > 5) { // Only 'bust' if moving
-                        document.getElementById('busted-screen').style.display = 'flex';
-                        isGameRunning = false;
-                        document.getElementById('hud-layer').style.display = 'none';
-                    }
-                }
-            }
-        });
     }
 
     function spawnPolice() {
         if(!policeChassis) createPoliceVehicle();
-        if(policeActive) return;
-
-        // 获取玩家当前位置和朝向
+        
+        // Get player's current position and direction
         const playerPos = chassisBody.position;
         const playerQuat = chassisBody.quaternion;
-
-        // 在玩家后方 150 米处生成
-        const backDirection = new CANNON.Vec3(0, 0, 1).applyQuaternion(playerQuat).scale(150);
+        
+        // Calculate a spawn position 150 units behind the player
+        const playerForward = new THREE.Vector3(0,0,1).applyQuaternion(new THREE.Quaternion(playerQuat.x, playerQuat.y, playerQuat.z, playerQuat.w));
+        const spawnDistance = 150;
         const spawnPos = new CANNON.Vec3(
-            playerPos.x - backDirection.x, 
-            playerPos.y + 5, 
-            playerPos.z - backDirection.z
+            playerPos.x + playerForward.x * spawnDistance, 
+            playerPos.y + 5, // Spawn slightly above to drop onto the ground
+            playerPos.z + playerForward.z * spawnDistance
         );
 
+        // Reset police vehicle state
         policeChassis.position.copy(spawnPos);
-        policeChassis.quaternion.set(0, 0, 0, 1); // Reset rotation (will be oriented in AI)
-        policeChassis.velocity.set(0, 0, 0); 
+        policeChassis.quaternion.copy(chassisBody.quaternion); // Face the same way
+        policeChassis.velocity.set(0, 0, 0);
         policeChassis.angularVelocity.set(0, 0, 0);
-        
-        world.addBody(policeChassis); // Ensure it's in the world (though it should be)
-        
-        policeMesh.visible = true;
-        policeWheelMeshes.forEach(m => m.visible = true);
+
         policeActive = true;
-        
         document.getElementById('police-alert').innerText = "POLICE ACTIVE";
         document.getElementById('police-alert').style.color = "#FF0000"; // Red alert
+
+        if(policeMesh) policeMesh.visible = true;
+        policeWheelMeshes.forEach(m => m.visible = true);
+        
+        world.addBody(policeChassis);
+        policeVehicle.updateChassisWorldTransform(); // Update transforms immediately
+        policeVehicle.updateWheelTransforms(true);
     }
 
-    function updatePoliceAI() {
-        if(!policeActive) return;
+    function policeBusted() {
+        policeActive = false;
+        isGameRunning = false;
+        document.getElementById('busted-screen').style.display = 'flex';
+        
+        // Remove police body from world
+        if (policeChassis) world.removeBody(policeChassis);
+        
+        // Hide police meshes
+        if(policeMesh) policeMesh.visible = false;
+        policeWheelMeshes.forEach(m => m.visible = false);
+    }
 
-        const MAX_POLICE_FORCE = 20000;
+    // Three.js temporary variables for vector/quaternion math
+    const _v1 = new THREE.Vector3();
+    const _v2 = new THREE.Vector3();
+    const _q = new THREE.Quaternion();
+
+    function updatePoliceAI() {
+        if (!policeActive || !policeChassis || !chassisBody) return;
+
         const policePos = policeChassis.position;
         const playerPos = chassisBody.position;
-        const policeSpeed = policeChassis.velocity.length() * 3.6; // KM/H
-        const distance = policePos.distanceTo(playerPos);
+        const policeSpeed = policeChassis.velocity.norm() * 3.6; // Current speed in KM/H
+
+        const distanceToPlayer = policePos.distanceTo(playerPos);
         
+        // ** BUSTED LOGIC **
+        if (distanceToPlayer < 5) {
+            policeBusted();
+            return;
+        }
+
+        // ** Lights and Siren **
+        policeSirenTimer += clock.getDelta();
+        if (policeLight && policeSirenTimer > 0.15) {
+            policeLight.state = (policeLight.state + 1) % 2;
+            policeLight.red.material.color.set(policeLight.state === 0 ? 0xff0000 : 0x000000);
+            policeLight.blue.material.color.set(policeLight.state === 1 ? 0x0000ff : 0x000000);
+            policeSirenTimer = 0;
+        }
+
+
         // --- 1. 转向逻辑：预判、平滑、速度限制 ---
         const PREDICT_TIME = 0.5; // 预判时间 (秒)
         const playerVelocity = chassisBody.velocity.clone();
@@ -1494,52 +1657,42 @@
         // 速度依赖的转向极限 (高速时限制最大转向角)
         const MAX_SPEED_TURN_LIMIT = 0.4; // 极限速度下的最大转向比率 (例如 maxSteerVal 的 40%)
         const MAX_TURN_SPEED = 180; // 高速定义的阈值 (KM/H)
-        
-        if(policeSpeed > 5) {
-            const speedFactor = Math.min(1, policeSpeed / MAX_TURN_SPEED);
-            const turnLimit = maxSteerVal * (1.0 - speedFactor * (1.0 - MAX_SPEED_TURN_LIMIT));
-            steer = THREE.MathUtils.clamp(steer, -turnLimit, turnLimit);
+        if(policeSpeed > 50) {
+            const limit = maxSteerVal * (1 - (policeSpeed - 50) / (MAX_TURN_SPEED - 50) * (1 - MAX_SPEED_TURN_LIMIT));
+            steer = THREE.MathUtils.clamp(steer, -limit, limit);
         }
         
-        // --- 2. 油门/刹车逻辑 ---
+        // --- 2. 动力控制：加速和减速 ---
         let force = 0;
-        let brakeForce = 0;
+        let brake = 0;
+        const MAX_POLICE_FORCE = 20000;
 
-        // 转向误差角度阈值
-        const MIN_ANGLE_TO_TURN = Math.PI / 8; // 22.5度
-
-        if (Math.abs(angle) < MIN_ANGLE_TO_TURN) {
-            // 朝向基本正确，向前加速追击
-            force = -MAX_POLICE_FORCE; 
-            if (distance < 30) { 
-                // 距离很近，轻刹车防止撞得太猛
-                brakeForce = MAX_POLICE_FORCE * 0.1;
-            }
-        } else {
-            // 朝向偏差较大，可能需要刹车或倒车来修正
-            if (policeSpeed > 20) {
-                // 速度快，先刹车减速
-                brakeForce = MAX_POLICE_FORCE * 0.5;
-            }
-            if (policeSpeed < 5 && distance < 10) { 
-                // 速度慢且离玩家很近，尝试倒车调整
-                force = MAX_POLICE_FORCE * 0.5; 
-            }
-        }
-        
-        // --- 3. 脱困逻辑 (如果速度过低且角度错误) ---
-        if(policeSpeed < 3 && distance > 5 && Math.abs(angle) > Math.PI / 2) {
-            if (Math.abs(angle) < Math.PI / 4) {
-                // 朝向正确，尝试向前加速
+        if (Math.abs(angle) < Math.PI / 8) { // 如果基本朝向正确
+            if (policeSpeed < 200) { // 尝试追上玩家
                 force = -MAX_POLICE_FORCE;
             } else {
-                // 朝向错误，尝试倒车脱困
-                force = MAX_POLICE_FORCE * 0.5;
+                force = 0;
+                // 接近玩家时减速，防止撞飞
+                if (distanceToPlayer < 50) { 
+                    brake = MAX_POLICE_FORCE * 0.5;
+                }
             }
-            brakeForce = 0;
+        } else {
+             // 如果角度太大（需要大幅转向），轻轻刹车以协助转向
+            brake = MAX_POLICE_FORCE * 0.1;
         }
 
-        // --- 4. 自恢复机制 (防止车辆翻倒)
+        // --- 3. 脱困逻辑 (卡住或背对玩家) ---
+        if (distanceToPlayer > 30 && policeSpeed < 5) { // 玩家较远且警察速度接近0 (可能卡住)
+            if (Math.abs(angle) < Math.PI / 4) { // 朝向正确，尝试向前加速
+                force = -MAX_POLICE_FORCE;
+            } else { // 朝向错误，尝试倒车脱困
+                force = MAX_POLICE_FORCE * 0.5;
+            }
+            brake = 0;
+        }
+
+        // --- 4. 自恢复机制 (防止车辆翻倒) ---
         const up = new THREE.Vector3(0,1,0).applyQuaternion(policeQuat);
         if(up.y < 0.2) {
             policeChassis.position.y += 2; // 抬升
@@ -1547,12 +1700,12 @@
             policeChassis.velocity.set(0,0,0); // 清除速度
             policeChassis.angularVelocity.set(0,0,0); // 清除角速度
         }
-        
+
         // --- 5. 应用控制 ---
         // 应用转向
         policeVehicle.setSteeringValue(steer, 0);
         policeVehicle.setSteeringValue(steer, 1);
-        
+
         // 重置所有引擎力和刹车力
         policeVehicle.applyEngineForce(0, 0);
         policeVehicle.applyEngineForce(0, 1);
@@ -1568,13 +1721,12 @@
         policeVehicle.applyEngineForce(force, 1);
         policeVehicle.applyEngineForce(force, 2);
         policeVehicle.applyEngineForce(force, 3);
-        
-        policeVehicle.setBrake(brakeForce, 0);
-        policeVehicle.setBrake(brakeForce, 1);
-        policeVehicle.setBrake(brakeForce, 2);
-        policeVehicle.setBrake(brakeForce, 3);
+        policeVehicle.setBrake(brake, 0);
+        policeVehicle.setBrake(brake, 1);
+        policeVehicle.setBrake(brake, 2);
+        policeVehicle.setBrake(brake, 3);
 
-        // --- 6. 更新视觉效果 ---
+        // --- 6. 更新视觉效果 (保持不变) ---
         for(let i=0; i<policeVehicle.wheelInfos.length; i++){
             policeVehicle.updateWheelTransform(i);
             let t = policeVehicle.wheelInfos[i].worldTransform;
@@ -1584,25 +1736,8 @@
             }
         }
         if(policeMesh) {
-            policeMesh.position.copy(policeChassis.position);
+            policeChassis.position.copy(policeMesh.position).add(_v1.set(0, VISUAL_Y_OFFSET, 0));
             policeMesh.quaternion.copy(policeChassis.quaternion);
-        }
-
-        // Siren lights blink
-        policeSirenTimer += 1/60;
-        if(policeSirenTimer > 0.5) {
-            if(policeLight) {
-                policeLight.state = 1 - policeLight.state;
-                if(policeLight.state === 1) {
-                    policeLight.red.visible = false;
-                    policeLight.blue.visible = true;
-                } else {
-                    policeLight.red.visible = true;
-                    policeLight.blue.visible = false;
-                }
-            }
-            playSiren(policeLight.state);
-            policeSirenTimer = 0;
         }
     }
 
@@ -1613,6 +1748,7 @@
     window.addEventListener('keydown', (event) => {
         if (!isGameRunning) return;
         if(!audioCtx) initAudio();
+
         const k = event.key.toLowerCase();
         if(k==='w' || k==='arrowup') inputState.keyW = true;
         if(k==='s' || k==='arrowdown') inputState.keyS = true;
@@ -1620,12 +1756,13 @@
         if(k==='d' || k==='arrowright') inputState.keyD = true;
         if(k===' ') inputState.keySpace = true;
         if(k==='shift') inputState.keyShift = true;
-        if(k==='r') inputState.keyR = true;
+        if(k==='r') respawnCar();
         if(k==='v') toggleCamera();
     });
 
     window.addEventListener('keyup', (event) => {
         if (!isGameRunning) return;
+
         const k = event.key.toLowerCase();
         if(k==='w' || k==='arrowup') inputState.keyW = false;
         if(k==='s' || k==='arrowdown') inputState.keyS = false;
@@ -1633,79 +1770,63 @@
         if(k==='d' || k==='arrowright') inputState.keyD = false;
         if(k===' ') inputState.keySpace = false;
         if(k==='shift') inputState.keyShift = false;
-        if(k==='r') inputState.keyR = false;
     });
 
-    function toggleCamera() {
-        cameraMode = 1 - cameraMode; // Toggles between 0 and 1
-        currentCamera = cameraMode === CAMERA_MODE_CHASE ? cameraChase : cameraCockpit;
-    }
-
-    function respawnCar() {
-        // Reset player position and velocity
+    window.respawnCar = function() {
+        if (!chassisBody) return;
         chassisBody.position.copy(initialCarPosition);
         chassisBody.quaternion.set(0, 0, 0, 1);
         chassisBody.velocity.set(0, 0, 0);
         chassisBody.angularVelocity.set(0, 0, 0);
-        
-        // Remove police car if present
-        if(policeActive) {
-            policeActive = false;
-            if(policeMesh) policeMesh.visible = false;
-            policeWheelMeshes.forEach(m => m.visible = false);
-            // Re-arm police chase if in police mode
-            if(isPoliceModeActive) {
-                policeSpawnTime = performance.now() + POLICE_DELAY;
-                document.getElementById('police-alert').innerText = "POLICE INBOUND";
-                document.getElementById('police-alert').style.color = "#FFD700";
-                document.getElementById('police-timer').innerText = `SPAWN IN: ${(POLICE_DELAY/1000).toFixed(1)}s`;
-            }
+        vehicle.updateChassisWorldTransform(); // Update transforms immediately
+        vehicle.updateWheelTransforms(true);
+        if (policeActive) { // Respawn police too if active
+            spawnPolice();
         }
     }
 
+    function toggleCamera() {
+        if (cameraCurrent === cameraChase) {
+            cameraCurrent = cameraCockpit;
+        } else {
+            cameraCurrent = cameraChase;
+        }
+    }
+    
     function updateControls() {
-        if (inputState.keyR) respawnCar();
-        
         engineForce = 0;
         steeringValue = 0;
         let brake = 0;
 
-        const forwardVector = new CANNON.Vec3(0, 0, -1).applyQuaternion(chassisBody.quaternion);
-        const velocityVector = chassisBody.velocity;
-        const forwardSpeed = velocityVector.dot(forwardVector) * 3.6; // Speed in KM/H
+        // Player's Speed, RPM, Throttle calculation
+        const forwardVector = new THREE.Vector3(0, 0, 1);
+        const velocityVector = new THREE.Vector3(chassisBody.velocity.x, 0, chassisBody.velocity.z);
+        const quaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
+        forwardVector.applyQuaternion(quaternion);
 
-        // Update UI
-        speedEl.textContent = Math.abs(forwardSpeed).toFixed(0);
-        const rpm = Math.min(999, Math.abs(forwardSpeed) * 30);
-        rpmEl.textContent = rpm.toFixed(0);
-        
-        // Altitude (rough estimate)
-        const alt = chassisBody.position.y - initialCarPosition.y;
-        altitudeEl.textContent = alt.toFixed(1);
+        const forwardSpeed = velocityVector.dot(forwardVector);
+        const speed = Math.sqrt(chassisBody.velocity.x**2 + chassisBody.velocity.z**2) * 3.6; // km/h
+        const rpm = Math.min(1000, Math.abs(forwardSpeed) * 30 + (inputState.keyW || inputState.keyS ? 100 : 0)); // Simulated RPM
 
-        // Heading (Yaw rotation around Y axis)
-        const euler = new THREE.Euler().setFromQuaternion(chassisBody.quaternion);
-        let heading = (euler.y * 180 / Math.PI) % 360;
-        if (heading < 0) heading += 360;
-        headingEl.textContent = heading.toFixed(0).padStart(3, '0');
+        // Check for Drifting
+        const lateralVelocity = velocityVector.clone().sub(_v1.copy(forwardVector).multiplyScalar(forwardSpeed));
+        const driftThreshold = 5.0; // m/s sideways velocity
+        const minSpeedForDrift = 50; // km/h
         
-        updateEngineSound(Math.abs(forwardSpeed), inputState.keyW || inputState.keyS);
-        
-        // Drift Calculation
-        let isDrifting = false;
-        if(inputState.keySpace) {
-            const sideFriction = vehicle.wheelInfos[2].sideImpulse; // Use one of the rear wheels
-            if (Math.abs(sideFriction) > 1000) { // arbitrary threshold for sliding
-                 isDrifting = true;
-                 driftBonusEl.style.display = 'block';
-                 driftBonusEl.style.fontSize = `${48 + Math.min(20, Math.abs(sideFriction) / 1000)}px`;
-                 driftBonusEl.textContent = `DRIFT! +${gameData.upgrades.gold === 1 ? 2 : 1}`;
-                 playDriftSound(Math.min(1, Math.abs(sideFriction) / 3000));
-                 
-                 // Coin reward for drifting
-                 const bonus = gameData.upgrades.gold === 1 ? 2 : 1;
-                 gameData.coins += (1 * bonus);
-                 saveGameData();
+        if (isGameRunning && speed > minSpeedForDrift && inputState.keySpace && lateralVelocity.length() > driftThreshold) {
+            if (!isDrifting) {
+                isDrifting = true;
+                driftBonusEl.style.display = 'block';
+                driftBonusEl.textContent = 'DRIFT START!';
+            }
+            driftCheckTimer += clock.getDelta();
+            if (driftCheckTimer >= 1.0) {
+                driftCheckTimer = 0;
+                // Award drift bonus
+                const bonus = (gameData.upgrades.gold > 0) ? 2 : 1;
+                gameData.coins += (1 * bonus);
+                saveGameData();
+                driftBonusEl.textContent = `DRIFT BONUS! +${1 * bonus}`;
             }
         } else {
             isDrifting = false;
@@ -1715,28 +1836,27 @@
         const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
         const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
 
-        // Steering
         if (inputState.keyA) steeringValue = maxSteerVal;
         else if (inputState.keyD) steeringValue = -maxSteerVal;
-        
-        // Gas/Reverse/Brake Logic
+
         if (inputState.keyW) {
-            if (isMovingBackward) brake = maxEngineForce * 0.5; // Quick brake from reverse
-            else { 
-                engineForce = -maxEngineForce; // Drive forward
+            if (isMovingBackward) {
+                brake = maxEngineForce * 0.5;
+            } else {
+                engineForce = -maxEngineForce;
                 gearEl.textContent = 'D';
             }
         } else if (inputState.keyS) {
-            if (isMovingForward) brake = maxEngineForce * 0.5; // Quick brake from forward
-            else { 
-                engineForce = maxEngineForce * 0.5; // Reverse
+            if (isMovingForward) {
+                brake = maxEngineForce * 0.5;
+            } else {
+                engineForce = maxEngineForce * 0.5;
                 gearEl.textContent = 'R';
             }
         } else if (!inputState.keySpace) {
-             gearEl.textContent = (Math.abs(forwardSpeed) < 1) ? 'P' : 'N';
+            gearEl.textContent = (forwardSpeed < 1) ? 'P' : 'N';
         }
 
-        // Nitro Boost
         if (inputState.keyShift && engineForce !== 0) {
             engineForce *= 2.5;
             if (flameMesh) flameMesh.visible = true;
@@ -1744,48 +1864,62 @@
             if (flameMesh) flameMesh.visible = false;
         }
         
-        // Apply steering
+        // Apply Steering (Front wheels only)
         vehicle.setSteeringValue(steeringValue, 0);
         vehicle.setSteeringValue(steeringValue, 1);
-        
-        // ** START: 动力分配修改 (前驱为主 90:10) **
-        // 减轻后仰，将大部分动力分配给前轮 (索引 0 和 1)
-        const frontBias = 0.9;
-        const rearBias = 0.1;
 
-        // 应用引擎力
-        // 索引 0, 1 是前轮
-        vehicle.applyEngineForce(engineForce * frontBias, 0); 
-        vehicle.applyEngineForce(engineForce * frontBias, 1); 
+        // Reset all forces
+        vehicle.applyEngineForce(0, 0);
+        vehicle.applyEngineForce(0, 1);
+        vehicle.applyEngineForce(0, 2);
+        vehicle.applyEngineForce(0, 3);
         
-        // 索引 2, 3 是后轮
-        vehicle.applyEngineForce(engineForce * rearBias, 2); 
-        vehicle.applyEngineForce(engineForce * rearBias, 3); 
-        // ** END: 动力分配修改 **
+        // Apply new Engine Force
+        vehicle.applyEngineForce(engineForce, 0);
+        vehicle.applyEngineForce(engineForce, 1);
+        vehicle.applyEngineForce(engineForce, 2);
+        vehicle.applyEngineForce(engineForce, 3);
 
         let finalBrakeRL = brake, finalBrakeRR = brake;
+
         if (inputState.keySpace) {
-            // Handbrake/Drift brake logic
-            finalBrakeRL = maxEngineForce * 0.8; 
+            finalBrakeRL = maxEngineForce * 0.8;
             finalBrakeRR = maxEngineForce * 0.8;
-            gearEl.textContent = 'E'; // Emergency Brake
-        } else if (brake === 0) {
-            // No brake input, ensure physics brake is zero
-            vehicle.setBrake(0, 0); 
-            vehicle.setBrake(0, 1); 
-            vehicle.setBrake(0, 2); 
-            vehicle.setBrake(0, 3);
+            gearEl.textContent = 'B';
         }
+
+        // Apply Brakes (All wheels)
+        vehicle.setBrake(finalBrakeRL, 0);
+        vehicle.setBrake(finalBrakeRR, 1);
+        vehicle.setBrake(brake, 2);
+        vehicle.setBrake(brake, 3);
         
-        // Apply calculated brake force
-        vehicle.setBrake(brake, 0); vehicle.setBrake(brake, 1); // Front brake
-        vehicle.setBrake(finalBrakeRL, 2); vehicle.setBrake(finalBrakeRR, 3); // Rear brake
+        // If speed is very low and no gas/brake, apply a small brake to stop creep
+        if (!inputState.keyW && !inputState.keyS && !inputState.keySpace && speed < 1) {
+             vehicle.setBrake(brakeForce, 0);
+             vehicle.setBrake(brakeForce, 1);
+             vehicle.setBrake(brakeForce, 2);
+             vehicle.setBrake(brakeForce, 3);
+        }
+
+        // Auto-righting mechanism (prevent car from flipping indefinitely)
+        if(chassisBody.quaternion.toEuler().x > Math.PI/2 || chassisBody.quaternion.toEuler().x < -Math.PI/2) {
+             respawnCar();
+        }
+
+        // UI Updates
+        speedEl.textContent = speed.toFixed(0);
+        altitudeEl.textContent = chassisBody.position.y.toFixed(0);
         
-        // Throttle visualization
-        const throttlePercent = 100 * Math.abs(engineForce / (maxEngineForce * 2.5));
+        const heading = Math.round(Math.atan2(forwardVector.x, forwardVector.z) * (180 / Math.PI));
+        headingEl.textContent = String(heading).padStart(3, '0');
+
+        const throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
+        rpmEl.textContent = (rpm/10).toFixed(0);
+        updateEngineSound(rpm, throttlePercent);
         throttleEl.textContent = Math.min(100, throttlePercent).toFixed(0) + '%';
         coinCountEl.textContent = gameData.coins;
-        
+
         // ** Police Timer HUD update **
         if(isPoliceModeActive && !policeActive) {
             let timeLeft = (policeSpawnTime - performance.now()) / 1000;
@@ -1800,11 +1934,13 @@
 
     function updateColliders() {
         if (!chassisBody) return;
+
         const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
         
-        // Lazy loading/unloading of nearby static collision bodies
+        // Simple Frustum Culling based on distance
         staticBodies.forEach(obj => {
             const d = chassisPos.distanceTo(obj.center);
+            
             if (!obj.added && d <= obj.radius + 200) {
                 world.addBody(obj.body);
                 obj.added = true;
@@ -1815,140 +1951,8 @@
         });
     }
 
-    // =============================================================================
-    // ** COIN LOGIC **
-    // =============================================================================
-    function loadCoinPrototype(callback) {
-        const coinLoader = new THREE.GLTFLoader();
-        coinLoader.load('gold_coin.glb', (gltf) => {
-            coinProto = gltf.scene;
-            coinProto.traverse(node => {
-                if (node.isMesh) node.castShadow = true;
-            });
-            if (callback) callback();
-        }, undefined, (err) => {
-            console.warn('gold_coin.glb fallback');
-            const geo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 8);
-            const mat = new THREE.MeshBasicMaterial({color: 0xFFD700});
-            coinProto = new THREE.Mesh(geo, mat);
-            if (callback) callback();
-        });
-    }
+    let lastTime = undefined;
 
-    function generateCoins() {
-        // Clear old coins
-        coinMeshes.forEach(m => scene.remove(m));
-        coinBodies.forEach(b => world.removeBody(b));
-        coinMeshes = [];
-        coinBodies = [];
-
-        if (!coinProto) return;
-        
-        const coinShape = new CANNON.Cylinder(0.5, 0.5, 0.1, 8);
-        const coinQuat = new CANNON.Quaternion();
-        coinQuat.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2); // Rotate to stand up
-
-        for (let i = 0; i < COIN_COUNT; i++) {
-            // Spawn in a random area near the center of the world
-            const x = (Math.random() - 0.5) * 4000;
-            const z = (Math.random() - 0.5) * 4000;
-            const y = 0.7; // Floating slightly above ground
-
-            const coinMesh = coinProto.clone();
-            coinMesh.position.set(x, y, z);
-            scene.add(coinMesh);
-            coinMeshes.push(coinMesh);
-
-            const coinBody = new CANNON.Body({ mass: 0, position: new CANNON.Vec3(x, y, z), shape: coinShape });
-            coinBody.quaternion.copy(coinQuat);
-            coinBody.collisionResponse = 0; // Does not physically stop the car
-            coinBody.userData = { id: i, type: 'coin' };
-            world.addBody(coinBody);
-            coinBodies.push(coinBody);
-        }
-
-        // Handle collection
-        chassisBody.addEventListener('collide', (e) => {
-            const otherBody = (e.body === chassisBody) ? e.target : e.body;
-            if (otherBody.userData && otherBody.userData.type === 'coin') {
-                const coinId = otherBody.userData.id;
-                const index = coinBodies.findIndex(b => b.userData && b.userData.id === coinId);
-
-                if (index !== -1) {
-                    // Remove from physics world and scene
-                    world.removeBody(coinBodies[index]);
-                    scene.remove(coinMeshes[index]);
-
-                    // Remove from arrays
-                    coinBodies.splice(index, 1);
-                    coinMeshes.splice(index, 1);
-                    
-                    // Award gold
-                    const bonus = gameData.upgrades.gold === 1 ? 2 : 1;
-                    gameData.coins += 1 * bonus;
-                    saveGameData();
-                    playCoinSound();
-                }
-            }
-        });
-    }
-
-    function updateCoins(time) {
-        if (!coinMeshes.length) return;
-        
-        // Spin the coins
-        const spinSpeed = 0.005;
-        coinMeshes.forEach((mesh, index) => {
-            if (mesh && mesh.rotation) {
-                mesh.rotation.y = time * spinSpeed;
-            }
-        });
-    }
-
-    function updateTargetArrow() {
-        if (!targetArrowMesh || !isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') {
-            if(targetArrowMesh) targetArrowMesh.visible = false;
-            return;
-        }
-
-        let targetPos = null;
-        let targetColor = null;
-
-        if (currentMission.status === 'pickup') {
-            targetPos = currentMission.pickupPoint.position;
-            targetColor = targetArrowMesh.userData.pickupColor;
-        } else if (currentMission.status === 'delivering') {
-            targetPos = currentMission.deliveryTarget.position;
-            targetColor = targetArrowMesh.userData.deliveryColor;
-        } else {
-            targetArrowMesh.visible = false;
-            return;
-        }
-
-        targetArrowMesh.visible = true;
-        targetArrowMesh.traverse((node) => {
-            if (node.isMesh && node.material.color) {
-                node.material.color.copy(targetColor);
-            }
-        });
-
-        const _tempCarPosition = chassisBody.position;
-        // Position the arrow above the car
-        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z);
-
-        const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
-        targetArrowMesh.rotation.set(0, 0, 0);
-        targetArrowMesh.lookAt(lookAtTarget);
-        targetArrowMesh.rotateY(Math.PI); 
-        targetArrowMesh.rotateY(Math.PI / 2); // Adjust rotation to point correctly
-        targetArrowMesh.rotateX(Math.PI / 4); // Tilt up 45 degrees
-        targetArrowMesh.position.y += 0.5;
-    }
-
-
-    // =============================================================================
-    // ** ANIMATION LOOP **
-    // =============================================================================
     function animate(time) {
         if(isGameRunning || !isGameRunning) requestAnimationFrame(animate);
 
@@ -1957,7 +1961,7 @@
         if (isGameRunning) {
             const fixedTimeStep = 1/60;
             const maxSubSteps = 1;
-            
+
             if (lastTime !== undefined) {
                 const dt = (time - lastTime) / 1000;
                 world.step(fixedTimeStep, dt, maxSubSteps);
@@ -1968,8 +1972,7 @@
 
             updateControls();
             updateColliders();
-            updateCoins(time);
-
+            
             if (isDeliveryModeActive) {
                 updateDeliveryMode();
                 updateTargetArrow();
@@ -1982,71 +1985,71 @@
             }
         }
         
-        // Model position synchronization
-        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+        // Update car mesh position/rotation
+        chassisBody.position.copy(carMesh.position).add(_v1.set(0, VISUAL_Y_OFFSET, 0));
+        carMesh.quaternion.copy(chassisBody.quaternion);
+
+        // Update wheel meshes
+        for(let i=0; i<vehicle.wheelInfos.length; i++){
             vehicle.updateWheelTransform(i);
-            const t = vehicle.wheelInfos[i].worldTransform;
-            
-            // Player Car Wheel Meshes
-            if (tireMeshPrototype) {
-                let m = vehicle.wheelInfos[i].mesh;
-                if(!m) {
-                    m = tireMeshPrototype.clone();
-                    scene.add(m);
-                    vehicle.wheelInfos[i].mesh = m;
-                }
-                m.position.copy(t.position);
-                m.quaternion.copy(t.quaternion);
+            let t = vehicle.wheelInfos[i].worldTransform;
+            if(wheelMeshes[i]) {
+                wheelMeshes[i].position.copy(t.position);
+                wheelMeshes[i].quaternion.copy(t.quaternion);
+                
+                // For the placeholder tires, rotate them slightly
+                if (!tireMeshPrototype) wheelMeshes[i].rotateX(Math.PI/2); 
             }
         }
 
-        // Car Mesh synchronization (Offset for visual appearance)
-        if (carMesh) {
-            carMesh.position.copy(chassisBody.position);
-            carMesh.quaternion.copy(chassisBody.quaternion);
-            carMesh.position.y += VISUAL_Y_OFFSET; 
+        // Update camera
+        _q.copy(chassisBody.quaternion);
+        
+        if (cameraCurrent === cameraChase) {
+            // Chase camera position: behind and above the car
+            _v1.set(0, 5, 10).applyQuaternion(_q);
+            _v1.add(chassisBody.position);
+            cameraChase.position.lerp(_v1, 0.1); 
             
-            // Cockpit Camera follow (relative to car)
-            if(cameraMode === CAMERA_MODE_COCKPIT) {
-                const offset = new THREE.Vector3(0, 0.5, -0.5); // Relative offset
-                offset.applyQuaternion(carMesh.quaternion);
-                cameraCockpit.position.copy(carMesh.position).add(offset);
-                cameraCockpit.quaternion.copy(carMesh.quaternion);
-                cameraCockpit.rotation.x -= Math.PI/20; // Slight down angle
-            }
+            // Look at a point slightly ahead of the car
+            _v2.set(0, 0, -5).applyQuaternion(_q);
+            _v2.add(chassisBody.position);
+            cameraChase.lookAt(_v2);
+        } else if (cameraCurrent === cameraCockpit) {
+            // Cockpit camera position: fixed relative to the car mesh
+            _v1.set(0.7, 0.5, -2.5).applyQuaternion(_q); 
+            _v1.add(chassisBody.position);
+            cameraCockpit.position.lerp(_v1, 0.5);
+            
+            // Look at a point slightly ahead
+            _v2.set(0, 0, -10).applyQuaternion(_q);
+            _v2.add(chassisBody.position);
+            cameraCockpit.lookAt(_v2);
         }
 
-        // Chase Camera Logic
-        if (cameraMode === CAMERA_MODE_CHASE && carMesh) {
-            const cameraOffset = new THREE.Vector3(0, 5, 10);
-            cameraOffset.applyQuaternion(chassisBody.quaternion);
-            cameraChase.position.copy(chassisBody.position).add(cameraOffset);
-            
-            const lookAtPoint = new THREE.Vector3(
-                chassisBody.position.x, 
-                chassisBody.position.y + 0.5, 
-                chassisBody.position.z
+        // Splash Camera Logic
+        if (!isGameRunning) {
+            // Splash camera is just cameraChase looking at the car, rotating around it.
+            const distance = 15;
+            cameraChase.position.set(
+                Math.cos(splashCameraAngle) * distance, 
+                5, 
+                Math.sin(splashCameraAngle) * distance
             );
-            cameraChase.lookAt(lookAtPoint);
+            cameraChase.lookAt(0, 0, 0);
+        } else {
+            // Ensure splash rotation stops when game starts
+            splashCameraAngle = 0; 
         }
 
-        if (isGameRunning) {
-            renderer.render(scene, currentCamera);
-        } else {
-            // Render the splash screen scene
-            if (carMesh) {
-                carMesh.position.set(0, 0, 0);
-                carMesh.quaternion.set(0, 0, 0, 1);
-                carMesh.position.y += VISUAL_Y_OFFSET;
-                carMesh.rotation.y = splashCameraAngle;
-            }
-            renderer.render(scene, splashCamera);
-        }
+        renderer.render(scene, cameraCurrent);
     }
-    
+
     // =============================================================================
-    // ** SYSTEM START **
+    // ** SYSTEM STARTUP **
     // =============================================================================
+    let splashCameraAngle = 0;
+
     function initSystem() {
         loadGameData(); 
         setupMobileControls();
@@ -2059,27 +2062,13 @@
         loadCarModel();
         loadTireModel();
         loadCity();
-        loadCoinPrototype(generateCoins); // Generate coins once prototype is loaded
+        loadCoinPrototype(() => {
+            // Spawn initial coins after the prototype is loaded
+            for(let i = 0; i < NUM_COINS; i++) {
+                spawnCoin();
+            }
+        }); 
         loadArrowModel(); 
-        
-        // Initial setup for upgrades
-        applyUpgrades();
-    }
-
-    window.enterGame = function() { 
-        if(!audioCtx) initAudio(); 
-        document.getElementById('splash').style.opacity = '0';
-        setTimeout(() => {
-            document.getElementById('splash').style.display = 'none';
-            document.getElementById('hud-layer').style.display = 'flex';
-        }, 500);
-        
-        isGameRunning = true; 
-        isPoliceModeActive = false; // Reset modes
-        isDeliveryModeActive = false;
-        if(deliveryHudEl) deliveryHudEl.style.display = 'none';
-        document.getElementById('police-hud').style.display = 'none'; // Ensure police HUD is off when not in mode
-        respawnCar(); // Start from initial position
     }
 
     window.addEventListener('resize', () => {
