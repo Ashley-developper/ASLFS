@@ -1167,9 +1167,6 @@
     }
 
     function updatePoliceAI() {
-        // *** DEBUG LOG: Check if function is running and active status ***
-        console.log("updatePoliceAI running. Active status:", policeActive, "Chassis exists:", !!policeChassis);
-        
         if(!policeActive || !policeChassis) return;
 
         const playerPos = chassisBody.position;
@@ -1177,9 +1174,6 @@
         const dist = playerPos.distanceTo(policePos);
         const policeSpeed = policeChassis.velocity.length() * 3.6; // KM/H
         
-        // *** DEBUG LOG: Log distance and speed ***
-        console.log(`Distance to player: ${dist.toFixed(2)}m | Police Speed: ${policeSpeed.toFixed(1)} km/h`);
-
         // 1. Steering Logic (IMPROVED with Damping and Dead Zone)
         const targetVec = new CANNON.Vec3(playerPos.x - policePos.x, 0, playerPos.z - policePos.z);
         const policeQuat = new THREE.Quaternion(policeChassis.quaternion.x, policeChassis.quaternion.y, policeChassis.quaternion.z, policeChassis.quaternion.w);
@@ -1211,6 +1205,14 @@
             steer = THREE.MathUtils.clamp(steer, -maxSteerVal, maxSteerVal);
         }
 
+        // ************ THE FIX IS HERE ************
+        // If the police are going in reverse direction (backwards chase logic implied by negative force), 
+        // we must flip the steering input for it to turn correctly relative to its current movement vector.
+        if (force < 0) { 
+            steer *= -1; 
+        }
+        // *****************************************
+
 
         // 2. Engine Force Logic 
         let force = 0;
@@ -1241,9 +1243,6 @@
         if (Math.abs(angle) > 0.5 && policeSpeed > 60) {
              brakeForce = MAX_POLICE_FORCE * 0.2; // Tap the brakes during sharp turns
         }
-
-        // *** DEBUG LOG: Log final forces being applied ***
-        console.log(`Applying Engine Force: ${force}, Brake Force: ${brakeForce}, Steering: ${steer.toFixed(2)}`);
 
 
         // 3. Self-righting mechanism: (Keep this)
