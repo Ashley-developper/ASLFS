@@ -710,7 +710,7 @@
     let clock = new THREE.Clock();
     let isGameRunning = false;
     let isDeliveryModeActive = false;
-    let isPoliceModeActive = false;
+    let isPoliceModeActive = false; // <-- Primary declaration here
     let lastTime;
 
     // =============================================================================
@@ -798,6 +798,7 @@
     let lastDriftUpdate = 0;
 
     // ** Police Mode Vars **
+    // REMOVED: let isPoliceModeActive = false; // <-- The duplicate declaration that caused the error.
     let policeSpawnTime = 0;
     let policeActive = false;
     let policeVehicle = null;
@@ -2017,6 +2018,15 @@
         renderer.render(scene, currentCamera);
     }
 
+    // Placeholder for the target arrow model load function, as it was missing from previous output
+    function loadArrowModel() {
+        const geometry = new THREE.ConeGeometry(0.5, 2, 8);
+        const material = new THREE.MeshBasicMaterial({ color: 0xFF0000 });
+        targetArrowMesh = new THREE.Mesh(geometry, material);
+        targetArrowMesh.visible = false;
+        scene.add(targetArrowMesh);
+    }
+
     // =============================================================================
     // ** SYSTEM START **
     // =============================================================================
@@ -2032,8 +2042,7 @@
         loadCarModel();
         loadTireModel();
         loadCity();
-        loadCoinPrototype();
-        // createCoins(); // Uncomment to spawn coins initially
+        loadCoinPrototype(createCoins); // Pass createCoins as callback to ensure coin proto is loaded
         loadArrowModel(); 
         
         initVehicle(); // Initialize player vehicle
