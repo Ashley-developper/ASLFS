@@ -350,7 +350,10 @@
         <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
         <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p> 
     </div>
-
+    <div class="instrument">
+    <span class="label">Position (X,Y,Z)</span>
+    <span class="value" id="hud-coords" style="font-size: 18px;">0, 0, 0</span>
+</div>
     <div id="busted-screen">
         <div id="busted-text">BUSTED</div>
         <p style="color:white; font-family:'Orbitron'; font-size:20px; margin-top:20px;">POLICE CAUGHT YOU</p>
@@ -704,6 +707,7 @@
     const loadingStatusEl = document.getElementById('loading-status'); 
     const loadingProgressFillEl = document.getElementById('loading-progress-fill');
     const driftBonusEl = document.getElementById('drift-bonus');
+    const coordsEl = document.getElementById('hud-coords');
 
     // ** Delivery Mode Elements **
     const deliveryHudEl = document.getElementById('delivery-hud');
@@ -1856,6 +1860,14 @@
                 document.getElementById('police-timer').innerText = `SPAWN IN: ${timeLeft.toFixed(1)}s`;
             }
         }
+    }
+        if (chassisBody) {
+        const pos = chassisBody.position;
+        const x = pos.x.toFixed(1);
+        const y = pos.y.toFixed(1);
+        const z = pos.z.toFixed(1);
+        
+        coordsEl.textContent = `${x}, ${y}, ${z}`;
     }
 
     function updateColliders() {
