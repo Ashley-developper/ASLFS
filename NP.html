@@ -14,6 +14,11 @@
             user-select: none;
             touch-action: none; /* 禁用系统默认手势，确保触控流畅 */
         }
+        body::after {
+    content: "";
+    display: block;
+    height: 150vh;
+}
         canvas {
             display: block;
         }
