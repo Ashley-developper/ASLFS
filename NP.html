@@ -98,7 +98,6 @@
             letter-spacing: clamp(3px, 2vw, 15px); margin: 0;
             text-shadow: 0 0 20px var(--accent-1), 0 0 50px var(--accent-1); 
             transform: skew(-10deg);
-            animation: glitchPulse 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
         
         @keyframes glitchPulse {
@@ -112,9 +111,9 @@
         }
         
         .score-board {
-            position: fixed; top: clamp(15px, 2vw, 30px); left: 0; width: 100%;
-            display: flex; justify-content: center; gap: clamp(40px, 15vw, 150px);
-            font-size: clamp(48px, 12vw, 100px); font-weight: 900;
+            position: fixed; top: clamp(12px, 2vw, 20px); left: 0; width: 100%;
+            display: flex; justify-content: center; gap: clamp(30px, 12vw, 100px);
+            font-size: clamp(36px, 10vw, 60px); font-weight: 900;
             color: rgba(255, 255, 255, 0.08); z-index: 100; pointer-events: none;
             font-variant-numeric: tabular-nums;
         }
@@ -144,7 +143,7 @@
             border: 3px solid var(--accent-1); box-shadow: 0 0 80px var(--accent-1), inset 0 0 40px rgba(0, 255, 255, 0.1);
             pointer-events: auto; backdrop-filter: blur(20px); border-radius: 12px;
             max-width: 95vw; max-height: 95vh; overflow-y: auto;
-            animation: modalSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 1;
         }
         
         @keyframes modalSlideIn {
@@ -160,16 +159,15 @@
             padding: clamp(10px, 2.5vw, 20px) clamp(24px, 6vw, 60px);
             font-size: clamp(14px, 3.5vw, 28px); cursor: pointer; margin-top: 12px;
             text-transform: uppercase; font-weight: bold;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: all 0.2s linear;
             box-shadow: 0 0 20px var(--accent-1), inset 0 0 20px rgba(0, 255, 255, 0.1);
             border-radius: 6px; font-family: inherit; letter-spacing: 1px;
         }
         
-        button:active { transform: scale(0.92) translateY(2px); }
+        button:active { opacity: 0.8; }
         button:hover {
             background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 255, 0.2));
             color: #000; box-shadow: 0 0 60px var(--accent-1), inset 0 0 40px var(--accent-1);
-            transform: scale(1.05);
         }
         
         .theme-selector {
@@ -179,11 +177,11 @@
         
         .theme-btn {
             width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
-            border: 2px solid var(--accent-1); margin: 8px; transition: all 0.3s;
+            border: 2px solid var(--accent-1); margin: 8px; transition: all 0.2s linear;
             box-shadow: 0 0 15px var(--accent-1);
         }
         
-        .theme-btn:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--accent-1); }
+        .theme-btn:hover { box-shadow: 0 0 30px var(--accent-1); }
         
         .theme-btn.default { background: linear-gradient(135deg, #0ff, #f0f); }
         .theme-btn.neon-pink { background: linear-gradient(135deg, #f0f, #ff3366); }
@@ -200,16 +198,9 @@
         .diff-btn {
             padding: clamp(12px, 2vw, 20px) clamp(10px, 2vw, 15px);
             font-size: clamp(14px, 2.5vw, 18px); margin: 0; border-width: 2px;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: all 0.2s linear;
             position: relative; overflow: hidden;
         }
-        
-        .diff-btn::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: currentColor; opacity: 0.1; transition: left 0.3s; z-index: -1;
-        }
-        
-        .diff-btn:hover::before { left: 0; }
         
         .diff-btn.very-easy { color: #0f0; border-color: #0f0; box-shadow: 0 0 15px #0f0; }
         .diff-btn.very-easy:hover { box-shadow: 0 0 40px #0f0, inset 0 0 30px rgba(0, 255, 0, 0.2); }
@@ -221,16 +212,9 @@
         .diff-btn.hard:hover { box-shadow: 0 0 40px #f80, inset 0 0 30px rgba(255, 128, 0, 0.2); }
         .diff-btn.impossible {
             color: #f00; border-color: #f00; box-shadow: 0 0 15px #f00;
-            animation: dangerPulse 0.8s ease-in-out infinite;
         }
         .diff-btn.impossible:hover {
             box-shadow: 0 0 50px #f00, inset 0 0 30px rgba(255, 0, 0, 0.3);
-            animation: none;
-        }
-        
-        @keyframes dangerPulse {
-            0%, 100% { box-shadow: 0 0 15px #f00; transform: scale(1); }
-            50% { box-shadow: 0 0 30px #f00; transform: scale(1.02); }
         }
         
         .char-container {
@@ -240,34 +224,20 @@
         
         .char-card {
             border: 2px solid #444; padding: clamp(12px, 2vw, 20px); cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: all 0.2s linear;
             background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(0, 255, 255, 0.02));
             min-width: 130px; border-radius: 8px; text-align: center; position: relative;
             overflow: hidden;
         }
         
-        .char-card::before {
-            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
-            opacity: 0; transition: opacity 0.3s;
-        }
-        
         .char-card:hover {
             border-color: var(--accent-1); background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.05));
-            box-shadow: 0 0 30px var(--accent-1); transform: translateY(-5px);
+            box-shadow: 0 0 30px var(--accent-1);
         }
-        
-        .char-card:hover::before { opacity: 1; }
         
         .char-card.selected {
             border-color: var(--accent-1); background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
             box-shadow: 0 0 40px var(--accent-1), inset 0 0 20px var(--accent-1);
-            animation: selectedGlow 0.6s ease-in-out infinite;
-        }
-        
-        @keyframes selectedGlow {
-            0%, 100% { box-shadow: 0 0 40px var(--accent-1), inset 0 0 20px var(--accent-1); }
-            50% { box-shadow: 0 0 60px var(--accent-1), inset 0 0 30px var(--accent-1); }
         }
         
         .char-card.locked {
@@ -288,47 +258,27 @@
         }
         
         #combo-display {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-size: clamp(40px, 12vw, 80px); color: #fff; font-weight: 900;
             letter-spacing: 3px; text-transform: uppercase; opacity: 0; pointer-events: none; z-index: 500;
             text-shadow: 3px 3px 0px #ff8800, -1px -1px 0px #fff, 0 0 20px rgba(255, 255, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.5);
             background: linear-gradient(180deg, #FFFFFF 0%, #FFEA00 50%, #FF9500 100%);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap;
-            filter: drop-shadow(0 0 10px rgba(255,255,0,0.3));
         }
         
-        .cool-pop { animation: techPopAnim 1s cubic-bezier(0.19, 1, 0.22, 1) forwards; }
-        
-        @keyframes techPopAnim {
-            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; letter-spacing: 20px; }
-            20% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; letter-spacing: 5px; }
-            80% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; letter-spacing: 2px; }
-            100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; letter-spacing: 0px; }
-        }
+        .cool-pop { opacity: 0; }
         
         #coin-display {
             position: fixed; top: clamp(12px, 2vw, 20px); right: clamp(12px, 2vw, 20px);
             color: #ffaa00; font-size: clamp(16px, 4vw, 32px);
             text-shadow: 0 0 20px #ffaa00, 0 0 40px rgba(255, 170, 0, 0.5); z-index: 100;
             pointer-events: none; font-weight: bold; letter-spacing: 1px;
-            animation: coinGlow 1s ease-in-out infinite;
-        }
-        
-        @keyframes coinGlow {
-            0%, 100% { text-shadow: 0 0 20px #ffaa00, 0 0 40px rgba(255, 170, 0, 0.5); }
-            50% { text-shadow: 0 0 30px #ffaa00, 0 0 60px rgba(255, 170, 0, 0.8); }
         }
         
         #skill-ready {
             position: fixed; bottom: clamp(12px, 2vw, 30px); left: 50%; transform: translateX(-50%);
             color: var(--accent-1); font-size: clamp(12px, 3vw, 18px); font-weight: bold; text-transform: uppercase;
             letter-spacing: 1px; text-shadow: 0 0 15px var(--accent-1); z-index: 100; pointer-events: none;
-            animation: skillPulse 0.8s ease-in-out infinite;
-        }
-        
-        @keyframes skillPulse {
-            0%, 100% { text-shadow: 0 0 15px var(--accent-1); transform: translateX(-50%) scale(1); }
-            50% { text-shadow: 0 0 30px var(--accent-1); transform: translateX(-50%) scale(1.05); }
         }
         
         #challenge-box {
@@ -460,7 +410,7 @@
         
         .achievement-item {
             border: 2px solid #444; border-radius: 8px; padding: 10px; text-align: center;
-            cursor: pointer; transition: all 0.3s;
+            cursor: pointer; transition: all 0.2s linear;
             background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255, 170, 0, 0.02));
         }
         
@@ -482,7 +432,7 @@
         
         .daily-item {
             border: 2px solid #444; border-radius: 8px; padding: 10px; text-align: center;
-            transition: all 0.3s; background: linear-gradient(135deg, rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.01));
+            transition: all 0.2s linear; background: linear-gradient(135deg, rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.01));
         }
         
         .daily-item.checked {
@@ -542,6 +492,7 @@
         .stat-card {
             border: 2px solid #444; border-radius: 8px; padding: 15px; text-align: center;
             background: linear-gradient(135deg, rgba(255,136,255,0.1), rgba(255,136,255,0.05));
+            transition: all 0.2s linear;
         }
         
         .stat-card.highlight {
@@ -561,6 +512,7 @@
         .setting-item {
             border: 2px solid #444; border-radius: 8px; padding: 15px; text-align: center;
             background: linear-gradient(135deg, rgba(136,255,136,0.1), rgba(136,255,136,0.05));
+            transition: all 0.2s linear;
         }
         
         .setting-label { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 10px; }
@@ -1034,37 +986,37 @@
             'impossible': { speed: 0.95, error: 2, predict: true, name: '地狱', ballSpeedMult: 1.4 }
         };
         
+        const PI2 = Math.PI * 2;
         const lerp = (a, b, t) => a + (b - a) * Math.min(t, 1);
         const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
         const hypot = (dx, dy) => Math.hypot(dx, dy) || Math.sqrt(dx * dx + dy * dy);
         
-        // 性能优化：缓存对象
         const performanceOptimizations = {
             particlePool: [],
-            ballPool: [],
             getParticle(x, y, color, speed) {
                 let p = this.particlePool.pop();
                 if (!p) p = new Particle(x, y, color, speed);
                 else {
                     p.x = x; p.y = y; p.color = color;
-                    const angle = Math.random() * Math.PI * 2;
+                    const angle = Math.random() * PI2;
                     const velocity = Math.random() * speed;
                     p.vx = Math.cos(angle) * velocity;
                     p.vy = Math.sin(angle) * velocity;
                     p.life = 1.0;
                     p.decay = 0.018 + Math.random() * 0.035;
+                    p.radius = 1.5 + Math.random() * 2.5;
                 }
                 return p;
             },
             releaseParticle(p) {
-                if (this.particlePool.length < 500) this.particlePool.push(p);
+                if (this.particlePool.length < 1000) this.particlePool.push(p);
             }
         };
         
         class Particle {
             constructor(x, y, color, speed) {
                 this.x = x; this.y = y; this.color = color;
-                const angle = Math.random() * Math.PI * 2;
+                const angle = Math.random() * PI2;
                 const velocity = Math.random() * speed;
                 this.vx = Math.cos(angle) * velocity;
                 this.vy = Math.sin(angle) * velocity;
@@ -1081,7 +1033,7 @@
                 ctx.globalAlpha = this.life * 0.7;
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.radius, 0, PI2);
                 ctx.fill();
             }
         }
@@ -1110,7 +1062,7 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 ctx.beginPath();
-                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.arc(0, 0, this.radius, 0, PI2);
                 ctx.fill();
                 ctx.fillStyle = '#000';
                 ctx.globalAlpha = 0.85;
@@ -1130,8 +1082,8 @@
                 this.x = x; this.y = y;
                 this.vx = (Math.random() > 0.5 ? 1 : -1) * CONFIG.ballSpeed * speedMult;
                 this.vy = (Math.random() * 2 - 1) * CONFIG.ballSpeed * speedMult * 0.7;
-                this.radius = 8; this.spin = 0; this.active = true;
-                this.trail = []; this.opacity = 1; this.ghostMode = false; this.trailMax = 10;
+                this.radius = 6; this.spin = 0; this.active = true;
+                this.opacity = 1; this.ghostMode = false;
             }
             
             update(gameHeight) {
@@ -1141,41 +1093,22 @@
                 
                 this.x += this.vx; this.y += this.vy;
                 
-                if (this.trail.length < this.trailMax) {
-                    this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
-                } else {
-                    this.trail.shift();
-                    this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
-                }
-                this.trail.forEach(t => t.alpha -= 0.15);
-                
                 if (this.y - this.radius < 0 || this.y + this.radius > gameHeight) {
                     this.vy *= -1.005;
                     this.y = clamp(this.y, this.radius, gameHeight - this.radius);
-                    return { type: 'wall', x: this.x, y: this.y };
+                    return true;
                 }
-                return null;
+                return false;
             }
             
             draw(ctx) {
                 if (!this.active) return;
                 
-                this.trail.forEach((t, i) => {
-                    const ratio = i / this.trail.length;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${t.alpha * 0.15 * this.opacity * ratio})`;
-                    ctx.beginPath();
-                    ctx.arc(t.x, t.y, this.radius * ratio * 0.5, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                
-                ctx.shadowBlur = 25;
-                ctx.shadowColor = CONFIG.colors.ball;
                 ctx.globalAlpha = this.opacity;
                 ctx.fillStyle = CONFIG.colors.ball;
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.radius, 0, PI2);
                 ctx.fill();
-                ctx.shadowBlur = 0;
                 ctx.globalAlpha = 1;
             }
         }
@@ -1252,12 +1185,27 @@
             comboTimer: 0,
             frameCount: 0,
             fps: 60,
+            dom: {},
+            lastSkillText: '',
             
             init() {
-                this.ctx = this.canvas.getContext('2d');
+                this.ctx = this.canvas.getContext('2d', { alpha: false }); // Optimization: alpha false if possible, but here we use alpha trails
                 this.player = new Paddle(true);
                 this.ai = new Paddle(false);
                 
+                // Cache DOM elements
+                this.dom = {
+                    skillReady: document.getElementById('skill-ready'),
+                    speedIndicator: document.querySelector('.speed-indicator'),
+                    speedFill: document.querySelector('.speed-fill'),
+                    challengeBox: document.getElementById('challenge-box'),
+                    progressFill: document.getElementById('progress-fill'),
+                    challengeCurrent: document.getElementById('challenge-current'),
+                    playerScore: document.getElementById('player-score'),
+                    aiScore: document.getElementById('ai-score'),
+                    coinDisplay: document.getElementById('coin-display')
+                };
+
                 document.body.setAttribute('data-theme', gameState.theme);
                 
                 window.addEventListener('resize', () => this.resize(), false);
@@ -1317,6 +1265,22 @@
                 this.canvas.width = this.width;
                 this.canvas.height = this.height;
                 this.ai.x = this.width - 40;
+                
+                // Pre-render grid
+                this.gridCanvas = document.createElement('canvas');
+                this.gridCanvas.width = this.width;
+                this.gridCanvas.height = this.height;
+                const gCtx = this.gridCanvas.getContext('2d');
+                gCtx.strokeStyle = `rgba(20, 20, 20, 0.5)`;
+                gCtx.lineWidth = 0.5;
+                gCtx.beginPath();
+                for (let i = 0; i < this.width; i += 50) {
+                    gCtx.moveTo(i, 0); gCtx.lineTo(i, this.height);
+                }
+                for (let i = 0; i < this.height; i += 50) {
+                    gCtx.moveTo(0, i); gCtx.lineTo(this.width, i);
+                }
+                gCtx.stroke();
             },
             
             renderChars() {
@@ -1486,7 +1450,7 @@
                     location.reload();
                 }
             },
-
+            
             hideGuide() {
                 document.getElementById('guide-screen').classList.add('hidden');
                 document.getElementById('start-screen').classList.remove('hidden');
@@ -1530,7 +1494,7 @@
                 });
                 document.getElementById('achievement-progress').innerText = `已解锁 ${unlocked}/${ACHIEVEMENTS.length} 个成就`;
             },
-
+            
             showDaily() {
                 if (this.running) return;
                 this.renderDaily();
@@ -1579,7 +1543,7 @@
                 document.getElementById('rank-screen').classList.add('hidden');
                 document.getElementById('start-screen').classList.remove('hidden');
             },
-
+            
             renderRank() {
                 const currentRank = RANKS.find(r => gameState.totalGamesWon >= r.minWins && gameState.totalGamesWon < r.maxWins);
                 const rankName = document.getElementById('rank-name');
@@ -1713,7 +1677,7 @@
                 this.challenge.active = true;
                 this.challenge.current = 0;
                 this.challenge.timer = this.challenge.maxTime;
-                document.getElementById('challenge-box').classList.remove('hidden');
+                this.dom.challengeBox.classList.remove('hidden');
                 this.showCoolText("🎮 时间挑战 🎮");
                 this.shakeScreen(20);
                 AudioEngine.init();
@@ -1726,7 +1690,7 @@
             
             endChallenge(success) {
                 this.challenge.active = false;
-                document.getElementById('challenge-box').classList.add('hidden');
+                this.dom.challengeBox.classList.add('hidden');
                 if (success) {
                     gameState.coins += 80;
                     gameState.challengesCompleted++;
@@ -1819,8 +1783,8 @@
                 
                 this.renderLeaderboard();
                 document.getElementById('game-over-screen').classList.remove('hidden');
-                document.getElementById('skill-ready').innerText = "";
-                document.getElementById('challenge-box').classList.add('hidden');
+                this.dom.skillReady.innerText = "";
+                this.dom.challengeBox.classList.add('hidden');
                 this.renderChars();
             },
             
@@ -1850,9 +1814,10 @@
             },
             
             spawnParticles(x, y, color, count = 12) {
-                if (!gameState.particlesEnabled || this.particles.length > 800) return;
+                if (!gameState.particlesEnabled) return; // Optimization: early exit
                 for (let i = 0; i < count; i++) {
-                    this.particles.push(new Particle(x, y, color, 6.5));
+                    // Optimization: Use Object Pooling
+                    this.particles.push(performanceOptimizations.getParticle(x, y, color, 6.5));
                 }
             },
             
@@ -1869,18 +1834,20 @@
                 
                 this.frameCount++;
                 
+                // DOM Optimization
                 if (this.balls.length > 0) {
-                    const speedIndicator = document.querySelector('.speed-indicator');
+                    if (this.dom.speedIndicator.classList.contains('hidden')) {
+                        this.dom.speedIndicator.classList.remove('hidden');
+                    }
                     const ballSpeed = Math.min(100, (Math.abs(this.balls[0].vx) / CONFIG.ballMaxSpeed) * 100);
-                    speedIndicator.classList.remove('hidden');
-                    speedIndicator.querySelector('.speed-fill').style.width = ballSpeed + '%';
+                    this.dom.speedFill.style.width = ballSpeed + '%';
                 }
                 
                 if (this.challenge.active) {
                     this.challenge.timer--;
                     const progress = Math.max(0, this.challenge.timer / this.challenge.maxTime) * 100;
-                    document.getElementById('progress-fill').style.width = progress + "%";
-                    document.getElementById('challenge-current').innerText = this.challenge.current;
+                    this.dom.progressFill.style.width = progress + "%";
+                    this.dom.challengeCurrent.innerText = this.challenge.current;
                     if (this.challenge.timer <= 0) this.endChallenge(false);
                 } else if (Math.random() < 0.001 && this.balls.length === 1 && this.frameCount > 300) {
                     this.startChallenge();
@@ -1893,10 +1860,11 @@
                 this.player.update();
                 
                 const diffSetting = DIFFICULTIES[this.currentDifficulty];
-                const threat = this.balls.filter(b => b.vx > 0).sort((a, b) => (this.ai.x - a.x) - (this.ai.x - b.x))[0];
+                const threat = this.balls.length > 0 ? this.balls[0] : null; // Simplified check for performance, AI tracks first ball primarily
+                
                 let targetY = this.height / 2;
                 
-                if (threat) {
+                if (threat && threat.vx > 0) {
                     if (diffSetting.predict && threat.x > this.width * 0.25) {
                         let tempX = threat.x, tempY = threat.y, tempVX = threat.vx, tempVY = threat.vy;
                         let iterations = 0;
@@ -1927,12 +1895,12 @@
                 this.ai.y = clamp(this.ai.y, 0, this.height - (this.ai.height + this.ai.heightMod));
                 this.ai.update();
                 
-                // 优化：使用for循环替代forEach
-                for (let bi = 0; bi < this.balls.length; bi++) {
+                // Optimization: Loop backward for safe removal
+                for (let bi = this.balls.length - 1; bi >= 0; bi--) {
                     const ball = this.balls[bi];
                     const collision = ball.update(this.height);
                     if (collision) {
-                        this.spawnParticles(collision.x, collision.y, '#fff', 6);
+                        this.spawnParticles(ball.x, ball.y, '#fff', 6);
                         this.shakeScreen(6);
                         AudioEngine.playWall();
                     }
@@ -1981,7 +1949,6 @@
                         this.scoreEvent(ball, true);
                     }
                     
-                    // 优化：使用for循环替代forEach
                     for (let pi = this.powerups.length - 1; pi >= 0; pi--) {
                         const pu = this.powerups[pi];
                         if (hypot(ball.x - pu.x, ball.y - pu.y) < ball.radius + pu.radius) {
@@ -1994,7 +1961,13 @@
                     }
                 }
                 
-                this.balls = this.balls.filter(b => b.active);
+                // Cleanup dead balls
+                for (let i = this.balls.length - 1; i >= 0; i--) {
+                    if (!this.balls[i].active) {
+                        this.balls.splice(i, 1);
+                    }
+                }
+
                 if (this.balls.length === 0 && this.running) {
                     const speedMult = DIFFICULTIES[this.currentDifficulty].ballSpeedMult;
                     this.balls.push(new Ball(this.width / 2, this.height / 2, speedMult));
@@ -2011,19 +1984,17 @@
                     this.gameOver(this.player.score >= 10);
                 }
                 
-                // 优化：批量更新粒子
-                let activeParticles = 0;
+                // Optimization: Batch update & remove with object pool logic
                 for (let i = this.particles.length - 1; i >= 0; i--) {
                     const p = this.particles[i];
                     p.update();
                     if (p.life <= 0) {
+                        performanceOptimizations.releaseParticle(p); // Recycle
                         this.particles.splice(i, 1);
-                    } else {
-                        activeParticles++;
                     }
                 }
                 
-                // 优化：批量更新道具
+                // Optimization: Batch update powerups
                 for (let i = this.powerups.length - 1; i >= 0; i--) {
                     const p = this.powerups[i];
                     p.update();
@@ -2031,10 +2002,14 @@
                 }
                 
                 if (this.running) {
+                    let text = "⚡ 即就绪";
                     if (this.player.skillCooldown > 0) {
-                        document.getElementById('skill-ready').innerText = `⏳ ${Math.ceil(this.player.skillCooldown / 60)}S`;
-                    } else {
-                        document.getElementById('skill-ready').innerText = "⚡ 即就绪";
+                        text = `⏳ ${Math.ceil(this.player.skillCooldown / 60)}S`;
+                    }
+                    // DOM Optimization: Only update if changed
+                    if (this.lastSkillText !== text) {
+                        this.dom.skillReady.innerText = text;
+                        this.lastSkillText = text;
                     }
                 }
             },
@@ -2081,7 +2056,7 @@
                 
                 if (this.challenge.active && playerScored) {
                     this.challenge.current++;
-                    document.getElementById('challenge-current').innerText = this.challenge.current;
+                    this.dom.challengeCurrent.innerText = this.challenge.current;
                     if (this.challenge.current >= this.challenge.target) {
                         this.endChallenge(true);
                     }
@@ -2091,15 +2066,16 @@
             },
             
             updateScoreUI() {
-                document.getElementById('player-score').innerText = this.player.score;
-                document.getElementById('ai-score').innerText = this.ai.score;
+                this.dom.playerScore.innerText = this.player.score;
+                this.dom.aiScore.innerText = this.ai.score;
             },
             
             updateCoinUI() {
-                document.getElementById('coin-display').innerText = `💰 ${gameState.coins}`;
+                this.dom.coinDisplay.innerText = `💰 ${gameState.coins}`;
             },
             
             draw() {
+                // Optimization: Use fillRect directly without saving state if possible, but trails need transparency
                 this.ctx.fillStyle = `rgba(5, 5, 5, ${CONFIG.canvasAlpha})`;
                 this.ctx.fillRect(0, 0, this.width, this.height);
                 
@@ -2110,22 +2086,9 @@
                     this.ctx.translate(shakeX, shakeY);
                 }
                 
-                // 优化：绘制网格使用缓存或减少调用
+                // Optimization: Use pre-rendered canvas for grid
                 if (this.frameCount % 4 === 0) {
-                    this.ctx.strokeStyle = `rgba(20, 20, 20, 0.5)`;
-                    this.ctx.lineWidth = 0.5;
-                    for (let i = 0; i < this.width; i += 50) {
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(i, 0);
-                        this.ctx.lineTo(i, this.height);
-                        this.ctx.stroke();
-                    }
-                    for (let i = 0; i < this.height; i += 50) {
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(0, i);
-                        this.ctx.lineTo(this.width, i);
-                        this.ctx.stroke();
-                    }
+                    this.ctx.drawImage(this.gridCanvas, 0, 0);
                 }
                 
                 this.ctx.strokeStyle = `rgba(0, 255, 255, 0.08)`;
@@ -2140,7 +2103,7 @@
                 this.player.draw(this.ctx);
                 this.ai.draw(this.ctx);
                 
-                // 优化：使用for循环
+                // Optimization: Standard loops
                 for (let i = 0; i < this.balls.length; i++) {
                     this.balls[i].draw(this.ctx);
                 }
