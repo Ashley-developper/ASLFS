@@ -1,3 +1,5 @@
+/* ASL FLIGHT SIMULATOR will be no longer supported from January 1, 2026.*/
+/* Copyright 2025 Ashley .inc, Zhanyi Zhou. All rights reserved*/
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -293,10 +295,134 @@ button#start-button:active {
     background: #00aaff;
     transition: width 0.3s;
 }
+    /*END SUPPORT*/
+        #notice-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000; /* 确保在最顶层，高于 splash */
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+#notice-content {
+    width: 600px;
+    background: rgba(20, 30, 40, 0.95);
+    border: 1px solid rgba(128, 208, 199, 0.3);
+    border-left: 5px solid #ff3333; /* 红色警告条 */
+    border-radius: 12px;
+    padding: 30px;
+    color: #eee;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    position: relative;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#notice-header {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ff5555;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.notice-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #ccc;
+    margin-bottom: 15px;
+}
+
+.notice-highlight {
+    color: #80D0C7;
+    font-weight: bold;
+}
+
+#notice-link {
+    display: inline-block;
+    margin: 10px 0 20px;
+    color: #0093E9;
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dashed #0093E9;
+    transition: all 0.2s;
+}
+#notice-link:hover { color: #80D0C7; border-color: #80D0C7; }
+
+#notice-footer {
+    font-size: 12px;
+    color: #666;
+    margin-top: 20px;
+    text-align: right;
+    font-style: italic;
+}
+
+#notice-close-btn {
+    display: block;
+    width: 100%;
+    margin-top: 25px;
+    padding: 12px;
+    background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+#notice-close-btn:hover {
+    box-shadow: 0 0 15px rgba(0, 147, 233, 0.5);
+}
+#notice-close-btn:active { transform: scale(0.98); }
+        /*END SUPPORT*/
     </style>
 </head>
 <body>
+    /*END SUPPORT*/
+    <div id="notice-modal">
+    <div id="notice-content">
+        <div id="notice-header">⚠️ End of Support Notice</div>
+        
+        <div class="notice-text">
+            <strong style="color: #fff;">ASL Flight Simulator will no longer be supported from January 5, 2026.</strong>
+        </div>
 
+        <div class="notice-text">
+            What you are playing now is the first complex game that <span class="notice-highlight">Ashley</span> has ever made. It is the beginner of our game development journey. Ashley had spent hours for this game. We used THREE.js, self-designed physics and modern UI.
+        </div>
+
+        <div class="notice-text">
+            Sadly, ASL Flight Simulator hasn't achieved our game mission's goal: to be a popular game on CrazyGames. Its final score is 5/15. That's why Ashley decides to end its support.
+        </div>
+
+        <div class="notice-text">
+            ASL Flight Simulator is the base of all our games. We should not forget it -- the first ever, real, game.
+        </div>
+        
+        <div class="notice-text" style="background: rgba(0,147,233,0.1); padding: 10px; border-radius: 4px; border-left: 3px solid #0093E9;">
+            This is not the end. Ashley is always trying something new. Go visit our main website from the link below and check our progress:<br>
+            <a id="notice-link" href="https://Ashley-developper.github.io" target="_blank">🔗 Ashley-developper.github.io</a>
+        </div>
+
+        <div id="notice-footer">
+            Writed by Zhanyi Zhou, who made this game.<br>Ashley is the name of the brand.
+        </div>
+
+        <button id="notice-close-btn" onclick="closeNotice()">I Understand</button>
+    </div>
+</div>
+    /*END SUPPORT*/
     <div id="splash">
         <h1>ASL <b>FLIGHT SIMULATOR</b></h1>
         <p id="plane-chooser-title">CHOOSE YOUR PLANE</p>
@@ -528,6 +654,17 @@ button#start-button:active {
         }
         
         window.startGame = startGame; 
+        //END SUPPORT
+        function closeNotice() {
+    const modal = document.getElementById('notice-modal');
+    modal.style.transition = 'opacity 0.5s';
+    modal.style.opacity = '0';
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 500);
+}
+window.closeNotice = closeNotice; // 确保 HTML 可以调用
+        //END SUPPORT
 
         let dirLight, hemiLight; // ⚠️ 声明为全局变量或文件级变量，以便 setQuality 访问
         
