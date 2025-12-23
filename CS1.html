@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -394,7 +393,7 @@
     const VISUAL_Y_OFFSET = -0.9; 
 
     // ** Initial Vehicle Position **
-    const initialCarPosition = new CANNON.Vec3(-3320, 1, -20);
+    const initialCarPosition = new CANNON.Vec3(0, 1, 0);
 
     let staticBodies = [];
     let carMesh = null;
@@ -958,7 +957,7 @@
 
     // MODIFICATION 3: Reduce city model scale and collision activation range
     function loadCity() {
-        gltfLoader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
+        gltfLoader.load('/blender.glb', (gltf) => {
             const city = gltf.scene;
             // Scale down city model to match the COIN_SPAWN_RADIUS = 1500
             city.scale.set(4, 4, 4); 
