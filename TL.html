@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Trans - Continuous</title>
+    <style>
+        body {
+            margin: 0; background: #000; color: #fff;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+        #result {
+            width: 90%; text-align: center;
+            font-size: clamp(2rem, 8vw, 6rem);
+            font-weight: 900; line-height: 1.2;
+            word-wrap: break-word;
+        }
+        #status {
+            position: fixed; top: 30px; font-size: 14px;
+            font-family: monospace; padding: 8px 16px; border-radius: 4px;
+            letter-spacing: 2px; transition: all 0.3s;
+        }
+        /* 不同模式的状态颜色 */
+        .mode-idle { border: 1px solid #555; color: #555; }
+        .mode-zh { color: #00ffcc; border: 1px solid #00ffcc; }
+        .mode-fr { color: #ff00ff; border: 1px solid #ff00ff; }
+        .recording { background: #ff3b30; color: #fff !important; border: none; animation: blink 1s infinite; }
+        
+        @keyframes blink { 50% { opacity: 0.6; } }
+
+        #instructions {
+            position: fixed; bottom: 30px; color: #444; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="status" class="mode-idle">WAITING FOR KEY (V/B)</div>
+    <div id="result">V: ZH ➔ FR<br>B: FR ➔ ZH</div>
+    <div id="instructions">MADE BY ZHANYI ZHOU</div>
+
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        const resultEl = document.getElementById('result');
+        const statusEl = document.getElementById('status');
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        // 配置识别参数
+        recognition.interimResults = false; 
+        recognition.continuous = false; // 我们通过 onend 手动控制持续，这样更稳定
+
+        let activeMode = null; // 'zh-CN' 或 'fr-FR'
+        let isSpeaking = false; // 标记是否正在朗读
+
+        // --- 核心逻辑：翻译函数 ---
+        async function translate(text) {
+            statusEl.innerText = "THINKING...";
+            statusEl.className = activeMode === 'zh-CN' ? "mode-zh" : "mode-fr";
+            
+            try {
+                const targetLang = activeMode === 'zh-CN' ? 'fr' : 'zh';
+                const response = await puter.ai.chat([
+                    {
+                        role: 'system', 
+                        content: targetLang === 'fr' 
+                            ? "Translate to French. ONLY output translation." 
+                            : "翻译成中文。只输出翻译结果。"
+                    },
+                    { role: 'user', content: text }
+                ], { model: 'gpt-4o-mini' });
+
+                const translation = typeof response === 'string' ? response : response.message.content;
+                resultEl.innerText = translation;
+                
+                // 朗读翻译结果
+                speak(translation);
+
+            } catch (err) {
+                console.error(err);
+                resultEl.innerText = "ERROR";
+                restartRecognition();
+            }
+        }
+
+        // --- 核心逻辑：语音合成 ---
+        function speak(text) {
+            isSpeaking = true;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = activeMode === 'zh-CN' ? 'fr-FR' : 'zh-CN';
+            utterance.rate = 1.0;
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                statusEl.innerText = "READY FOR NEXT";
+                restartRecognition(); // 朗读完后，重新开启录音
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- 核心逻辑：重启录音 ---
+        function restartRecognition() {
+            if (activeMode && !isSpeaking) {
+                try {
+                    recognition.lang = activeMode;
+                    recognition.start();
+                } catch (e) {
+                    // 已经在运行中
+                }
+            }
+        }
+
+        // --- 识别回调 ---
+        recognition.onstart = () => {
+            statusEl.innerText = activeMode === 'zh-CN' ? "LISTENING (ZH)..." : "LISTENING (FR)...";
+            statusEl.classList.add("recording");
+        };
+
+        recognition.onresult = (e) => {
+            const transcript = e.results[0][0].transcript;
+            if (!transcript) return;
+            
+            resultEl.innerText = transcript; // 先显示识别到的原文
+            translate(transcript); // 触发翻译
+        };
+
+        recognition.onend = () => {
+            statusEl.classList.remove("recording");
+            // 如果是因为说话中断且没有在翻译/朗读，则自动重启
+            if (activeMode && !isSpeaking && statusEl.innerText !== "THINKING...") {
+                restartRecognition();
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.log("Speech Error:", event.error);
+            if (event.error !== 'no-speech') {
+                statusEl.innerText = "ERROR: " + event.error;
+            }
+        };
+
+        // --- 按键监听 ---
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            const key = e.key.toLowerCase();
+
+            if (key === 'v') {
+                activeMode = 'zh-CN';
+                recognition.stop(); // 先停止当前的，触发重新开始
+                restartRecognition();
+            } 
+            else if (key === 'b') {
+                activeMode = 'fr-FR';
+                recognition.stop();
+                restartRecognition();
+            }
+            else if (key === 'escape') {
+                activeMode = null;
+                recognition.stop();
+                window.speechSynthesis.cancel();
+                statusEl.innerText = "STOPPED";
+                statusEl.className = "mode-idle";
+                resultEl.innerText = "V: ZH ➔ FR | B: FR ➔ ZH";
+            }
+        });
+    </script>
+</body>
+</html>
