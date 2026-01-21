@@ -1324,19 +1324,31 @@
         if (!chassisBody || !world) return;
         
         if (isGameRunning) {
-            const fixedTimeStep = 1/60;
-            const maxSubSteps = 1;
+            // --- 核心修改：大幅提高物理计算精度 ---
+            const fixedTimeStep = 1 / 60;
+            // 将 maxSubSteps 提高到 15。如果你的电脑配置较好，可以甚至调到 20。
+            // 这会极大地解决高速下的穿模问题。
+            const maxSubSteps = 15; 
             
             if (lastTime !== undefined) {
                 const dt = (time - lastTime) / 1000;
-                world.step(fixedTimeStep, dt, maxSubSteps);
+                // 限制 dt，防止由于浏览器标签切换导致的物理爆炸
+                const limitedDt = Math.min(dt, 0.1); 
+                world.step(fixedTimeStep, limitedDt, maxSubSteps);
             } else {
                 world.step(fixedTimeStep);
             }
             lastTime = time;
             
+            // --- 安全检查：如果真的掉下去了，自动复位 ---
+            if (chassisBody.position.y < -15) {
+                console.warn("检测到掉落世界下方，执行自动复位...");
+                respawnCar();
+            }
+
             updateControls();
             updateColliders();
+            
             if (isDeliveryModeActive) {
                 updateDeliveryMode(); 
                 updateTargetArrow(); 
@@ -1345,7 +1357,7 @@
             }
         }
 
-        // Model position synchronization
+        // 同步车轮和车身位置 (保持不变)
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
