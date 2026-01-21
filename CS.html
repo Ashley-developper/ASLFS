@@ -1128,53 +1128,43 @@
     }
 
     function updateControls() {
-        if (!chassisBody || !isGameRunning) return;
-        if (inputState.keyW || inputState.keyS || inputState.keyA || inputState.keyD) {
-            if (chassisBody.sleepState === CANNON.Body.SLEEPING) chassisBody.wakeUp(); 
-        }
-        engineForce = 0; steeringValue = 0; let brake = 0;
+        if (!vehicle) return;
 
-        const v = chassisBody.velocity;
-        const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
-        const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
-        const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
-        const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
-        const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
+        // 1. 计算动力：此时动力只作用于前轮
+        // engineForce 是你在键盘/手柄输入监听中定义的变量
+        const force = currentEngineForce; 
 
-        if (inputState.keyA) steeringValue = maxSteerVal;
-        else if (inputState.keyD) steeringValue = -maxSteerVal;
+        // 2. 动力分配 - 前轮驱动 (FWD)
+        // Cannon.js RaycastVehicle 的索引通常是：
+        // 0: 左前轮, 1: 右前轮
+        // 2: 左后轮, 3: 右后轮
+        vehicle.applyEngineForce(force, 0); // 前左轮动力
+        vehicle.applyEngineForce(force, 1); // 前右轮动力
+        
+        // 后轮动力设为 0，它们只负责随动，不产生推力
+        vehicle.applyEngineForce(0, 2); 
+        vehicle.applyEngineForce(0, 3);
 
-        if (inputState.keyW) {
-            if (isMovingBackward) brake = maxEngineForce * 0.5;
-            else { engineForce = -maxEngineForce; gearEl.textContent = 'D'; }
-        } else if (inputState.keyS) {
-            if (isMovingForward) brake = maxEngineForce * 0.5;
-            else { engineForce = maxEngineForce * 0.5; gearEl.textContent = 'R'; }
-        } else if (!inputState.keySpace) {
-            gearEl.textContent = (v.length()*3.6 < 1) ? 'P' : 'N';
-        }
+        // 3. 转向逻辑 - 仅前轮转向
+        // steeringValue 也是你在监听代码中根据键盘左右键动态改变的值
+        vehicle.setSteeringValue(currentSteering, 0); // 前左轮转向
+        vehicle.setSteeringValue(currentSteering, 1); // 前右轮转向
 
-        if (inputState.keyShift && engineForce !== 0) {
-            engineForce *= 2.5;
-            if (flameMesh) flameMesh.visible = true;
-        } else {
-            if (flameMesh) flameMesh.visible = false;
-        }
+        // 4. 刹车系统 (Braking)
+        // 为了安全和防穿模，建议刹车时四个轮子同时施加阻力
+        // 如果 isBraking 为 true，则施加较大刹车力，否则为 0
+        const brakeForce = isBraking ? 150 : 0; 
+        vehicle.setBrake(brakeForce, 0); // 前左刹车
+        vehicle.setBrake(brakeForce, 1); // 前右刹车
+        vehicle.setBrake(brakeForce, 2); // 后左刹车
+        vehicle.setBrake(brakeForce, 3); // 后右刹车
 
-        vehicle.setSteeringValue(steeringValue, 0); vehicle.setSteeringValue(steeringValue, 1);
-        vehicle.applyEngineForce(engineForce, 0); vehicle.applyEngineForce(engineForce, 1); 
-        vehicle.applyEngineForce(engineForce, 2); vehicle.applyEngineForce(engineForce, 3); 
-
-        let finalBrakeRL = brake, finalBrakeRR = brake;
-        if (inputState.keySpace) {
-            finalBrakeRL = maxEngineForce * 0.8; finalBrakeRR = maxEngineForce * 0.8;
-            gearEl.textContent = 'E';
-        } else if (brake === 0) {
-            vehicle.setBrake(0, 0); vehicle.setBrake(0, 1); vehicle.setBrake(0, 2); vehicle.setBrake(0, 3);
-        }
-        vehicle.setBrake(brake, 0); vehicle.setBrake(brake, 1);
-        vehicle.setBrake(finalBrakeRL, 2); vehicle.setBrake(finalBrakeRR, 3);
-    }
+        // 5. 【进阶技巧】前驱车防“抬头”补偿
+        // 因为前驱车起步时重心会后移导致前轮抓地力下降，
+        // 如果你发现起步打滑严重，可以微调这里，稍微增加前轮的摩擦力。
+        // 这个逻辑通常在 initVehicle 的 wheelOptions 里完成，
+        // 这里的 applyEngineForce 已经完成了物理层面的前驱改装。
+    }}
 
     function updateCamera() {
         if (!chassisBody) return;
