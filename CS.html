@@ -784,83 +784,85 @@
     }
 
     function initVehicle() {
-        // 1. 创建主底盘形状 (上半部分车身)
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
+        // 1. 创建全高度底盘形状 (Box)
+        // Vec3(宽, 高, 长) 的一半。这里设置为 1.1, 0.9, 2.2 
+        // 意味着车身物理体宽 2.2米，高 1.8米，长 4.4米，足以覆盖大部分车模
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.9, 2.2));
         chassisBody = new CANNON.Body({
-            mass: 2500, 
+            mass: 2500, // 增加质量使行驶更稳
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
-        
-        // 降低重心，并增加阻尼防止碰撞后乱飞
-        chassisBody.angularDamping = 0.95; 
-        chassisBody.linearDamping = 0.1;
 
-        // 2. 【核心修改】抗穿模“侵略性厚底板” (Anti-Tunneling Plate)
-        // 形状说明：比主底盘宽一点(1.2)，厚度设为 0.3，长度延长到 2.2
-        const antiPenShape = new CANNON.Box(new CANNON.Vec3(1.2, 0.3, 2.2));
-        
-        // 关键：将中心向下偏移到 -0.8，这样底板底部会到达车中心下方 1.1 的位置
-        // 这会强制物理引擎在地形“钻进”车体前就产生碰撞反应
-        chassisBody.addShape(antiPenShape, new CANNON.Vec3(0, -0.8, 0));
+        // 2. 【核心防御】添加隐形“防穿透大球” (Sphere)
+        // 在 Cannon.js 中，球体与 Trimesh 地形的碰撞检测最精准。
+        // 这个球位于车体中心，直径约 2.4米，像个“能量罩”一样防止车体钻进墙壁。
+        const antiTunnelSphere = new CANNON.Sphere(1.2); 
+        chassisBody.addShape(antiTunnelSphere, new CANNON.Vec3(0, 0, 0)); 
+
+        // 3. 物理特性优化
+        // 极高的旋转阻尼，防止车子撞到高处物体后像陀螺一样疯狂旋转
+        chassisBody.angularDamping = 0.98; 
+        chassisBody.linearDamping = 0.1;
         
         world.addBody(chassisBody);
 
-        // 3. 初始化 RaycastVehicle
+        // 4. 初始化射线车辆
         vehicle = new CANNON.RaycastVehicle({
             chassisBody: chassisBody,
-            indexRightAxis: 0, 
-            indexUpAxis: 1, 
-            indexForwardAxis: 2
+            indexRightAxis: 0,   // X轴为右
+            indexUpAxis: 1,      // Y轴为上
+            indexForwardAxis: 2  // Z轴为前
         });
 
-        const axleWidth = 1.0;
-        const wheelBase = 1.5;
+        // 5. 悬挂与车轮配置
+        const axleWidth = 1.0;  // 左右轮距
+        const wheelBase = 1.5;  // 前后轴距
 
-        // 4. 定义车轮配置 (同步调整悬挂)
         function makeWheelOptions(x, y, z) {
             return {
                 radius: 0.5,
-                directionLocal: new CANNON.Vec3(0, -1, 0),
-                // 增加悬挂硬度和静止长度
-                suspensionStiffness: 100, 
-                suspensionRestLength: 0.7, // 从 0.3 增加到 0.7，给底板留出探测空间
-                frictionSlip: 5.0, 
-                dampingRelaxation: 4.0, 
-                dampingCompression: 4.5,
-                maxSuspensionForce: 200000, 
-                rollInfluence: 0.01, 
-                maxSuspensionTravel: 0.4,
-                customSlidingRotationalSpeed: -30, 
+                directionLocal: new CANNON.Vec3(0, -1, 0), // 射线向下
+                suspensionStiffness: 150,                  // 悬挂硬度
+                suspensionRestLength: 0.8,                // 悬挂伸长量（必须足以撑起底盘）
+                frictionSlip: 5.0,                         // 轮胎抓地力
+                dampingRelaxation: 5.0,                    // 回弹阻尼
+                dampingCompression: 5.0,                   // 压缩阻尼
+                maxSuspensionForce: 500000,                // 最大悬挂推力
+                rollInfluence: 0.01,                       // 防侧翻系数
+                maxSuspensionTravel: 0.4,                  // 悬挂行程
+                customSlidingRotationalSpeed: -30,
                 useCustomSlidingRotationalSpeed: true,
-                axleLocal: new CANNON.Vec3(1, 0, 0),
-                // 车轮连接点稍微上移，给悬挂行程留空间
+                axleLocal: new CANNON.Vec3(1, 0, 0),       // 轮轴方向
+                // 连接点设置在底盘下方 0.4 的位置
                 chassisConnectionPointLocal: new CANNON.Vec3(x, -0.4, z)
             };
         }
 
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase));
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase));
+        // 添加四个车轮
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase)); // 前左
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase)); // 前右
+        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase)); // 后左
+        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase)); // 后右
 
         vehicle.addToWorld(world);
 
-        // 5. 视觉网格同步 (车轮模型部分)
+        // 6. 关联车轮视觉模型 (Wheel Meshes)
         wheelMeshes = [];
-        if (tireMeshPrototype) {
+        if (typeof tireMeshPrototype !== 'undefined' && tireMeshPrototype) {
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const wheelMesh = tireMeshPrototype.clone();
-                // 修复部分模型左右反向的问题
-                if(i===0 || i===2) wheelMesh.rotation.y = Math.PI; 
+                // 根据左右调整轮胎模型的方向
+                if(i === 0 || i === 2) wheelMesh.rotation.y = Math.PI; 
                 wheelMeshes.push(wheelMesh);
                 scene.add(wheelMesh);
             }
         } else {
-            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            // 如果没加载到模型，用简易圆柱代替
+            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const wheel = vehicle.wheelInfos[i];
-                const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2, 32);
+                const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.3, 20);
                 cylinderGeometry.rotateZ(Math.PI / 2);
                 const wheelMesh = new THREE.Mesh(cylinderGeometry, wheelMat);
                 wheelMeshes.push(wheelMesh);
