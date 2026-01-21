@@ -784,33 +784,58 @@
     }
 
     function initVehicle() {
+        // 1. 创建主底盘形状 (上半部分车身)
         const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
         chassisBody = new CANNON.Body({
             mass: 2500, 
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
-        chassisBody.angularDamping = 0.9; 
-        chassisBody.linearDamping = 0.05;
+        
+        // 降低重心，并增加阻尼防止碰撞后乱飞
+        chassisBody.angularDamping = 0.95; 
+        chassisBody.linearDamping = 0.1;
+
+        // 2. 【核心修改】抗穿模“侵略性厚底板” (Anti-Tunneling Plate)
+        // 形状说明：比主底盘宽一点(1.2)，厚度设为 0.3，长度延长到 2.2
+        const antiPenShape = new CANNON.Box(new CANNON.Vec3(1.2, 0.3, 2.2));
+        
+        // 关键：将中心向下偏移到 -0.8，这样底板底部会到达车中心下方 1.1 的位置
+        // 这会强制物理引擎在地形“钻进”车体前就产生碰撞反应
+        chassisBody.addShape(antiPenShape, new CANNON.Vec3(0, -0.8, 0));
+        
         world.addBody(chassisBody);
 
+        // 3. 初始化 RaycastVehicle
         vehicle = new CANNON.RaycastVehicle({
             chassisBody: chassisBody,
-            indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
+            indexRightAxis: 0, 
+            indexUpAxis: 1, 
+            indexForwardAxis: 2
         });
 
         const axleWidth = 1.0;
         const wheelBase = 1.5;
-        function makeWheelOptions(x,y,z) {
+
+        // 4. 定义车轮配置 (同步调整悬挂)
+        function makeWheelOptions(x, y, z) {
             return {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150, suspensionRestLength: 0.3,
-                frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
-                maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
+                // 增加悬挂硬度和静止长度
+                suspensionStiffness: 100, 
+                suspensionRestLength: 0.7, // 从 0.3 增加到 0.7，给底板留出探测空间
+                frictionSlip: 5.0, 
+                dampingRelaxation: 4.0, 
+                dampingCompression: 4.5,
+                maxSuspensionForce: 200000, 
+                rollInfluence: 0.01, 
+                maxSuspensionTravel: 0.4,
+                customSlidingRotationalSpeed: -30, 
+                useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
+                // 车轮连接点稍微上移，给悬挂行程留空间
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.4, z)
             };
         }
 
@@ -821,10 +846,12 @@
 
         vehicle.addToWorld(world);
 
+        // 5. 视觉网格同步 (车轮模型部分)
         wheelMeshes = [];
         if (tireMeshPrototype) {
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const wheelMesh = tireMeshPrototype.clone();
+                // 修复部分模型左右反向的问题
                 if(i===0 || i===2) wheelMesh.rotation.y = Math.PI; 
                 wheelMeshes.push(wheelMesh);
                 scene.add(wheelMesh);
