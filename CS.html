@@ -1371,7 +1371,7 @@
         if (carMesh && chassisBody) {
             carMesh.position.copy(chassisBody.position);
             carMesh.quaternion.copy(chassisBody.quaternion);
-            carMesh.position.y += VISUAL_Y_OFFSET; 
+            carMesh.position.y += -0.2; 
         }
 
         for (let i = 0; i < coinMeshes.length; i++) {
