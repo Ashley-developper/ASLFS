@@ -1,72 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HYPER DRIVE: FIXED & FAST</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL CITY FLIGHT SIMULATOR</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* =========================================================================
-         * UI STYLES
-         * ========================================================================= */
-        body { 
-            margin: 0; overflow: hidden; background: #000; 
-            font-family: 'Rajdhani', sans-serif; color: #E0FFFF; user-select: none; 
-        }
-        
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Rajdhani', 'Segoe UI', sans-serif; user-select: none; }
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
-            padding: 30px; box-sizing: border-box; z-index: 10;
+            padding: 25px; box-sizing: border-box; z-index: 10;
         }
-
-        .hud-group { display: none; }
-        .active-hud { display: flex !important; }
-
         .hud-top-left { display: flex; gap: 20px; flex-wrap: wrap; }
-        .hud-top-right { position: absolute; top: 30px; right: 30px; }
-        
         .instrument {
-            background: rgba(0, 15, 30, 0.7);
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-left: 5px solid #00FFFF;
-            backdrop-filter: blur(10px);
-            padding: 12px 22px;
-            min-width: 120px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
-            border-radius: 4px;
+            background: rgba(10, 20, 30, 0.75); 
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 4px solid #00aaff;
+            backdrop-filter: blur(8px); 
+            padding: 10px 18px; 
+            color: #eee; 
+            min-width: 110px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
-            margin-bottom: 10px;
         }
-        
-        .label {
-            font-family: 'Orbitron', sans-serif; font-size: 10px; color: #00FFFF; 
-            font-weight: 700; letter-spacing: 2px; margin-bottom: 3px; display:block; 
-            text-transform: uppercase; text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
-        }
-        .value {
-            font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; 
-            letter-spacing: -2px; line-height: 1; color: #FFFFFF;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-        }
-        .unit { font-size: 14px; color: #888888; margin-left: 6px; font-weight: 400; }
-
-        .spd-color { border-left-color: #00FFFF !important; }
-        .rpm-color { border-left-color: #FF00FF !important; }
-        .plane-color { border-left-color: #0093E9 !important; }
-
-        #hud-coin {
-            background: rgba(35, 18, 0, 0.7);
-            border: 1px solid rgba(255, 215, 0, 0.15);
-            border-left: 5px solid #FFD700;
-            min-width: 140px; margin-bottom: 20px;
-        }
-        #hud-coin .label { color: #FFD700; }
-        #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
-
-        #plane-hud-extras { display: none; }
+        .label { font-family: 'Orbitron', sans-serif; font-size: 10px; color: #88ccff; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px; display:block; text-transform: uppercase;}
+        .value { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -1px; }
+        .unit { font-size: 12px; color: #888; margin-left: 4px; font-weight: 400;}
         #throttle-wrapper {
-            position: absolute; left: 30px; bottom: 250px; width: 12px; height: 200px;
+            position: absolute; left: 30px; bottom: 120px; width: 12px; height: 240px;
             background: rgba(0,0,0,0.6); border: 1px solid #555; border-radius: 8px; padding: 2px;
         }
         #throttle-fill {
@@ -74,714 +36,383 @@
             background: linear-gradient(to top, #4caf50, #ffeb3b, #ff5722);
             border-radius: 4px; transition: height 0.1s;
         }
-        #throttle-label {
-            position: absolute; left: 50px; bottom: 250px; color: #fff; font-size: 12px; font-weight: bold;
-            transform: rotate(-90deg); transform-origin: left bottom; opacity: 0.7;
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        #center-warning {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ff3333; font-size: 24px; font-weight: bold; border: 2px solid #ff3333;
+            padding: 10px 30px; background: rgba(0,0,0,0.7); display: none; animation: blink 0.5s step-end infinite;
         }
-
-        #control-hints {
-            position: absolute; bottom: 30px; left: 30px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-left: 5px solid #00FF00;
-            backdrop-filter: blur(10px); padding: 18px 25px;
-            color: #eee; font-size: 13px; border-radius: 4px;
-            max-width: 250px; line-height: 1.8;
-        }
-        .hint-title { color: #00FF00; font-family: 'Orbitron', sans-serif; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 0, 0.3); padding-bottom: 5px; }
-        .transform-hint { color: #FF00FF; font-weight: bold; font-size: 15px; border-top: 1px solid #555; margin-top:5px; padding-top:5px;}
-
         #splash {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, #000 100%);
-            z-index: 999; display: block; cursor: default; transition: opacity 0.5s;
+            background: linear-gradient(135deg, #001a2e 0%, #000000 100%);
+            z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;
         }
-        .splash-header {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; width: 100%;
+        #plane-model-container {
+            width: 600px; height: 300px; margin: 20px 0; background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;
         }
-        h1 {
-            font-family: 'Orbitron', sans-serif; font-size: 80px; margin: 0; font-weight: 900;
-            letter-spacing: 12px; text-transform: uppercase;
-            background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 35px rgba(0, 255, 255, 0.7);
+        .model-nav-button {
+            position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0, 170, 255, 0.3);
+            border: none; color: white; padding: 15px; cursor: pointer; font-size: 24px; z-index: 10; transition: 0.3s;
         }
-        #start-button {
-            margin-top: 40px; padding: 20px 80px; font-size: 24px; font-weight: 900;
-            color: #000000; background: #00FFFF; border: none;
-            letter-spacing: 4px; cursor: pointer; transition: 0.3s;
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+        .model-nav-button:hover { background: rgba(0, 170, 255, 0.6); }
+        #prev-plane { left: 10px; border-radius: 50%; }
+        #next-plane { right: 10px; border-radius: 50%; }
+        #plane-info-display {
+            text-align: center; margin-top: 15px; padding: 15px 30px; background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px; border: 1px solid rgba(0, 170, 255, 0.2); min-width: 450px;
         }
-        #start-button:hover { background: #FF00FF; color: #fff; transform: scale(1.05); }
-
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; font-size: 13px; color: #88ccff; }
+        .controls-grid {
+            display: grid; grid-template-columns: auto auto; gap: 10px 20px; margin-top: 20px;
+            text-align: left; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 8px; font-size: 14px;
+        }
+        .key-box { font-family: 'Orbitron', monospace; color: #00ffff; font-weight: bold; margin-right: 8px; }
+        button#start-button {
+            margin-top: 40px; padding: 14px 60px; font-size: 18px; font-family: 'Orbitron'; font-weight: 700;
+            border: none; background: #00aaff; color: #fff; cursor: pointer; letter-spacing: 2px;
+            transition: 0.3s; border-radius: 4px; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+        }
+        button#start-button:hover { background: #ff00ff; box-shadow: 0 0 30px rgba(255, 0, 255, 0.5); }
         #loading-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FFFF; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #000; z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; color: #00ffff;
         }
-        #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; }
-        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; transition: width 0.3s; }
-        
-        .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
+        #loading-progress-bar { width: 400px; height: 4px; background: #222; margin-top: 20px; }
+        #loading-progress-fill { height: 100%; width: 0%; background: #00ffff; transition: width 0.3s; }
     </style>
 </head>
 <body>
-
-    <div id="loading-screen">
-        <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
-        <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">Loading...</p> 
+    <div id="splash">
+        <h1 style="font-family:'Orbitron'; letter-spacing:8px; margin:0;">ASL CITY FLIGHT</h1>
+        <div id="plane-model-container">
+            <button id="prev-plane" class="model-nav-button" onclick="changePlane(-1)">&#9664;</button>
+            <button id="next-plane" class="model-nav-button" onclick="changePlane(1)">&#9658;</button>
+        </div>
+        <div id="plane-info-display">
+            <p id="plane-name" style="font-family:'Orbitron'; font-size:20px; margin-bottom:10px; color:#00ffff;">Aircraft Name</p>
+            <div class="stats-grid">
+                <div>Mass: <span id="stat-mass">0</span> KG</div>
+                <div>Thrust: <span id="stat-thrust">0</span> kN</div>
+                <div>Lift: <span id="stat-lift">0.0</span></div>
+                <div>Height: <span id="stat-height">0.0</span> m</div>
+            </div>
+        </div>
+        <div class="controls-grid">
+            <div><span class="key-box">SHIFT</span> Increase Thrust</div>
+            <div><span class="key-box">SPACE</span> Brake</div>
+            <div><span class="key-box">W / S</span> Pitch Up/Down</div>
+            <div><span class="key-box">A / D</span> Roll Left/Right</div>
+            <div><span class="key-box">Q / E</span> Rudder Yaw</div>
+            <div><span class="key-box">V</span> Camera View</div>
+        </div>
+        <button id="start-button" onclick="startGame()">INITIALIZE SYSTEMS</button>
     </div>
 
-    <div id="splash">
-        <div class="splash-header">
-            <h1>HYPER DRIVE</h1>
-            <p style="font-size:20px; color:#00FFFF; letter-spacing:5px;">SPEED & FLIGHT EDITION</p>
-            <button id="start-button" onclick="enterGame()">START ENGINE</button>
-        </div>
+    <div id="loading-screen">
+        <h2 style="font-family:'Orbitron';">LOADING CITY ASSETS</h2>
+        <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
+        <p id="loading-status">(0%)</p>
     </div>
 
     <div id="hud-layer" style="display:none;">
-        
-        <div id="hud-car" class="hud-top-left hud-group active-hud">
-            <div class="instrument spd-color">
-                <span class="label">Speed</span> <span class="value" id="hud-spd">0</span> <span class="unit">KM/H</span>
-            </div>
-            <div class="instrument rpm-color">
-                <span class="label">Power</span> <span class="value" id="hud-throttle">0%</span>
-            </div>
+        <div class="hud-top-left">
+            <div class="instrument"><span class="label">Airspeed</span><span class="value" id="hud-spd">0</span><span class="unit">KTS</span></div>
+            <div class="instrument"><span class="label">Altitude</span><span class="value" id="hud-alt">0</span><span class="unit">FT</span></div>
+            <div class="instrument"><span class="label">Heading</span><span class="value" id="hud-hdg">000</span><span class="unit">DEG</span></div>
+            <div class="instrument"><span class="label">Vertical Speed</span><span class="value" id="hud-vs">0</span><span class="unit">FPS</span></div>
         </div>
-
-        <div id="hud-plane" class="hud-top-left hud-group">
-            <div class="instrument plane-color">
-                <span class="label">Airspeed</span> <span class="value" id="plane-spd">0</span> <span class="unit">KTS</span>
-            </div>
-            <div class="instrument plane-color">
-                <span class="label">Altitude</span> <span class="value" id="plane-alt">0</span> <span class="unit">FT</span>
-            </div>
-            <div class="instrument plane-color">
-                <span class="label">Heading</span> <span class="value" id="plane-hdg">000</span> <span class="unit">DEG</span>
-            </div>
-        </div>
-
-        <div class="hud-top-right">
-            <div class="instrument" id="hud-coin">
-                <span class="label">COINS</span> <span class="value" id="coin-count">0</span>
-            </div>
-        </div>
-
-        <div id="plane-hud-extras">
-            <div id="throttle-wrapper"><div id="throttle-fill"></div></div>
-            <div id="throttle-label">THRUST</div>
-        </div>
-
-        <div id="control-hints">
-            <div class="hint-title">CONTROLS</div>
-            <div class="transform-hint">[E] TRANSFORM CAR/PLANE</div>
-            <div id="hint-text-car">
-                [SHIFT] NITRO (HOLD)<br>[SPACE] BRAKE<br>[WASD] DRIVE
-            </div>
-            <div id="hint-text-plane" style="display:none;">
-                [SHIFT] THRUST UP<br>[SPACE] THRUST DOWN<br>[W/S] PITCH<br>[A/D] ROLL<br>[Q/C] YAW
-            </div>
-            <div style="margin-top:5px; color:#888;">[R] RESET POSITION</div>
-        </div>
+        <div id="throttle-wrapper"><div id="throttle-fill"></div></div>
+        <div id="center-warning">PULL UP</div>
     </div>
 
-    <div class="copyright-tag">ZHANYI ZHOU DESIGN © 2026</div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-    <script>
-        // =========================================================================
-        // ** GLOBAL GAME STATE **
-        // =========================================================================
-        const GAME_MODE = { CAR: 'car', PLANE: 'plane' };
-        let currentMode = GAME_MODE.CAR;
+        const PlaneConfig = [
+            { name: "Cessna 172 Custom", mass: 1100, enginePower: 8500, liftCoeff: 0.45, dragCoeff: 0.035, modelPath: 'https://raw.githubusercontent.com/Ashley-developper/Ashley-developper.github.io/main/airplane_1.glb', groundClearance: 1.2 },
+            { name: "Executive Jet", mass: 5500, enginePower: 45000, liftCoeff: 0.38, dragCoeff: 0.022, modelPath: 'https://raw.githubusercontent.com/Ashley-developper/Ashley-developper.github.io/main/airplane_2.glb', groundClearance: 2.1 },
+            { name: "STOL Utility", mass: 900, enginePower: 12000, liftCoeff: 0.65, dragCoeff: 0.05, modelPath: 'https://raw.githubusercontent.com/Ashley-developper/Ashley-developper.github.io/main/airplane_3.glb', groundClearance: 1.5 }
+        ];
+
+        let currentPlaneIndex = 0;
+        let scene, camera, renderer, clock;
+        let aircraftModel, cityModel;
         let isGameRunning = false;
-        
-        let scene, renderer, clock;
-        let camera;
-        let world;
-        
-        const input = { w:0, s:0, a:0, d:0, q:0, c:0, shift:0, space:0, e:0 };
-        
-        // =========================================================================
-        // ** CAR CONFIG (SPEED FIX) **
-        // =========================================================================
-        let vehicle, chassisBody;
-        let carMesh, wheelMeshes = [];
-        let flameMesh;
-        const initialCarPosition = new CANNON.Vec3(0, 5, 0); // Start at 0,0,0
-        // INCREASED FORCE AND LOWERED FRICTION SLIP FOR BETTER HANDLING
-        const maxEngineForce = 8000; 
-        const maxBrakeForce = 200;
-        const maxSteerVal = 0.5;
-        let engineForce = 0, steeringValue = 0, brakeForce = 0;
-        
-        // =========================================================================
-        // ** PLANE VARIABLES **
-        // =========================================================================
-        let planeGroup;
-        const PLANE_CONFIG = {
-            mass: 5000, maxThrust: 180000, liftCoeff: 0.8, 
-            wingArea: 60, dragCoeff: 0.03, gravity: 9.81,
-            pitchSpeed: 1.5, rollSpeed: 2.2, yawSpeed: 1.0
-        };
-        const planePhysics = {
-            pos: new THREE.Vector3(),
-            vel: new THREE.Vector3(),
-            quat: new THREE.Quaternion(),
-            rotVel: new THREE.Vector3(),
-            throttle: 0
-        };
+        let cameraMode = 'chase'; 
 
-        // =========================================================================
-        // ** INITIALIZATION **
-        // =========================================================================
-        let loadingManager, gltfLoader, dracoLoader;
+        const controls = { w: false, s: false, a: false, d: false, q: false, e: false, shift: false, space: false };
+        
+        class AircraftPhysics {
+            constructor() {
+                this.pos = new THREE.Vector3(0, 200, 500);
+                this.vel = new THREE.Vector3(0, 0, 0);
+                this.quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
+                this.angularVel = new THREE.Vector3(0, 0, 0);
+                this.throttle = 0;
+                this.config = PlaneConfig[currentPlaneIndex];
+            }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initThree();
-            initCannon();
-            initLoaders();
-            
-            // MAP: FLAT GROUND ONLY
-            createFlatEnvironment();
-            loadCity();
-            loadCarAssets();
-            loadPlaneAssets();
-            loadCoinSystem();
-            
-            setupInputs();
-            window.addEventListener('resize', onResize);
-        });
+            update(dt) {
+                const config = this.config;
+                const euler = new THREE.Euler().setFromQuaternion(this.quat, 'YXZ');
+                
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.quat);
+                const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.quat);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.quat);
 
-        function initLoaders() {
-            loadingManager = new THREE.LoadingManager();
-            loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
-                const percent = Math.floor(itemsLoaded / itemsTotal * 100);
-                document.getElementById('loading-progress-fill').style.width = percent + '%';
-                document.getElementById('loading-status').innerText = `(${percent}%) Loading Assets...`;
-            };
-            loadingManager.onLoad = function() {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('splash').style.opacity = '1';
-                animate();
-            };
+                const forwardSpeed = -this.vel.dot(forward);
+                const speed = this.vel.length();
 
-            dracoLoader = new THREE.DRACOLoader();
-            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-            gltfLoader = new THREE.GLTFLoader(loadingManager);
-            gltfLoader.setDRACOLoader(dracoLoader);
+                const thrustForce = forward.clone().multiplyScalar(this.throttle * config.enginePower);
+                
+                const airDensity = 1.225 * Math.exp(-this.pos.y / 8000);
+                const liftMag = config.liftCoeff * Math.pow(Math.max(0, forwardSpeed), 2) * airDensity;
+                const liftForce = up.clone().multiplyScalar(liftMag);
+
+                const dragMag = config.dragCoeff * Math.pow(speed, 2) * airDensity;
+                const dragForce = this.vel.clone().normalize().multiplyScalar(-dragMag);
+
+                const gravityForce = new THREE.Vector3(0, -9.81 * config.mass, 0);
+
+                const totalForce = new THREE.Vector3().add(thrustForce).add(liftForce).add(dragForce).add(gravityForce);
+                const accel = totalForce.divideScalar(config.mass);
+                this.vel.add(accel.multiplyScalar(dt));
+                this.pos.add(this.vel.clone().multiplyScalar(dt));
+
+                const targetAngularVel = new THREE.Vector3(0, 0, 0);
+                if (controls.w) targetAngularVel.x = 1.5;
+                if (controls.s) targetAngularVel.x = -1.5;
+                if (controls.a) targetAngularVel.z = 2.0;
+                if (controls.d) targetAngularVel.z = -2.0;
+                if (controls.q) targetAngularVel.y = 0.8;
+                if (controls.e) targetAngularVel.y = -0.8;
+
+                this.angularVel.lerp(targetAngularVel, dt * 3.0);
+                
+                const deltaQuat = new THREE.Quaternion().setFromEuler(
+                    new THREE.Euler(
+                        this.angularVel.x * dt,
+                        this.angularVel.y * dt,
+                        this.angularVel.z * dt,
+                        'YXZ'
+                    )
+                );
+                this.quat.multiply(deltaQuat);
+
+                if (this.pos.y < config.groundClearance) {
+                    this.pos.y = config.groundClearance;
+                    this.vel.y = Math.max(0, this.vel.y);
+                    const localVel = this.vel.clone().applyQuaternion(this.quat.clone().invert());
+                    localVel.x *= 0.9;
+                    if (controls.space) localVel.z *= 0.95;
+                    this.vel.copy(localVel.applyQuaternion(this.quat));
+                }
+            }
         }
 
-        function initThree() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111111); // Darker background
-            scene.fog = new THREE.Fog(0x111111, 200, 5000);
+        const physics = new AircraftPhysics();
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050b1a);
+            scene.fog = new THREE.FogExp2(0x050b1a, 0.0005);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ReinhardToneMapping;
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.body.appendChild(renderer.domElement);
 
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            sunLight.position.set(500, 1000, 500);
+            scene.add(sunLight);
+
             clock = new THREE.Clock();
+            updateSplashInfo();
+            initSplashPreview();
 
-            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-            scene.add(hemiLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-            dirLight.position.set(1000, 2000, 1000);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 4096;
-            dirLight.shadow.mapSize.height = 4096;
-            dirLight.shadow.camera.far = 5000;
-            const d = 1000;
-            dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
-            dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
-            scene.add(dirLight);
-
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.5, 20000);
+            window.addEventListener('keydown', (e) => handleKey(e.key.toLowerCase(), true));
+            window.addEventListener('keyup', (e) => handleKey(e.key.toLowerCase(), false));
+            window.addEventListener('resize', onWindowResize);
         }
 
-        function initCannon() {
-            world = new CANNON.World();
-            world.gravity.set(0, -9.82, 0);
-            world.broadphase = new CANNON.SAPBroadphase(world);
-            world.defaultContactMaterial.friction = 0.8; // High global friction for grip
-        }
-
-        // =========================================================================
-        // ** ENVIRONMENT (NO MOUNTAINS) **
-        // =========================================================================
-        function createFlatEnvironment() {
-            // 1. Visual Ground (Infinite looking Plane)
-            const groundGeo = new THREE.PlaneGeometry(100000, 100000);
-            const groundMat = new THREE.MeshStandardMaterial({ 
-                color: 0x1a1a1a, 
-                roughness: 0.8, 
-                metalness: 0.2 
-            });
-            const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-            groundMesh.rotation.x = -Math.PI / 2;
-            groundMesh.receiveShadow = true;
-            scene.add(groundMesh);
-
-            // 2. Grid Helper (For speed sensation)
-            const grid = new THREE.GridHelper(20000, 200, 0x333333, 0x222222);
-            grid.position.y = 0.1;
-            scene.add(grid);
-
-            // 3. Physics Ground
-            const groundShape = new CANNON.Plane();
-            const groundBody = new CANNON.Body({ mass: 0 }); // Static
-            groundBody.addShape(groundShape);
-            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-            world.addBody(groundBody);
-        }
-
-        function loadCity() {
-            gltfLoader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
-                const city = gltf.scene;
-                city.scale.set(4, 4, 4);
-                city.position.y = 0.2;
-                city.traverse(c => { if(c.isMesh) { c.castShadow=true; c.receiveShadow=true; } });
-                scene.add(city);
-                
-                // Simplified city collision (Boxes)
-                city.updateMatrixWorld(true);
-                city.traverse(node => {
-                    if (node.isMesh) {
-                        const box = new THREE.Box3().setFromObject(node);
-                        const size = new THREE.Vector3(); box.getSize(size);
-                        if(size.y > 2) {
-                             const shape = new CANNON.Box(new CANNON.Vec3(size.x/2, size.y/2, size.z/2));
-                             const body = new CANNON.Body({mass:0});
-                             body.addShape(shape);
-                             const center = new THREE.Vector3(); box.getCenter(center);
-                             body.position.copy(center);
-                             world.addBody(body);
-                        }
-                    }
-                });
-            });
-        }
-
-        // =========================================================================
-        // ** ASSETS: CAR (TUNED) **
-        // =========================================================================
-        function loadCarAssets() {
-            gltfLoader.load('car1.glb', (gltf) => {
-                carMesh = gltf.scene;
-                carMesh.scale.set(104.7, 104.7, 104.7);
-                carMesh.rotation.y = Math.PI;
-                carMesh.traverse(c => { if(c.isMesh) c.castShadow=true; });
-                scene.add(carMesh);
-
-                // Nitro Flame
-                const fGeo = new THREE.ConeGeometry(0.3, 1.5, 16);
-                const fMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF, transparent: true, opacity: 0.9 });
-                flameMesh = new THREE.Mesh(fGeo, fMat);
-                flameMesh.rotation.x = -Math.PI/2;
-                flameMesh.position.set(0, 0.5, 2.5);
-                flameMesh.visible = false;
-                carMesh.add(flameMesh);
-                
-                initCarPhysics();
-            });
-
-            gltfLoader.load('tire1.glb', (gltf) => {
-                const wheelProto = gltf.scene;
-                wheelProto.scale.set(0.75, 0.75, 0.75);
-                wheelProto.rotation.x = Math.PI/2;
-                for(let i=0; i<4; i++) {
-                    const w = wheelProto.clone();
-                    if(i===0 || i===2) w.rotation.y = Math.PI;
-                    scene.add(w);
-                    wheelMeshes.push(w);
-                }
-            });
-        }
-
-        function initCarPhysics() {
-            const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.5, 2.2));
-            chassisBody = new CANNON.Body({ mass: 1500, position: initialCarPosition.clone() });
-            chassisBody.addShape(chassisShape);
-            // Lower center of mass for stability
-            chassisBody.addShape(new CANNON.Sphere(1.0), new CANNON.Vec3(0, -0.5, 0)); 
-            chassisBody.angularDamping = 0.5;
-            world.addBody(chassisBody);
-
-            vehicle = new CANNON.RaycastVehicle({
-                chassisBody: chassisBody,
-                indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
-            });
-
-            const wheelOpts = {
-                radius: 0.5, directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 40, suspensionRestLength: 0.6,
-                frictionSlip: 10, // HIGH GRIP
-                dampingRelaxation: 2.3, dampingCompression: 4.4,
-                maxSuspensionForce: 100000, rollInfluence: 0.01,
-                axleLocal: new CANNON.Vec3(1, 0, 0), chassisConnectionPointLocal: new CANNON.Vec3(1, 0, 1)
-            };
-
-            const axleW = 1.0, wheelBase = 1.6;
-            wheelOpts.chassisConnectionPointLocal.set(-axleW, -0.2, wheelBase); vehicle.addWheel(wheelOpts);
-            wheelOpts.chassisConnectionPointLocal.set( axleW, -0.2, wheelBase); vehicle.addWheel(wheelOpts);
-            wheelOpts.chassisConnectionPointLocal.set(-axleW, -0.2, -wheelBase); vehicle.addWheel(wheelOpts);
-            wheelOpts.chassisConnectionPointLocal.set( axleW, -0.2, -wheelBase); vehicle.addWheel(wheelOpts);
-
-            vehicle.addToWorld(world);
-        }
-
-        // =========================================================================
-        // ** ASSETS: PLANE **
-        // =========================================================================
-        function loadPlaneAssets() {
-            gltfLoader.load('plane2.glb', (gltf) => {
-                planeGroup = gltf.scene;
-                planeGroup.scale.set(0.35, 0.35, 0.35);
-                planeGroup.traverse(c => { if(c.isMesh) { c.castShadow=true; c.receiveShadow=true; } });
-                planeGroup.visible = false;
-                scene.add(planeGroup);
-            });
-        }
-
-        // =========================================================================
-        // ** TOGGLE LOGIC **
-        // =========================================================================
-        function toggleVehicle() {
-            if(!chassisBody || !planeGroup) return;
-
-            if (currentMode === GAME_MODE.CAR) {
-                // CAR -> PLANE
-                currentMode = GAME_MODE.PLANE;
-                
-                const carPos = chassisBody.position;
-                planePhysics.pos.set(carPos.x, carPos.y + 10.0, carPos.z);
-                planePhysics.quat.copy(chassisBody.quaternion);
-                
-                // Inherit velocity
-                const speed = chassisBody.velocity.length();
-                const forward = new THREE.Vector3(0,0,1).applyQuaternion(chassisBody.quaternion);
-                planePhysics.vel.copy(forward.multiplyScalar(Math.max(speed, 60))); 
-                planePhysics.throttle = 0.6;
-
-                carMesh.visible = false;
-                wheelMeshes.forEach(w => w.visible = false);
-                planeGroup.visible = true;
-
-                chassisBody.position.set(0, -500, 0); // Hide car
-                chassisBody.sleep();
-
-                updateHUDState();
-
-            } else {
-                // PLANE -> CAR
-                currentMode = GAME_MODE.CAR;
-                
-                chassisBody.wakeUp();
-                chassisBody.position.set(planePhysics.pos.x, planePhysics.pos.y, planePhysics.pos.z);
-                chassisBody.velocity.set(planePhysics.vel.x, planePhysics.vel.y, planePhysics.vel.z);
-                
-                const euler = new THREE.Euler().setFromQuaternion(planePhysics.quat);
-                euler.x = 0; euler.z = 0;
-                chassisBody.quaternion.setFromEuler(euler);
-
-                carMesh.visible = true;
-                wheelMeshes.forEach(w => w.visible = true);
-                planeGroup.visible = false;
-
-                updateHUDState();
+        function handleKey(key, isPressed) {
+            if (key === 'w') controls.w = isPressed;
+            if (key === 's') controls.s = isPressed;
+            if (key === 'a') controls.a = isPressed;
+            if (key === 'd') controls.d = isPressed;
+            if (key === 'q') controls.q = isPressed;
+            if (key === 'e') controls.e = isPressed;
+            if (key === 'shift') controls.shift = isPressed;
+            if (key === ' ') controls.space = isPressed;
+            if (isPressed && key === 'v') {
+                cameraMode = cameraMode === 'chase' ? 'cockpit' : 'chase';
             }
         }
 
-        function updateHUDState() {
-            if (currentMode === GAME_MODE.CAR) {
-                document.getElementById('hud-plane').classList.remove('active-hud');
-                document.getElementById('hud-car').classList.add('active-hud');
-                document.getElementById('plane-hud-extras').style.display = 'none';
-                document.getElementById('hint-text-plane').style.display = 'none';
-                document.getElementById('hint-text-car').style.display = 'block';
-            } else {
-                document.getElementById('hud-car').classList.remove('active-hud');
-                document.getElementById('hud-plane').classList.add('active-hud');
-                document.getElementById('plane-hud-extras').style.display = 'block';
-                document.getElementById('hint-text-car').style.display = 'none';
-                document.getElementById('hint-text-plane').style.display = 'block';
-            }
+        let previewScene, previewCamera, previewRenderer, previewPlane;
+        function initSplashPreview() {
+            const container = document.getElementById('plane-model-container');
+            previewScene = new THREE.Scene();
+            previewCamera = new THREE.PerspectiveCamera(45, 600 / 300, 0.1, 100);
+            previewCamera.position.set(5, 3, 8);
+            previewCamera.lookAt(0, 0, 0);
+
+            previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            previewRenderer.setSize(600, 300);
+            container.appendChild(previewRenderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1.5);
+            light.position.set(5, 5, 5);
+            previewScene.add(light);
+            previewScene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            loadPreviewModel();
+            animatePreview();
         }
 
-        // =========================================================================
-        // ** INPUTS **
-        // =========================================================================
-        function setupInputs() {
-            window.addEventListener('keydown', (e) => {
-                const k = e.key.toLowerCase();
-                if(k === 'w') input.w = 1;
-                if(k === 's') input.s = 1;
-                if(k === 'a') input.a = 1;
-                if(k === 'd') input.d = 1;
-                if(k === 'q') input.q = 1;
-                if(k === 'c') input.c = 1;
-                if(k === ' ') input.space = 1;
-                if(k === 'shift') input.shift = 1;
-                if(k === 'e' && !e.repeat) toggleVehicle();
-                
-                if(k === 'r') {
-                    if(currentMode === GAME_MODE.CAR && chassisBody) {
-                        chassisBody.position.set(0, 5, 0);
-                        chassisBody.velocity.set(0,0,0);
-                        chassisBody.quaternion.set(0,0,0,1);
-                    }
-                }
-            });
-            window.addEventListener('keyup', (e) => {
-                const k = e.key.toLowerCase();
-                if(k === 'w') input.w = 0;
-                if(k === 's') input.s = 0;
-                if(k === 'a') input.a = 0;
-                if(k === 'd') input.d = 0;
-                if(k === 'q') input.q = 0;
-                if(k === 'c') input.c = 0;
-                if(k === ' ') input.space = 0;
-                if(k === 'shift') input.shift = 0;
+        function loadPreviewModel() {
+            if (previewPlane) previewScene.remove(previewPlane);
+            new GLTFLoader().load(PlaneConfig[currentPlaneIndex].modelPath, (gltf) => {
+                previewPlane = gltf.scene;
+                previewScene.add(previewPlane);
             });
         }
 
-        window.enterGame = function() {
+        function animatePreview() {
+            requestAnimationFrame(animatePreview);
+            if (previewPlane) previewPlane.rotation.y += 0.01;
+            previewRenderer.render(previewScene, previewCamera);
+        }
+
+        window.changePlane = function(delta) {
+            currentPlaneIndex = (currentPlaneIndex + delta + PlaneConfig.length) % PlaneConfig.length;
+            physics.config = PlaneConfig[currentPlaneIndex];
+            updateSplashInfo();
+            loadPreviewModel();
+        };
+
+        function updateSplashInfo() {
+            const p = PlaneConfig[currentPlaneIndex];
+            document.getElementById('plane-name').innerText = p.name;
+            document.getElementById('stat-mass').innerText = p.mass;
+            document.getElementById('stat-thrust').innerText = (p.enginePower / 1000).toFixed(1);
+            document.getElementById('stat-lift').innerText = p.liftCoeff;
+            document.getElementById('stat-height').innerText = p.groundClearance;
+        }
+
+        window.startGame = function() {
             document.getElementById('splash').style.display = 'none';
-            document.getElementById('hud-layer').style.display = 'flex';
-            isGameRunning = true;
-        }
-
-        // =========================================================================
-        // ** PHYSICS LOOPS **
-        // =========================================================================
-        function updateCarPhysics() {
-            // SPEED FIX: Higher force, clear brakes
-            brakeForce = 0;
-            if(input.w) {
-                engineForce = -maxEngineForce;
-            } else if(input.s) {
-                engineForce = maxEngineForce * 0.5;
-            } else {
-                engineForce = 0;
-            }
-
-            if(input.shift) engineForce *= 2.0; // TURBO
-
-            if(input.space) {
-                brakeForce = maxBrakeForce;
-                engineForce = 0;
-            }
-
-            if(input.a) steeringValue = maxSteerVal;
-            else if(input.d) steeringValue = -maxSteerVal;
-            else steeringValue = 0;
-
-            vehicle.applyEngineForce(engineForce, 2);
-            vehicle.applyEngineForce(engineForce, 3);
+            document.getElementById('loading-screen').style.display = 'flex';
             
-            vehicle.setSteeringValue(steeringValue, 0);
-            vehicle.setSteeringValue(steeringValue, 1);
-            
-            vehicle.setBrake(brakeForce, 0);
-            vehicle.setBrake(brakeForce, 1);
-            vehicle.setBrake(brakeForce, 2);
-            vehicle.setBrake(brakeForce, 3);
+            const loader = new GLTFLoader();
+            let loadedCount = 0;
 
-            world.step(1/60);
-        }
+            loader.load('https://raw.githubusercontent.com/Ashley-developper/Ashley-developper.github.io/main/city_1.glb', (gltf) => {
+                cityModel = gltf.scene;
+                scene.add(cityModel);
+                checkAssets();
+            }, (xhr) => updateProgress('City', xhr));
 
-        function updatePlanePhysics(dt) {
-            if(input.shift) planePhysics.throttle = Math.min(1.0, planePhysics.throttle + dt * 0.4);
-            if(input.space) planePhysics.throttle = Math.max(0.0, planePhysics.throttle - dt * 1.0);
+            loader.load(PlaneConfig[currentPlaneIndex].modelPath, (gltf) => {
+                aircraftModel = gltf.scene;
+                scene.add(aircraftModel);
+                checkAssets();
+            }, (xhr) => updateProgress('Aircraft', xhr));
 
-            const pos = planePhysics.pos;
-            const vel = planePhysics.vel;
-            const rot = planePhysics.quat;
-            const speed = vel.length();
-
-            const vForward = new THREE.Vector3(0,0,-1).applyQuaternion(rot).normalize();
-            const vUp = new THREE.Vector3(0,1,0).applyQuaternion(rot).normalize();
-
-            // Gravity & Thrust
-            const forces = new THREE.Vector3(0, -PLANE_CONFIG.gravity * PLANE_CONFIG.mass, 0);
-            forces.add(vForward.clone().multiplyScalar(planePhysics.throttle * PLANE_CONFIG.maxThrust));
-
-            // Lift
-            const forwardSpeed = vel.dot(vForward);
-            const liftForce = 0.5 * 1.225 * (forwardSpeed*forwardSpeed) * PLANE_CONFIG.liftCoeff * PLANE_CONFIG.wingArea;
-            forces.add(vUp.clone().multiplyScalar(liftForce));
-
-            // Drag
-            if(speed > 0) {
-                const drag = 0.5 * 1.225 * (speed*speed) * PLANE_CONFIG.dragCoeff * PLANE_CONFIG.wingArea;
-                forces.add(vel.clone().normalize().negate().multiplyScalar(drag));
-            }
-
-            const acc = forces.divideScalar(PLANE_CONFIG.mass);
-            vel.add(acc.multiplyScalar(dt));
-            pos.add(vel.clone().multiplyScalar(dt));
-
-            // Floor Collision
-            if(pos.y < 2) {
-                pos.y = 2;
-                vel.y = Math.max(0, vel.y);
-                vel.multiplyScalar(0.99); // Friction
-            }
-
-            // Controls
-            const pitch = (input.s - input.w) * PLANE_CONFIG.pitchSpeed;
-            const roll = (input.a - input.d) * PLANE_CONFIG.rollSpeed;
-            const yaw = (input.q - input.c) * PLANE_CONFIG.yawSpeed;
-
-            const targetRot = new THREE.Vector3(pitch, yaw, roll);
-            planePhysics.rotVel.lerp(targetRot, dt * 3.0);
-
-            const deltaRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
-                planePhysics.rotVel.x * dt,
-                planePhysics.rotVel.y * dt,
-                planePhysics.rotVel.z * dt,
-                'XYZ'
-            ));
-            rot.multiply(deltaRot).normalize();
-        }
-
-        // =========================================================================
-        // ** COINS **
-        // =========================================================================
-        let coinMeshes = [], coinBodies = [], coinCount = 0;
-        function loadCoinSystem() {
-            gltfLoader.load('gold_coin.glb', (gltf) => {
-                const coinProto = gltf.scene;
-                for(let i=0; i<30; i++) {
-                    const c = coinProto.clone();
-                    const x = (Math.random()-0.5)*5000;
-                    const z = (Math.random()-0.5)*5000;
-                    c.position.set(x, 2, z);
-                    scene.add(c);
-                    coinMeshes.push(c);
-                    
-                    const shape = new CANNON.Sphere(1.0);
-                    const body = new CANNON.Body({mass:0, isTrigger:true, position:new CANNON.Vec3(x,2,z)});
-                    body.addShape(shape);
-                    world.addBody(body);
-                    coinBodies.push(body);
+            function checkAssets() {
+                loadedCount++;
+                if (loadedCount >= 2) {
+                    document.getElementById('loading-screen').style.display = 'none';
+                    document.getElementById('hud-layer').style.display = 'flex';
+                    isGameRunning = true;
+                    animate();
                 }
-            }, undefined, () => {});
+            }
+        };
+
+        function updateProgress(name, xhr) {
+            const percent = Math.floor((xhr.loaded / xhr.total) * 100);
+            document.getElementById('loading-progress-fill').style.width = percent + '%';
+            document.getElementById('loading-status').innerText = name + ': ' + percent + '%';
         }
 
-        // =========================================================================
-        // ** MAIN LOOP **
-        // =========================================================================
         function animate() {
+            if (!isGameRunning) return;
             requestAnimationFrame(animate);
-            if(!isGameRunning) return;
 
-            const dt = clock.getDelta();
+            const dt = Math.min(clock.getDelta(), 0.1);
 
-            if (currentMode === GAME_MODE.CAR && chassisBody && carMesh) {
-                updateCarPhysics();
-                
-                carMesh.position.copy(chassisBody.position);
-                carMesh.quaternion.copy(chassisBody.quaternion);
-                carMesh.position.y -= 0.5; // Visual adjustment
-                
-                if(flameMesh) flameMesh.visible = (engineForce < -100 && input.shift);
+            if (controls.shift) physics.throttle = Math.min(1, physics.throttle + dt * 0.5);
+            else physics.throttle = Math.max(0, physics.throttle - dt * 0.2);
 
-                for(let i=0; i<vehicle.wheelInfos.length; i++){
-                    vehicle.updateWheelTransform(i);
-                    const t = vehicle.wheelInfos[i].worldTransform;
-                    if(wheelMeshes[i]) {
-                        wheelMeshes[i].position.copy(t.position);
-                        wheelMeshes[i].quaternion.copy(t.quaternion);
-                    }
-                }
+            physics.update(dt);
 
-                // Camera Chase Car
-                const relOffset = new THREE.Vector3(0, 4, -8);
-                relOffset.applyQuaternion(carMesh.quaternion);
-                const camPos = carMesh.position.clone().add(relOffset);
-                camera.position.lerp(camPos, 0.1);
-                camera.lookAt(carMesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
-
-                // HUD
-                const kmh = Math.floor(chassisBody.velocity.length() * 3.6);
-                document.getElementById('hud-spd').innerText = kmh;
-                let power = Math.abs(engineForce / maxEngineForce);
-                if(input.shift) power = 1.0;
-                document.getElementById('hud-throttle').innerText = Math.floor(power * 100) + '%';
-            } 
-            else if (currentMode === GAME_MODE.PLANE && planeGroup) {
-                updatePlanePhysics(dt);
-                
-                planeGroup.position.copy(planePhysics.pos);
-                
-                // Rot Fix
-                const qPhysics = planePhysics.quat.clone();
-                const qFix = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI); 
-                const qModel = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), -Math.PI/2); 
-                planeGroup.quaternion.copy(qPhysics).multiply(qFix).multiply(qModel);
-                
-                // ==============================
-                // ** FIXED CAMERA (BEHIND) **
-                // ==============================
-                // Offset: Up (+Y) and Back (+Z) relative to the physics quaternion.
-                // Since our physics "Forward" is -Z, "Back" is +Z.
-                const offset = new THREE.Vector3(0, 8, 35).applyQuaternion(planePhysics.quat);
-                const targetPos = planePhysics.pos.clone().add(offset);
-                
-                // Lerp for smoothness
-                camera.position.lerp(targetPos, 0.1);
-                
-                // Look Ahead
-                const lookTarget = planePhysics.pos.clone().add(new THREE.Vector3(0, 0, -50).applyQuaternion(planePhysics.quat));
-                camera.lookAt(lookTarget);
-
-                // HUD
-                const kts = Math.floor(planePhysics.vel.length() * 1.94);
-                document.getElementById('plane-spd').innerText = kts;
-                document.getElementById('plane-alt').innerText = Math.floor(planePhysics.pos.y * 3.28);
-                const hdg = (360 - (new THREE.Euler().setFromQuaternion(planePhysics.quat).y * (180/Math.PI)) % 360) % 360;
-                document.getElementById('plane-hdg').innerText = Math.floor(hdg).toString().padStart(3,'0');
-                document.getElementById('throttle-fill').style.height = (planePhysics.throttle*100)+'%';
+            if (aircraftModel) {
+                aircraftModel.position.copy(physics.pos);
+                aircraftModel.quaternion.copy(physics.quat);
             }
 
-            // Coin Logic
-            if(currentMode === GAME_MODE.CAR && chassisBody) {
-                const p = chassisBody.position;
-                for(let i=0; i<coinBodies.length; i++){
-                    const b = coinBodies[i];
-                    if(b.position.y > -100) {
-                        const dist = p.distanceTo(b.position);
-                        if(dist < 3.0) {
-                            b.position.y = -1000;
-                            if(coinMeshes[i]) coinMeshes[i].visible = false;
-                            coinCount++;
-                            document.getElementById('coin-count').innerText = coinCount;
-                        }
-                    }
-                }
-            }
-            coinMeshes.forEach(c => { if(c.visible) c.rotation.y += 0.02; });
-
+            updateCamera();
+            updateHUD();
             renderer.render(scene, camera);
         }
 
-        function onResize() {
+        function updateCamera() {
+            const offset = cameraMode === 'chase' ? new THREE.Vector3(0, 5, 15) : new THREE.Vector3(0, 0.5, -0.5);
+            offset.applyQuaternion(physics.quat);
+            camera.position.copy(physics.pos).add(offset);
+            
+            const lookTarget = physics.pos.clone();
+            if (cameraMode === 'chase') {
+                const lookOffset = new THREE.Vector3(0, 2, -10).applyQuaternion(physics.quat);
+                camera.lookAt(lookTarget.add(lookOffset));
+            } else {
+                const lookOffset = new THREE.Vector3(0, 0, -10).applyQuaternion(physics.quat);
+                camera.lookAt(lookTarget.add(lookOffset));
+            }
+        }
+
+        function updateHUD() {
+            const speedKts = Math.floor(physics.vel.length() * 1.94);
+            const altFt = Math.floor(physics.pos.y * 3.28);
+            const vsFps = Math.floor(physics.vel.y * 3.28);
+            
+            const euler = new THREE.Euler().setFromQuaternion(physics.quat, 'YXZ');
+            let hdg = Math.floor(THREE.MathUtils.radToDeg(-euler.y) % 360);
+            if (hdg < 0) hdg += 360;
+
+            document.getElementById('hud-spd').innerText = speedKts;
+            document.getElementById('hud-alt').innerText = altFt;
+            document.getElementById('hud-hdg').innerText = hdg.toString().padStart(3, '0');
+            document.getElementById('hud-vs').innerText = vsFps;
+            document.getElementById('throttle-fill').style.height = (physics.throttle * 100) + '%';
+
+            const warning = document.getElementById('center-warning');
+            if (physics.pos.y < 50 && physics.vel.y < -5 && speedKts > 40) {
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
+
+        init();
     </script>
 </body>
 </html>
