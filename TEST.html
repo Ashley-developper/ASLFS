@@ -1,154 +1,826 @@
-
+/* ASL FLIGHT SIMULATOR will be no longer supported from January 1, 2026.*/
+/* Copyright 2025 Ashley .inc, Zhanyi Zhou. All rights reserved*/
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CITY FLIGHT SIMULATOR</title>
+    <title>ASL flight simulator</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #333; }
-        .container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
-        .menu-screen { width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 100; position: absolute; top: 0; left: 0; }
-        .menu-screen.hidden { display: none; }
-        .menu-content { text-align: center; background: rgba(255, 255, 255, 0.95); padding: 60px 80px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 600px; }
-        .title { font-size: 48px; font-weight: bold; color: #667eea; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1); }
-        .subtitle { font-size: 20px; color: #764ba2; margin-bottom: 40px; }
-        .plane-selection { margin: 30px 0; }
-        .plane-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0; }
-        .plane-btn { padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; }
-        .plane-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4); }
-        .plane-btn:active { transform: translateY(-1px); }
-        .difficulty-selection { margin: 30px 0; }
-        .difficulty-options { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
-        .difficulty-btn { padding: 12px 25px; background: #f0f0f0; color: #333; border: 2px solid #667eea; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; }
-        .difficulty-btn.selected { background: #667eea; color: white; }
-        .difficulty-btn:hover { background: #667eea; color: white; }
-        .start-btn { padding: 15px 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 30px; transition: all 0.3s ease; }
-        .start-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4); }
-        .loading-bar { width: 300px; height: 8px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 20px 0; }
-        .loading-progress { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); width: 0%; transition: width 0.3s ease; }
-        .loading-text { font-size: 16px; color: #667eea; margin-top: 15px; }
-        #gameContainer { width: 100%; height: 100%; position: relative; display: none; }
-        #gameContainer.active { display: block; }
-        .hud { position: absolute; top: 20px; left: 20px; color: #00ff00; font-family: 'Courier New', monospace; font-size: 14px; background: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 5px; border: 2px solid #00ff00; z-index: 10; min-width: 250px; }
-        .hud-item { margin: 8px 0; text-shadow: 0 0 5px rgba(0, 255, 0, 0.8); }
-        .controls-info { position: absolute; bottom: 20px; left: 20px; color: #00ff00; font-family: 'Courier New', monospace; font-size: 12px; background: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 5px; border: 2px solid #00ff00; z-index: 10; }
-        .control-line { margin: 5px 0; text-shadow: 0 0 5px rgba(0, 255, 0, 0.8); }
-        .radar { position: absolute; bottom: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0, 0, 0, 0.7); border: 2px solid #00ff00; border-radius: 50%; z-index: 10; }
-        #radarCanvas { width: 100%; height: 100%; }
-        .menu-link { position: absolute; bottom: 20px; right: 20px; z-index: 20; }
-        .menu-btn { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
-        .menu-btn:hover { background: #764ba2; transform: scale(1.05); }
-        .stats { position: absolute; top: 20px; right: 20px; color: #00ff00; font-family: 'Courier New', monospace; font-size: 14px; background: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 5px; border: 2px solid #00ff00; z-index: 10; min-width: 250px; }
-        .stat-item { margin: 8px 0; text-shadow: 0 0 5px rgba(0, 255, 0, 0.8); }
-        .city-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); background: rgba(0, 0, 0, 0.5); padding: 20px 40px; border-radius: 10px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; z-index: 5; }
-        .city-info.show { opacity: 1; }
-        @keyframes pulse { 0%, 100% { text-shadow: 0 0 5px rgba(0, 255, 0, 0.8); } 50% { text-shadow: 0 0 15px rgba(0, 255, 0, 1); } }
-        .pulse { animation: pulse 1s infinite; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; }
+        
+        /* 仪表盘布局 */
+        #hud-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
+            padding: 25px; box-sizing: border-box; z-index: 10;
+        }
+
+        .hud-top-left { display: flex; gap: 20px; }
+        
+        .instrument {
+            background: rgba(10, 20, 30, 0.75); 
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 4px solid #00aaff;
+            backdrop-filter: blur(8px); 
+            padding: 10px 18px; 
+            color: #eee; 
+            min-width: 100px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        
+        .label { font-size: 10px; color: #88ccff; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px; display:block; text-transform: uppercase;}
+        .value { font-size: 26px; font-weight: 700; font-family: 'Consolas', monospace; letter-spacing: -1px; }
+        .unit { font-size: 12px; color: #888; margin-left: 4px; font-weight: 400;}
+
+        /* 油门推杆 */
+        #throttle-wrapper {
+            position: absolute; left: 30px; bottom: 120px; width: 12px; height: 240px;
+            background: rgba(0,0,0,0.6); border: 1px solid #555; border-radius: 8px;
+            padding: 2px;
+        }
+        #throttle-fill {
+            position: absolute; bottom: 2px; left: 2px; width: 12px; height: 0%;
+            background: linear-gradient(to top, #4caf50, #ffeb3b, #ff5722);
+            border-radius: 4px; transition: height 0.1s;
+        }
+        #throttle-label {
+            position: absolute; left: 50px; bottom: 120px; color: #fff; font-size: 12px; font-weight: bold;
+            transform: rotate(-90deg); transform-origin: left bottom; opacity: 0.7;
+        }
+
+        /* 警告信息 */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        #center-warning {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ff3333; font-size: 24px; font-weight: bold; border: 2px solid #ff3333;
+            padding: 10px 30px; background: rgba(0,0,0,0.7); display: none;
+            /* 优化：新增闪烁效果 */
+            animation: blink 0.5s step-end infinite;
+        }
+
+        /* 启动画面 */
+#splash {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    /* 🎨 天蓝色立体背景 */
+    background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+    z-index: 999; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: white;
+    /* 投影效果 */
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
+}
+
+h1 { 
+    font-size: 32px; 
+    margin: 0; 
+    font-weight: 400; 
+    letter-spacing: 5px; 
+    text-transform: uppercase;
+    color: #fff;
+    /* 投影效果 */
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
+}
+
+/* 标题样式：Choose Your Plane */
+#plane-chooser-title {
+    font-size: 20px; 
+    margin-bottom: 20px; 
+    font-weight: 600; 
+    color: #f0f0f0; 
+    letter-spacing: 3px;
+}
+
+/* 3D 模型容器样式 */
+#plane-model-container {
+    width: 600px;
+    height: 300px;
+    margin: 20px 0 10px; /* 调整 margin */
+    /* 现代边框和背景 */
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+}
+
+/* 模型切换按钮样式 */
+.model-nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.4);
+    border: none;
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 24px;
+    z-index: 10;
+    transition: background 0.2s;
+}
+
+.model-nav-button:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#prev-plane { left: 10px; border-radius: 50%; }
+#next-plane { right: 10px; border-radius: 50%; }
+
+/* 飞机参数展示区样式 (新增) */
+#plane-info-display {
+    text-align: center;
+    margin-top: 15px;
+    padding: 15px 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    min-width: 450px;
+}
+
+.plane-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px 20px;
+    font-size: 13px;
+    color: #c0e0f0;
+}
+
+.stat-value {
+    font-family: 'Consolas', monospace;
+    font-weight: bold;
+    color: #80D0C7;
+    margin-left: 5px;
+}
+
+
+/* 按钮和控制网格样式更新 */
+.controls-grid {
+    display: grid; grid-template-columns: auto auto; gap: 10px 20px; 
+    margin-top: 20px;
+    text-align: left; 
+    background: rgba(0,0,0,0.3); /* 深色透明背景 */
+    padding: 20px; 
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 14px;
+}
+
+.key-box { 
+    font-family: 'Consolas', monospace; 
+    color: #80D0C7; /* 匹配主题色 */
+    font-weight: bold; 
+    margin-right: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #80D0C7;
+}
+
+button#start-button {
+    margin-top: 40px; 
+    padding: 14px 50px; 
+    font-size: 16px; 
+    font-weight: 700; 
+    border: none; /* 移除边框 */
+    background: #0093E9; 
+    color: #fff; 
+    cursor: pointer; 
+    letter-spacing: 2px;
+    transition: all 0.3s; 
+    text-transform: uppercase;
+    border-radius: 30px; /* 圆角按钮 */
+    box-shadow: 0 6px 20px rgba(0, 147, 233, 0.6);
+}
+button#start-button:hover { 
+    background: #80D0C7; 
+    color: #000; 
+    box-shadow: 0 6px 25px rgba(128, 208, 199, 0.8); 
+}
+/* 优化：按钮按下效果 */
+button#start-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 3px 10px rgba(0, 147, 233, 0.6);
+}
+
+        /* 🚀 样式：画质选择面板 */
+#quality-selector {
+    position: absolute; 
+    right: 25px; 
+    bottom: 25px; 
+    z-index: 10;
+    pointer-events: all; /* 确保可以点击 */
+    background: rgba(10, 20, 30, 0.75); 
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-right: 4px solid #00aaff; /* 匹配仪表盘样式 */
+    backdrop-filter: blur(8px); 
+    padding: 10px 18px; 
+    color: #eee; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+#quality-selector .label {
+    display: block;
+    font-size: 10px; 
+    color: #88ccff; 
+    font-weight: 600; 
+    letter-spacing: 1px; 
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.button-group button {
+    /* 重置默认按钮样式 */
+    all: unset; 
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 10px;
+    margin-left: 5px;
+    border: 1px solid #00aaff;
+    color: #00aaff;
+    background-color: rgba(0, 170, 255, 0.1);
+    transition: all 0.2s;
+}
+
+.button-group button:first-child {
+    margin-left: 0;
+}
+
+/* 选中状态 */
+.button-group button.active,
+.button-group button:hover {
+    background-color: #00aaff;
+    color: #1a2a3a;
+    font-weight: bold;
+}
+
+/* 🚀 新增：Loading 界面样式 */
+#loading-screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 1000; /* 比 splash 高 */
+    display: none; /* 默认隐藏，在 startGame 中显示 */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+#loading-progress-bar {
+    width: 300px;
+    height: 10px;
+    margin-top: 20px;
+    background: #555;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+#loading-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #00aaff;
+    transition: width 0.3s;
+}
+    /*END SUPPORT*/
+        #notice-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000; /* 确保在最顶层，高于 splash */
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+#notice-content {
+    width: 600px;
+    background: rgba(20, 30, 40, 0.95);
+    border: 1px solid rgba(128, 208, 199, 0.3);
+    border-left: 5px solid #ff3333; /* 红色警告条 */
+    border-radius: 12px;
+    padding: 30px;
+    color: #eee;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    position: relative;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#notice-header {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ff5555;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.notice-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #ccc;
+    margin-bottom: 15px;
+}
+
+.notice-highlight {
+    color: #80D0C7;
+    font-weight: bold;
+}
+
+#notice-link {
+    display: inline-block;
+    margin: 10px 0 20px;
+    color: #0093E9;
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dashed #0093E9;
+    transition: all 0.2s;
+}
+#notice-link:hover { color: #80D0C7; border-color: #80D0C7; }
+
+#notice-footer {
+    font-size: 12px;
+    color: #666;
+    margin-top: 20px;
+    text-align: right;
+    font-style: italic;
+}
+
+#notice-close-btn {
+    display: block;
+    width: 100%;
+    margin-top: 25px;
+    padding: 12px;
+    background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+#notice-close-btn:hover {
+    box-shadow: 0 0 15px rgba(0, 147, 233, 0.5);
+}
+#notice-close-btn:active { transform: scale(0.98); }
+        /*END SUPPORT*/
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="menu-screen" id="menuScreen">
-            <div class="menu-content">
-                <div class="title">✈️ CITY FLIGHT SIMULATOR</div>
-                <div class="subtitle">CHOOSE YOUR PLANE & START YOUR CITY FLIGHT</div>
-                <div class="plane-selection">
-                    <label style="font-size: 16px; font-weight: bold; color: #333;">Select Aircraft:</label>
-                    <div class="plane-grid">
-                        <button class="plane-btn" onclick="selectPlane('F-16')">🛩️ F-16 Fighter</button>
-                        <button class="plane-btn" onclick="selectPlane('Boeing747')">✈️ Boeing 747</button>
-                        <button class="plane-btn" onclick="selectPlane('Helicopter')">🚁 Helicopter</button>
-                        <button class="plane-btn" onclick="selectPlane('Drone')">🛸 Drone</button>
-                    </div>
-                </div>
-                <div class="difficulty-selection">
-                    <label style="font-size: 16px; font-weight: bold; color: #333;">Difficulty Level:</label>
-                    <div class="difficulty-options">
-                        <button class="difficulty-btn selected" onclick="selectDifficulty('Easy')">EASY</button>
-                        <button class="difficulty-btn" onclick="selectDifficulty('Normal')">NORMAL</button>
-                        <button class="difficulty-btn" onclick="selectDifficulty('Hard')">HARD</button>
-                    </div>
-                </div>
-                <div class="loading-bar" id="loadingBar">
-                    <div class="loading-progress" id="loadingProgress"></div>
-                </div>
-                <div class="loading-text" id="loadingText">(0%) Loading Assets...</div>
-                <button class="start-btn" onclick="startGame()">START FLIGHT</button>
-                <div style="margin-top: 30px; color: #999; font-size: 12px;">
-                    <p>Future Cities: New maps, landmarks, and challenge missions coming soon!</p>
-                    <p style="margin-top: 10px;">Configure graphics, controls, and sound options when settings are implemented.</p>
-                    <p style="margin-top: 10px; color: #667eea; font-weight: bold;">MADE BY ZHANYI ZHOU & ASHLEY INC.</p>
-                </div>
-            </div>
+    /*END SUPPORT*/
+    <div id="notice-modal">
+    <div id="notice-content">
+        <div id="notice-header">⚠️ End of Support Notice</div>
+        
+        <div class="notice-text">
+            <strong style="color: #fff;">ASL Flight Simulator will no longer be supported from January 5, 2026.</strong>
         </div>
-        <div id="gameContainer">
-            <div class="hud" id="hud">
-                <div class="hud-item"><strong>CITY FLIGHT HUD</strong></div>
-                <div class="hud-item">Aircraft: <span id="hudPlane">F-16</span></div>
-                <div class="hud-item">Altitude: <span id="hudAltitude">0</span> m</div>
-                <div class="hud-item">Speed: <span id="hudSpeed">0</span> km/h</div>
-                <div class="hud-item">Heading: <span id="hudHeading">0</span>°</div>
-                <div class="hud-item">Fuel: <span id="hudFuel">100</span>%</div>
-            </div>
-            <div class="stats" id="stats">
-                <div class="stat-item"><strong>FLIGHT STATS</strong></div>
-                <div class="stat-item">Max Altitude: <span id="maxAltitude">0</span> m</div>
-                <div class="stat-item">Max Speed: <span id="maxSpeed">0</span> km/h</div>
-                <div class="stat-item">Flight Time: <span id="flightTime">0</span> s</div>
-                <div class="stat-item">Distance: <span id="distance">0</span> km</div>
-            </div>
-            <div class="radar" id="radar">
-                <canvas id="radarCanvas"></canvas>
-            </div>
-            <div class="controls-info">
-                <div class="control-line"><strong>CONTROLS:</strong></div>
-                <div class="control-line">W/↑ = Pitch Up | S/↓ = Pitch Down</div>
-                <div class="control-line">A/← = Roll Left | D/→ = Roll Right</div>
-                <div class="control-line">Q = Yaw Left | E = Yaw Right</div>
-                <div class="control-line">SPACE = Increase Speed | CTRL = Decrease</div>
-                <div class="control-line">ESC = Return to Menu</div>
-            </div>
-            <div class="city-info" id="cityInfo">Welcome to City Flight Mode!</div>
-            <div class="menu-link">
-                <button class="menu-btn" onclick="returnToMenu()">Return to Menu</button>
-            </div>
+
+        <div class="notice-text">
+            What you are playing now is the first complex game that <span class="notice-highlight">Ashley</span> has ever made. It is the beginner of our game development journey. Ashley had spent hours for this game. We used THREE.js, self-designed physics and modern UI.
         </div>
+
+        <div class="notice-text">
+            Sadly, ASL Flight Simulator hasn't achieved our game mission's goal: to be a popular game on CrazyGames. Its final score is 5/15. That's why Ashley decides to end its support.
+        </div>
+
+        <div class="notice-text">
+            ASL Flight Simulator is the base of all our games. We should not forget it -- the first ever, real, game.
+        </div>
+        
+        <div class="notice-text" style="background: rgba(0,147,233,0.1); padding: 10px; border-radius: 4px; border-left: 3px solid #0093E9;">
+            This is not the end. Ashley is always trying something new. Go visit our main website from the link below and check our progress:<br>
+            <a id="notice-link" href="https://Ashley-developper.github.io" target="_blank">🔗 Ashley-developper.github.io</a>
+        </div>
+
+        <div id="notice-footer">
+            Writed by Zhanyi Zhou, who made this game.<br>Ashley is the name of the brand.
+        </div>
+
+        <button id="notice-close-btn" onclick="closeNotice()">I Understand</button>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        let selectedPlane = 'F-16';
-        let selectedDifficulty = 'Easy';
-        let gameRunning = false;
-        let scene, camera, renderer;
-        let plane, cityEnvironment = {};
-        let controls = {};
-        let gameStats = { flightTime: 0, maxAltitude: 0, maxSpeed: 0, distance: 0, lastPos: new THREE.Vector3(0, 0, 0) };
-        const planeSpecs = { 'F-16': { maxSpeed: 2100, maxAltitude: 15000, acceleration: 3.5, mass: 1.6 }, 'Boeing747': { maxSpeed: 988, maxAltitude: 13100, acceleration: 1.5, mass: 4.4 }, 'Helicopter': { maxSpeed: 320, maxAltitude: 6100, acceleration: 2.0, mass: 2.3 }, 'Drone': { maxSpeed: 100, maxAltitude: 500, acceleration: 1.2, mass: 0.05 } };
-        const difficultyModifiers = { 'Easy': { gravityScale: 0.3, dragScale: 0.5, windScale: 0.0 }, 'Normal': { gravityScale: 0.8, dragScale: 1.0, windScale: 0.3 }, 'Hard': { gravityScale: 1.2, dragScale: 1.5, windScale: 0.8 } };
-        function selectPlane(plane) { selectedPlane = plane; document.querySelectorAll('.plane-btn').forEach(btn => { btn.style.opacity = btn.textContent.includes(plane) ? '1' : '0.6'; }); console.log('Selected plane: ' + selectedPlane); }
-        function selectDifficulty(difficulty) { selectedDifficulty = difficulty; document.querySelectorAll('.difficulty-btn').forEach(btn => { if (btn.textContent.includes(difficulty)) { btn.classList.add('selected'); } else { btn.classList.remove('selected'); } }); console.log('Selected difficulty: ' + selectedDifficulty); }
-        function startGame() { const loadingText = document.getElementById('loadingText'); const loadingProgress = document.getElementById('loadingProgress'); let progress = 0; const loadingInterval = setInterval(() => { progress += Math.random() * 20; if (progress > 100) progress = 100; loadingProgress.style.width = progress + '%'; loadingText.textContent = '(' + Math.floor(progress) + '%) Loading Assets...'; if (progress >= 100) { clearInterval(loadingInterval); setTimeout(() => { document.getElementById('menuScreen').classList.add('hidden'); document.getElementById('gameContainer').classList.add('active'); gameRunning = true; initializeGame(); animate(); }, 500); } }, 100); }
-        function returnToMenu() { gameRunning = false; document.getElementById('menuScreen').classList.remove('hidden'); document.getElementById('gameContainer').classList.remove('active'); if (renderer) { renderer.dispose(); renderer.domElement.remove(); renderer = null; } document.getElementById('loadingProgress').style.width = '0%'; document.getElementById('loadingText').textContent = '(0%) Loading Assets...'; }
-        function initializeGame() { scene = new THREE.Scene(); scene.background = new THREE.Color(0x87ceeb); scene.fog = new THREE.Fog(0x87ceeb, 3000, 8000); camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000); camera.position.set(0, 500, 1000); camera.lookAt(0, 100, 0); renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowShadowMap; document.getElementById('gameContainer').appendChild(renderer.domElement); const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(1000, 1000, 1000); directionalLight.castShadow = true; directionalLight.shadow.mapSize.width = 2048; directionalLight.shadow.mapSize.height = 2048; directionalLight.shadow.camera.left = -2000; directionalLight.shadow.camera.right = 2000; directionalLight.shadow.camera.top = 2000; directionalLight.shadow.camera.bottom = -2000; scene.add(directionalLight); createCityEnvironment(); createPlane(); initControls(); initRadar(); showCityInfo('Flying over ' + selectedPlane + ' in ' + selectedDifficulty + ' Mode'); window.addEventListener('resize', onWindowResize); console.log('Game initialized with plane: ' + selectedPlane + ', difficulty: ' + selectedDifficulty); }
-        function createCityEnvironment() { const groundGeometry = new THREE.PlaneGeometry(5000, 5000); const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228b22 }); const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial); groundMesh.rotation.x = -Math.PI / 2; groundMesh.receiveShadow = true; scene.add(groundMesh); cityEnvironment.ground = groundMesh; const skyGeometry = new THREE.SphereGeometry(10000, 32, 32); const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide }); const sky = new THREE.Mesh(skyGeometry, skyMaterial); scene.add(sky); cityEnvironment.sky = sky; createBuildings(); createRoads(); createLandmarks(); console.log('City environment created successfully'); }
-        function createBuildings() { const buildingColors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b731, 0x5f27cd, 0x00d2d3, 0xff9ff3, 0x54a0ff]; let buildingCount = 0; for (let x = -2000; x <= 2000; x += 400) { for (let z = -2000; z <= 2000; z += 400) { if (Math.random() > 0.7) continue; const width = 80 + Math.random() * 120; const depth = 80 + Math.random() * 120; const height = 150 + Math.random() * 350; const buildingGeometry = new THREE.BoxGeometry(width, height, depth); const buildingColor = buildingColors[Math.floor(Math.random() * buildingColors.length)]; const buildingMaterial = new THREE.MeshPhongMaterial({ color: buildingColor }); const building = new THREE.Mesh(buildingGeometry, buildingMaterial); building.position.set(x + (Math.random() * 100 - 50), height / 2, z + (Math.random() * 100 - 50)); building.castShadow = true; building.receiveShadow = true; const windowGeometry = new THREE.BoxGeometry(width * 0.9, height * 0.9, depth * 0.1); const windowMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0xffff00 }); const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial); windowMesh.position.z = (depth / 2) + 5; building.add(windowMesh); scene.add(building); buildingCount++; } } cityEnvironment.buildings = buildingCount; console.log('Created ' + buildingCount + ' buildings'); }
-        function createRoads() { const roadMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 }); const road1Geometry = new THREE.PlaneGeometry(5000, 200); const road1 = new THREE.Mesh(road1Geometry, roadMaterial); road1.rotation.x = -Math.PI / 2; road1.position.z = 0; road1.position.y = 0.1; road1.receiveShadow = true; scene.add(road1); const road2Geometry = new THREE.PlaneGeometry(200, 5000); const road2 = new THREE.Mesh(road2Geometry, roadMaterial); road2.rotation.x = -Math.PI / 2; road2.position.x = 0; road2.position.y = 0.1; road2.receiveShadow = true; scene.add(road2); console.log('Created city roads'); }
-        function createLandmarks() { const towerGeometry = new THREE.CylinderGeometry(100, 150, 800, 32); const towerMaterial = new THREE.MeshPhongMaterial({ color: 0xff6347 }); const tower = new THREE.Mesh(towerGeometry, towerMaterial); tower.position.set(0, 400, 0); tower.castShadow = true; tower.receiveShadow = true; scene.add(tower); cityEnvironment.tower = tower; const sphereGeometry = new THREE.SphereGeometry(80, 32, 32); const sphereMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, emissive: 0x00ff00 }); const landmark1 = new THREE.Mesh(sphereGeometry, sphereMaterial); landmark1.position.set(-1500, 100, -1500); landmark1.castShadow = true; scene.add(landmark1); const landmark2 = new THREE.Mesh(sphereGeometry, sphereMaterial); landmark2.position.set(1500, 100, 1500); landmark2.castShadow = true; scene.add(landmark2); console.log('Created city landmarks'); }
-        function createPlane() { plane = new THREE.Group(); const fuselageGeometry = new THREE.CylinderGeometry(15, 12, 80, 32); const fuselageMaterial = new THREE.MeshPhongMaterial({ color: 0x1e90ff }); const fuselage = new THREE.Mesh(fuselageGeometry, fuselageMaterial); fuselage.castShadow = true; plane.add(fuselage); const cockpitGeometry = new THREE.SphereGeometry(10, 16, 16); const cockpitMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 }); const cockpit = new THREE.Mesh(cockpitGeometry, cockpitMaterial); cockpit.position.z = 35; cockpit.castShadow = true; plane.add(cockpit); const wingGeometry = new THREE.BoxGeometry(120, 8, 30); const wingMaterial = new THREE.MeshPhongMaterial({ color: 0x1e90ff }); const wing = new THREE.Mesh(wingGeometry, wingMaterial); wing.castShadow = true; plane.add(wing); const tailWingGeometry = new THREE.BoxGeometry(40, 8, 30); const tailWing = new THREE.Mesh(tailWingGeometry, wingMaterial); tailWing.position.z = -30; tailWing.castShadow = true; plane.add(tailWing); const stabilizerGeometry = new THREE.BoxGeometry(8, 40, 15); const stabilizer = new THREE.Mesh(stabilizerGeometry, wingMaterial); stabilizer.position.set(0, 20, -25); stabilizer.castShadow = true; plane.add(stabilizer); plane.position.set(0, 500, 1000); plane.scale.set(1, 1, 1); plane.velocity = new THREE.Vector3(0, 0, 0); plane.rotation.order = 'YXZ'; plane.pitch = 0; plane.roll = 0; plane.yaw = 0; plane.speed = 0; scene.add(plane); console.log('Plane created: ' + selectedPlane); }
-        function initControls() { controls = { pitchUp: false, pitchDown: false, rollLeft: false, rollRight: false, yawLeft: false, yawRight: false, speedUp: false, speedDown: false }; window.addEventListener('keydown', onKeyDown); window.addEventListener('keyup', onKeyUp); document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { returnToMenu(); } }); }
-        function onKeyDown(e) { const key = e.key.toUpperCase(); if (key === 'W' || e.code === 'ArrowUp') controls.pitchUp = true; if (key === 'S' || e.code === 'ArrowDown') controls.pitchDown = true; if (key === 'A' || e.code === 'ArrowLeft') controls.rollLeft = true; if (key === 'D' || e.code === 'ArrowRight') controls.rollRight = true; if (key === 'Q') controls.yawLeft = true; if (key === 'E') controls.yawRight = true; if (e.code === 'Space') controls.speedUp = true; if (e.code === 'ControlLeft') controls.speedDown = true; }
-        function onKeyUp(e) { const key = e.key.toUpperCase(); if (key === 'W' || e.code === 'ArrowUp') controls.pitchUp = false; if (key === 'S' || e.code === 'ArrowDown') controls.pitchDown = false; if (key === 'A' || e.code === 'ArrowLeft') controls.rollLeft = false; if (key === 'D' || e.code === 'ArrowRight') controls.rollRight = false; if (key === 'Q') controls.yawLeft = false; if (key === 'E') controls.yawRight = false; if (e.code === 'Space') controls.speedUp = false; if (e.code === 'ControlLeft') controls.speedDown = false; }
-        function updatePlanePhysics() { const specs = planeSpecs[selectedPlane]; const modifier = difficultyModifiers[selectedDifficulty]; if (controls.speedUp) { plane.speed = Math.min(plane.speed + specs.acceleration, specs.maxSpeed); } if (controls.speedDown) { plane.speed = Math.max(plane.speed - specs.acceleration * 0.5, 0); } plane.speed *= 0.99; const maxPitch = Math.PI / 3; if (controls.pitchUp) { plane.pitch = Math.min(plane.pitch + 0.05, maxPitch); } if (controls.pitchDown) { plane.pitch = Math.max(plane.pitch - 0.05, -maxPitch); } plane.pitch *= 0.95; const maxRoll = Math.PI / 2; if (controls.rollLeft) { plane.roll = Math.min(plane.roll + 0.05, maxRoll); } if (controls.rollRight) { plane.roll = Math.max(plane.roll - 0.05, -maxRoll); } plane.roll *= 0.95; if (controls.yawLeft) { plane.yaw += 0.03; } if (controls.yawRight) { plane.yaw -= 0.03; } plane.rotation.x = plane.pitch; plane.rotation.z = plane.roll; plane.rotation.y = plane.yaw; const forward = new THREE.Vector3(0, 0, -1); forward.applyQuaternion(plane.quaternion); const moveSpeed = plane.speed / 100; plane.velocity.copy(forward).multiplyScalar(moveSpeed); plane.velocity.y -= 9.81 * modifier.gravityScale * 0.016; plane.velocity.multiplyScalar(1 - (0.01 * modifier.dragScale)); plane.position.add(plane.velocity); if (plane.position.y > planeSpecs[selectedPlane].maxAltitude) { plane.position.y = planeSpecs[selectedPlane].maxAltitude; plane.velocity.y = 0; } if (plane.position.y < 50) { plane.position.y = 50; plane.velocity.y = 0; plane.speed *= 0.5; } const cameraDistance = 150 + plane.speed / 10; const cameraHeight = 80; const cameraOffsetZ = cameraDistance; const cameraOffset = new THREE.Vector3(0, cameraHeight, cameraOffsetZ); cameraOffset.applyQuaternion(plane.quaternion); camera.position.lerp(plane.position.clone().add(cameraOffset), 0.1); camera.lookAt(plane.position.clone().add(forward.multiplyScalar(200))); }
-        function updateHUD() { const altitude = Math.max(0, plane.position.y - 50); const speed = plane.speed; const heading = (plane.yaw * 180 / Math.PI) % 360; const fuel = Math.max(0, 100 - (gameStats.flightTime / 60)); document.getElementById('hudPlane').textContent = selectedPlane; document.getElementById('hudAltitude').textContent = Math.floor(altitude); document.getElementById('hudSpeed').textContent = Math.floor(speed); document.getElementById('hudHeading').textContent = Math.floor(heading); document.getElementById('hudFuel').textContent = Math.floor(fuel); gameStats.maxAltitude = Math.max(gameStats.maxAltitude, altitude); gameStats.maxSpeed = Math.max(gameStats.maxSpeed, speed); const distanceFromLast = plane.position.distanceTo(gameStats.lastPos); gameStats.distance += distanceFromLast / 1000000; gameStats.lastPos.copy(plane.position); document.getElementById('maxAltitude').textContent = Math.floor(gameStats.maxAltitude); document.getElementById('maxSpeed').textContent = Math.floor(gameStats.maxSpeed); document.getElementById('flightTime').textContent = Math.floor(gameStats.flightTime); document.getElementById('distance').textContent = Math.floor(gameStats.distance); }
-        function updateRadar() { const canvas = document.getElementById('radarCanvas'); const ctx = canvas.getContext('2d'); ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 5, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 4, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, 3, 0, Math.PI * 2); ctx.fill(); }
-        function initRadar() { const canvas = document.getElementById('radarCanvas'); canvas.width = 150; canvas.height = 150; updateRadar(); }
-        function showCityInfo(message) { const cityInfo = document.getElementById('cityInfo'); cityInfo.textContent = message; cityInfo.classList.add('show'); setTimeout(() => { cityInfo.classList.remove('show'); }, 3000); }
-        function onWindowResize() { if (!renderer) return; camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-        function animate() { requestAnimationFrame(animate); if (!gameRunning) return; updatePlanePhysics(); updateHUD(); updateRadar(); gameStats.flightTime++; renderer.render(scene, camera); }
-        selectPlane('F-16');
-        selectDifficulty('Easy');
-    </script>
+</div>
+    /*END SUPPORT*/
+    <div id="splash">
+        <h1>ASL <b>FLIGHT SIMULATOR</b></h1>
+        <p id="plane-chooser-title">CHOOSE YOUR PLANE</p>
+    
+        <div id="plane-model-container">
+            <button id="prev-plane" class="model-nav-button" onclick="changePlane(-1)">&#9664;</button> 
+            <button id="next-plane" class="model-nav-button" onclick="changePlane(1)">&#9658;</button> 
+        </div>
+        
+        <div id="plane-info-display">
+            <p class="plane-title" id="plane-name">Future Aircraft</p>
+            <div class="stats-grid">
+                <div>Mass: <span id="stat-mass" class="stat-value">0</span> KG</div>
+                <div>Max Thrust: <span id="stat-thrust" class="stat-value">0</span> kN</div>
+                <div>Lift Coeff: <span id="stat-lift" class="stat-value">0.0</span></div>
+                <div>Ground Clearance: <span id="stat-height" class="stat-value">0.0</span> m</div>
+            </div>
+        </div>
+
+        <div class="controls-grid">
+            <div><span class="key-box">SHIFT</span> Increase engine power/thrust.</div>
+            <div><span class="key-box">SPACE</span> Apply wheel brakes or air brakes.</div>
+            <div><span class="key-box">W / S</span> Pitch the nose up or down (elevator control).</div>
+            <div><span class="key-box">A / D</span> Roll the aircraft left or right using ailerons</div>
+            <div><span class="key-box">Q / E</span> Steer left or right using the rudder. </div>
+            <div><span class="key-box">V</span> Change camera view. </div>
+        </div>
+    
+        <div style="margin-top:20px; color:#c0e0f0; font-size:13px; opacity: 0.8;">
+            C'est mon jeu
+            <br> © 2025 Zhanyi Zhou (ASL) All rights reserved
+        </div>
+    
+        <button id="start-button" onclick="startGame()">INITIALIZE SYSTEMS</button>
+    </div>
+    
+    <div id="loading-screen">
+        <p>Loading Game Assets...</p>
+        <div id="loading-progress-bar">
+            <div id="loading-progress-fill"></div>
+        </div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px;">(0%)</p>
+    </div>
+
+    <div id="hud-layer">
+        <div class="hud-top-left">
+            <div class="instrument">
+                <span class="label">Airspeed</span>
+                <span class="value" id="hud-spd">0</span> <span class="unit">KTS</span>
+            </div>
+            <div class="instrument">
+                <span class="label">Altitude</span>
+                <span class="value" id="hud-alt">0</span> <span class="unit">FT</span>
+            </div>
+            <div class="instrument">
+                <span class="label">Heading</span>
+                <span class="value" id="hud-hdg">000</span> <span class="unit">DEG</span>
+            </div>
+            <div class="instrument" style="border-left-color: #ff9900;">
+                <span class="label" style="color:#ff9900">Vert Speed</span>
+                <span class="value" id="hud-vs">0</span> <span class="unit">FT/S</span>
+            </div>
+            <div class="instrument" style="border-left-color: #ffcc00;">
+                <span class="label" style="color:#ffcc00">Thrust</span>
+                <span class="value" id="hud-rpm">0</span> <span class="unit">%</span>
+            </div>
+        </div>
+    
+        <div id="quality-selector">
+            <span class="label">Graphics Quality</span>
+            <div class="button-group">
+                <button id="btn-sd" onclick="setQuality('SD')" class="active">SD (Smooth)</button>
+                <button id="btn-hd" onclick="setQuality('HD')">HD (High)</button>
+            </div>
+        </div>
+
+        <div id="throttle-wrapper">
+            <div id="throttle-fill"></div>
+        </div>
+        <div id="throttle-label">THRUST</div>
+        
+        <div id="center-warning">STALL WARNING</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+    /* ASL FLIGHT SIMULATOR - 核心物理与场景变量 */
+    let scene, camera, renderer, clock;
+    let aircraft, cityModel;
+    let isGameRunning = false;
+    let currentPlaneIndex = 0;
+
+    // 飞机物理状态 (初始高度提升至 50 以适配城市模型)
+    const physics = {
+        pos: new THREE.Vector3(0, 50, 0), 
+        vel: new THREE.Vector3(0, 0, 0),
+        quat: new THREE.Quaternion(),
+        angVel: new THREE.Vector3(0, 0, 0),
+        throttle: 0,
+        config: {
+            mass: 1200,
+            maxThrust: 22,
+            liftCoeff: 0.12,
+            dragCoeff: 0.02,
+            gravity: 9.81
+        }
+    };
+
+    const keys = {};
+    let cameraMode = 'chase'; 
+    let orbitAlpha = 0, orbitBeta = Math.PI / 3, orbitDistance = 15;
+
+    // 飞机配置表
+    const planes = [
+        { name: "Cessna 172", mass: 1100, thrust: 18, lift: 0.12, height: 1.2 },
+        { name: "Extra 330", mass: 800, thrust: 25, lift: 0.10, height: 1.0 },
+        { name: "A-10 Warthog", mass: 12000, thrust: 80, lift: 0.08, height: 3.5 }
+    ];
+
+    // --- 飞机预览场景变量 ---
+    let previewScene, previewCamera, previewRenderer, previewModel;
+
+    /* 1. 初始化飞机预览 (Splash Screen) */
+    function initPlanePreview() {
+        const container = document.getElementById('plane-model-container');
+        previewScene = new THREE.Scene();
+        previewCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        previewCamera.position.set(5, 3, 8);
+        previewCamera.lookAt(0, 0, 0);
+
+        previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        previewRenderer.setSize(container.clientWidth, container.clientHeight);
+        previewRenderer.setClearColor(0x000000, 0);
+        container.appendChild(previewRenderer.domElement);
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+        previewScene.add(ambient);
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        sun.position.set(5, 10, 5);
+        previewScene.add(sun);
+
+        loadPreviewModel();
+    }
+
+    function loadPreviewModel() {
+        if (previewModel) previewScene.remove(previewModel);
+        const p = planes[currentPlaneIndex];
+        const geo = new THREE.BoxGeometry(4, 0.8, 2);
+        const mat = new THREE.MeshPhongMaterial({ color: 0x00aaff });
+        previewModel = new THREE.Mesh(geo, mat);
+        previewScene.add(previewModel);
+    }
+
+    function updatePlanePreview() {
+        if (previewModel) {
+            previewModel.rotation.y += 0.01;
+            previewRenderer.render(previewScene, previewCamera);
+        }
+        if (!isGameRunning) requestAnimationFrame(updatePlanePreview);
+    }
+
+    /* 2. 主游戏初始化 */
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        clock = new THREE.Clock();
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        sunLight.position.set(500, 1000, 250);
+        sunLight.castShadow = true;
+        scene.add(sunLight);
+
+        // --- 核心集成：加载城市模型 ---
+        loadCity();
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'KeyV') {
+                cameraMode = (cameraMode === 'chase') ? 'cockpit' : 'chase';
+            }
+        });
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+        window.addEventListener('resize', onWindowResize);
+        
+        updatePlaneInfo();
+        initPlanePreview();
+        updatePlanePreview();
+    }
+
+    /* 3. 从 CS 代码移植的 loadCity 函数 */
+    function loadCity() {
+        const loader = new THREE.GLTFLoader();
+        const statusEl = document.getElementById('loading-status');
+        const fillEl = document.getElementById('loading-progress-fill');
+
+        loader.load('city.glb', function (gltf) {
+            cityModel = gltf.scene;
+            scene.add(cityModel);
+
+            cityModel.traverse(function (node) {
+                if (node.isMesh) {
+                    node.receiveShadow = true;
+                    node.castShadow = true;
+                }
+            });
+            console.log("City Map Loaded Successfully.");
+        }, 
+        (xhr) => {
+            if (xhr.lengthComputable) {
+                const percent = Math.floor((xhr.loaded / xhr.total) * 100);
+                if(statusEl) statusEl.innerText = `(${percent}%) Loading City Map...`;
+                if(fillEl) fillEl.style.width = percent + '%';
+            }
+        }, 
+        (err) => {
+            console.error("Error loading city.glb:", err);
+        });
+    }
+
+    function loadAircraft() {
+        const p = planes[currentPlaneIndex];
+        const group = new THREE.Group();
+        
+        const bodyGeo = new THREE.BoxGeometry(0.8, 0.8, 4);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        group.add(body);
+
+        const wingGeo = new THREE.BoxGeometry(5, 0.1, 1.2);
+        const wing = new THREE.Mesh(wingGeo, bodyMat);
+        wing.position.set(0, 0, 0);
+        group.add(wing);
+
+        const tailGeo = new THREE.BoxGeometry(1.5, 0.1, 0.8);
+        const tail = new THREE.Mesh(tailGeo, bodyMat);
+        tail.position.set(0, 0, 1.8);
+        group.add(tail);
+
+        const vTailGeo = new THREE.BoxGeometry(0.1, 0.8, 0.6);
+        const vTail = new THREE.Mesh(vTailGeo, bodyMat);
+        vTail.position.set(0, 0.4, 1.8);
+        group.add(vTail);
+
+        aircraft = group;
+        aircraft.castShadow = true;
+        scene.add(aircraft);
+        
+        physics.pos.y = 50; // 确保在城市上方
+    }
+
+    /* 4. 物理引擎 (完整保留原有逻辑) */
+    function updatePhysics(delta) {
+        if (!isGameRunning) return;
+
+        // 油门控制
+        if (keys['ShiftLeft']) physics.throttle = Math.min(physics.throttle + delta * 0.4, 1.0);
+        if (keys['Space']) physics.throttle = Math.max(physics.throttle - delta * 0.8, 0.0);
+
+        // 姿态控制
+        const rotImpulse = new THREE.Vector3(0, 0, 0);
+        const sensitivity = 1.2;
+        if (keys['KeyW']) rotImpulse.x = -sensitivity;
+        if (keys['KeyS']) rotImpulse.x = sensitivity;
+        if (keys['KeyA']) rotImpulse.z = sensitivity;
+        if (keys['KeyD']) rotImpulse.z = -sensitivity;
+        if (keys['KeyQ']) rotImpulse.y = sensitivity;
+        if (keys['KeyE']) rotImpulse.y = -sensitivity;
+
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rotImpulse.x * delta, rotImpulse.y * delta, rotImpulse.z * delta, 'YXZ'));
+        physics.quat.multiply(q);
+
+        // 动力学计算
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(physics.quat);
+        const thrust = forward.clone().multiplyScalar(physics.throttle * physics.config.maxThrust);
+        
+        const gravity = new THREE.Vector3(0, -physics.config.gravity, 0);
+        const speed = physics.vel.length();
+        const lift = new THREE.Vector3(0, speed * physics.config.liftCoeff * (1 + physics.throttle), 0).applyQuaternion(physics.quat);
+
+        const accel = new THREE.Vector3().add(thrust).add(gravity).add(lift);
+        physics.vel.add(accel.multiplyScalar(delta));
+        physics.vel.multiplyScalar(1.0 - (physics.config.dragCoeff * (speed * 0.1)));
+
+        physics.pos.add(physics.vel.clone().multiplyScalar(delta));
+
+        // 地面碰撞保护 (针对城市地形调整为 2.0)
+        if (physics.pos.y < 2.0) {
+            physics.pos.y = 2.0;
+            physics.vel.y = 0;
+            document.getElementById('center-warning').style.display = 'block';
+        } else {
+            document.getElementById('center-warning').style.display = 'none';
+        }
+
+        if (aircraft) {
+            aircraft.position.copy(physics.pos);
+            aircraft.quaternion.copy(physics.quat);
+        }
+    }
+
+    /* 5. 渲染循环与 UI 更新 */
+    function animate() {
+        requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+
+        updatePhysics(delta);
+        
+        if (aircraft) {
+            if (cameraMode === 'chase') {
+                const offset = new THREE.Vector3(0, 5, 15).applyQuaternion(physics.quat);
+                camera.position.lerp(physics.pos.clone().add(offset), 0.1);
+                camera.lookAt(physics.pos);
+            } else {
+                camera.position.copy(physics.pos);
+                camera.quaternion.copy(physics.quat);
+            }
+        }
+
+        updateHUD();
+        renderer.render(scene, camera);
+    }
+
+    function updateHUD() {
+        document.getElementById('hud-spd').innerText = Math.floor(physics.vel.length() * 1.94);
+        document.getElementById('hud-alt').innerText = Math.floor(physics.pos.y * 3.28);
+        document.getElementById('hud-rpm').innerText = Math.floor(physics.throttle * 100);
+        document.getElementById('throttle-fill').style.height = (physics.throttle * 100) + '%';
+        
+        const euler = new THREE.Euler().setFromQuaternion(physics.quat);
+        let hdg = Math.floor(THREE.MathUtils.radToDeg(-euler.y) % 360);
+        if (hdg < 0) hdg += 360;
+        document.getElementById('hud-hdg').innerText = hdg.toString().padStart(3, '0');
+        document.getElementById('hud-vs').innerText = Math.floor(physics.vel.y * 196);
+    }
+
+    function startGame() {
+        document.getElementById('splash').style.display = 'none';
+        document.getElementById('loading-screen').style.display = 'flex';
+        
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+            isGameRunning = true;
+            loadAircraft();
+        }, 2000);
+    }
+
+    function changePlane(dir) {
+        currentPlaneIndex = (currentPlaneIndex + dir + planes.length) % planes.length;
+        updatePlaneInfo();
+        loadPreviewModel();
+    }
+
+    function updatePlaneInfo() {
+        const p = planes[currentPlaneIndex];
+        document.getElementById('plane-name').innerText = p.name;
+        document.getElementById('stat-mass').innerText = p.mass;
+        document.getElementById('stat-thrust').innerText = p.thrust;
+        document.getElementById('stat-lift').innerText = p.lift;
+        document.getElementById('stat-height').innerText = p.height;
+        
+        physics.config.mass = p.mass;
+        physics.config.maxThrust = p.thrust;
+        physics.config.liftCoeff = p.lift;
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function closeNotice() {
+        document.getElementById('notice-modal').style.display = 'none';
+    }
+
+    function setQuality(q) {
+        if (q === 'low') renderer.setPixelRatio(0.5);
+        else if (q === 'med') renderer.setPixelRatio(1);
+        else renderer.setPixelRatio(window.devicePixelRatio);
+    }
+
+    // 执行启动
+    init();
+    animate();
+</script>
 </body>
 </html>
