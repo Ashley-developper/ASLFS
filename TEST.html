@@ -509,318 +509,1075 @@ button#start-button:active {
 
     <div id="canvas-container"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-<script>
-    /* ASL FLIGHT SIMULATOR - 核心物理与场景变量 */
-    let scene, camera, renderer, clock;
-    let aircraft, cityModel;
-    let isGameRunning = false;
-    let currentPlaneIndex = 0;
-
-    // 飞机物理状态 (初始高度提升至 50 以适配城市模型)
-    const physics = {
-        pos: new THREE.Vector3(0, 50, 0), 
-        vel: new THREE.Vector3(0, 0, 0),
-        quat: new THREE.Quaternion(),
-        angVel: new THREE.Vector3(0, 0, 0),
-        throttle: 0,
-        config: {
-            mass: 1200,
-            maxThrust: 22,
-            liftCoeff: 0.12,
-            dragCoeff: 0.02,
-            gravity: 9.81
-        }
-    };
-
-    const keys = {};
-    let cameraMode = 'chase'; 
-    let orbitAlpha = 0, orbitBeta = Math.PI / 3, orbitDistance = 15;
-
-    // 飞机配置表
-    const planes = [
-        { name: "Cessna 172", mass: 1100, thrust: 18, lift: 0.12, height: 1.2 },
-        { name: "Extra 330", mass: 800, thrust: 25, lift: 0.10, height: 1.0 },
-        { name: "A-10 Warthog", mass: 12000, thrust: 80, lift: 0.08, height: 3.5 }
-    ];
-
-    // --- 飞机预览场景变量 ---
-    let previewScene, previewCamera, previewRenderer, previewModel;
-
-    /* 1. 初始化飞机预览 (Splash Screen) */
-    function initPlanePreview() {
-        const container = document.getElementById('plane-model-container');
-        previewScene = new THREE.Scene();
-        previewCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-        previewCamera.position.set(5, 3, 8);
-        previewCamera.lookAt(0, 0, 0);
-
-        previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        previewRenderer.setSize(container.clientWidth, container.clientHeight);
-        previewRenderer.setClearColor(0x000000, 0);
-        container.appendChild(previewRenderer.domElement);
-
-        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-        previewScene.add(ambient);
-        const sun = new THREE.DirectionalLight(0xffffff, 1);
-        sun.position.set(5, 10, 5);
-        previewScene.add(sun);
-
-        loadPreviewModel();
-    }
-
-    function loadPreviewModel() {
-        if (previewModel) previewScene.remove(previewModel);
-        const p = planes[currentPlaneIndex];
-        const geo = new THREE.BoxGeometry(4, 0.8, 2);
-        const mat = new THREE.MeshPhongMaterial({ color: 0x00aaff });
-        previewModel = new THREE.Mesh(geo, mat);
-        previewScene.add(previewModel);
-    }
-
-    function updatePlanePreview() {
-        if (previewModel) {
-            previewModel.rotation.y += 0.01;
-            previewRenderer.render(previewScene, previewCamera);
-        }
-        if (!isGameRunning) requestAnimationFrame(updatePlanePreview);
-    }
-
-    /* 2. 主游戏初始化 */
-    function init() {
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script> 
+    
+    <script>
+        // --- 常量配置 (真实物理参数) ---
+        const CONFIG = {
+            runwayZ: 4000,       // 跑道起点Z坐标
+            runwayX: -2000,      // 跑道中心X坐标
+            
+            // 物理参数 - 默认使用 F-35 的参数，将在 changePlane 中被覆盖
+            mass: 18000,         
+            maxThrust: 420000,   
+            dragCoeff: 0.035,    
+            liftCoeff: 0.6,      
+            wingArea: 75,        
+            gravity: 9.81,       
+            
+            // 操控响应 (由于质量大，响应会变慢，模拟惯性)
+            rotDamping: 2.5,     
+            pitchSpeed: 1.2,
+            rollSpeed: 2.0,
+            yawSpeed: 0.8
+        };
         
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
-        
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        clock = new THREE.Clock();
-
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        sunLight.position.set(500, 1000, 250);
-        sunLight.castShadow = true;
-        scene.add(sunLight);
-
-        // --- 核心集成：加载城市模型 ---
-        loadCity();
-
-        window.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-            if (e.code === 'KeyV') {
-                cameraMode = (cameraMode === 'chase') ? 'cockpit' : 'chase';
+        // 优化：新增飞机统计数据，用于更新 UI 和物理参数
+        const PLANE_STATS = [
+            {
+                name: "BOEING 777ER COMMERCIAL",
+                mass: 18000, // KG
+                maxThrust: 420000, // N
+                liftCoeff: 0.6,
+                groundHeight: 2.8, // m
+                path: 'plane1.glb'
+            },
+            {
+                name: "F-35B GERMANY FIGHTER JET",
+                mass: 10000, // KG
+                maxThrust: 250000, // N
+                liftCoeff: 0.8,
+                groundHeight: 9.5, // m
+                path: 'plane2.glb'
             }
-        });
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-        window.addEventListener('resize', onWindowResize);
-        
-        updatePlaneInfo();
-        initPlanePreview();
-        updatePlanePreview();
-    }
+        ];
 
-    /* 3. 从 CS 代码移植的 loadCity 函数 */
-    function loadCity() {
-        const loader = new THREE.GLTFLoader();
-        const statusEl = document.getElementById('loading-status');
-        const fillEl = document.getElementById('loading-progress-fill');
 
-        loader.load('city.glb', function (gltf) {
-            cityModel = gltf.scene;
-            scene.add(cityModel);
+        // --- 帧率/物理优化常量 ---
+        const PHYSICS_STEP = 1/120; // 物理步长：120 Hz
+        let physicsTimeAccumulator = 0; // 物理时间累加器
 
-            cityModel.traverse(function (node) {
-                if (node.isMesh) {
-                    node.receiveShadow = true;
-                    node.castShadow = true;
-                }
-            });
-            console.log("City Map Loaded Successfully.");
-        }, 
-        (xhr) => {
-            if (xhr.lengthComputable) {
-                const percent = Math.floor((xhr.loaded / xhr.total) * 100);
-                if(statusEl) statusEl.innerText = `(${percent}%) Loading City Map...`;
-                if(fillEl) fillEl.style.width = percent + '%';
+        // --- 全局画质预设 ---
+        const QUALITY_PRESETS = {
+            SD: {
+                shadowMapSize: 2048,
+                pixelRatio: 1.0, 
+                shadowFar: 20000,
+                dirLightIntensity: 1.2,
+                hemiLightIntensity: 0.5
+            },
+            HD: {
+                shadowMapSize: 8192,
+                pixelRatio: window.devicePixelRatio, 
+                shadowFar: 40000,
+                dirLightIntensity: 1.8,
+                hemiLightIntensity: 0.7
             }
-        }, 
-        (err) => {
-            console.error("Error loading city.glb:", err);
-        });
-    }
+        };
 
-    function loadAircraft() {
-        const p = planes[currentPlaneIndex];
-        const group = new THREE.Group();
+        let currentQuality = 'SD'; // 默认设置为 SD
+
+        let splashScene, splashCamera, splashRenderer, splashClock;
+        let splashPlaneGroup;
+        let planeModels = [];
+        let currentPlaneIndex = 0;
+        const planeModelPaths = PLANE_STATS.map(stat => stat.path);
+
+        // --- 全局变量 ---
+        let scene, camera, renderer, clock;
+        let planeGroup; 
+        let propL, propR; 
+        let shadowPlane; 
         
-        const bodyGeo = new THREE.BoxGeometry(0.8, 0.8, 4);
-        const bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        group.add(body);
+        let input = { w:0, s:0, a:0, d:0, q:0, e:0, shift:0, space:0 };
+        let cameraMode = 0; // 0: Chase (尾随), 1: Cockpit (座舱), 2: Orbital (全景/塔台)
 
-        const wingGeo = new THREE.BoxGeometry(5, 0.1, 1.2);
-        const wing = new THREE.Mesh(wingGeo, bodyMat);
-        wing.position.set(0, 0, 0);
-        group.add(wing);
-
-        const tailGeo = new THREE.BoxGeometry(1.5, 0.1, 0.8);
-        const tail = new THREE.Mesh(tailGeo, bodyMat);
-        tail.position.set(0, 0, 1.8);
-        group.add(tail);
-
-        const vTailGeo = new THREE.BoxGeometry(0.1, 0.8, 0.6);
-        const vTail = new THREE.Mesh(vTailGeo, bodyMat);
-        vTail.position.set(0, 0.4, 1.8);
-        group.add(vTail);
-
-        aircraft = group;
-        aircraft.castShadow = true;
-        scene.add(aircraft);
+        // 鼠标控制变量
+        let isDragging = false;
+        let mouseX = 0, mouseY = 0;
+        let orbitAlpha = 0; // 水平旋转角度
+        let orbitBeta = 0.4; // 垂直旋转角度
+        const orbitDistance = 150; // 环绕半径
         
-        physics.pos.y = 50; // 确保在城市上方
-    }
+        // 🚀 FIX: 模型本地旋转偏移量 和 动态离地高度
+        let modelOffsetQuat = new THREE.Quaternion(); 
+        let dynamicGroundHeight = 2.8; 
 
-    /* 4. 物理引擎 (完整保留原有逻辑) */
-    function updatePhysics(delta) {
-        if (!isGameRunning) return;
+        // 物理状态对象
+        const physics = {
+            // 🚀 FIX: 初始位置使用动态高度
+            pos: new THREE.Vector3(CONFIG.runwayX, dynamicGroundHeight, CONFIG.runwayZ), 
+            vel: new THREE.Vector3(0, 0, 0),
+            acc: new THREE.Vector3(0, 0, 0),
+            quat: new THREE.Quaternion(),
+            rotVel: new THREE.Vector3(0, 0, 0), // 角速度
+            throttle: 0,
+            brake: false,
+            grounded: true,
+            crashed: false
+        };
 
-        // 油门控制
-        if (keys['ShiftLeft']) physics.throttle = Math.min(physics.throttle + delta * 0.4, 1.0);
-        if (keys['Space']) physics.throttle = Math.max(physics.throttle - delta * 0.8, 0.0);
-
-        // 姿态控制
-        const rotImpulse = new THREE.Vector3(0, 0, 0);
-        const sensitivity = 1.2;
-        if (keys['KeyW']) rotImpulse.x = -sensitivity;
-        if (keys['KeyS']) rotImpulse.x = sensitivity;
-        if (keys['KeyA']) rotImpulse.z = sensitivity;
-        if (keys['KeyD']) rotImpulse.z = -sensitivity;
-        if (keys['KeyQ']) rotImpulse.y = sensitivity;
-        if (keys['KeyE']) rotImpulse.y = -sensitivity;
-
-        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rotImpulse.x * delta, rotImpulse.y * delta, rotImpulse.z * delta, 'YXZ'));
-        physics.quat.multiply(q);
-
-        // 动力学计算
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(physics.quat);
-        const thrust = forward.clone().multiplyScalar(physics.throttle * physics.config.maxThrust);
+        // ⚠️ 新增 LoadingManager
+        let loadingManager;
         
-        const gravity = new THREE.Vector3(0, -physics.config.gravity, 0);
-        const speed = physics.vel.length();
-        const lift = new THREE.Vector3(0, speed * physics.config.liftCoeff * (1 + physics.throttle), 0).applyQuaternion(physics.quat);
+        function startGame() {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('loading-screen').style.display = 'flex'; // 显示加载屏幕
+            
+            // 确保创建正确的飞机模型
+            const selectedModelPath = PLANE_STATS[currentPlaneIndex].path;
+            
+            // 启动游戏前，将当前飞机的物理参数写入 CONFIG
+            const currentStats = PLANE_STATS[currentPlaneIndex];
+            CONFIG.mass = currentStats.mass;
+            CONFIG.maxThrust = currentStats.maxThrust;
+            CONFIG.liftCoeff = currentStats.liftCoeff;
+            dynamicGroundHeight = currentStats.groundHeight;
 
-        const accel = new THREE.Vector3().add(thrust).add(gravity).add(lift);
-        physics.vel.add(accel.multiplyScalar(delta));
-        physics.vel.multiplyScalar(1.0 - (physics.config.dragCoeff * (speed * 0.1)));
-
-        physics.pos.add(physics.vel.clone().multiplyScalar(delta));
-
-        // 地面碰撞保护 (针对城市地形调整为 2.0)
-        if (physics.pos.y < 2.0) {
-            physics.pos.y = 2.0;
-            physics.vel.y = 0;
-            document.getElementById('center-warning').style.display = 'block';
-        } else {
+            // 重置物理状态到新的高度
+            physics.pos.set(CONFIG.runwayX, dynamicGroundHeight, CONFIG.runwayZ);
+            physics.vel.set(0, 0, 0);
+            physics.quat.identity();
+            physics.rotVel.set(0, 0, 0);
+            physics.throttle = 0;
+            physics.grounded = true;
+            physics.crashed = false;
+            
+            // 确保 HUD 警告隐藏
             document.getElementById('center-warning').style.display = 'none';
+
+            init(selectedModelPath);
         }
-
-        if (aircraft) {
-            aircraft.position.copy(physics.pos);
-            aircraft.quaternion.copy(physics.quat);
-        }
-    }
-
-    /* 5. 渲染循环与 UI 更新 */
-    function animate() {
-        requestAnimationFrame(animate);
-        const delta = clock.getDelta();
-
-        updatePhysics(delta);
         
-        if (aircraft) {
-            if (cameraMode === 'chase') {
-                const offset = new THREE.Vector3(0, 5, 15).applyQuaternion(physics.quat);
-                camera.position.lerp(physics.pos.clone().add(offset), 0.1);
-                camera.lookAt(physics.pos);
-            } else {
-                camera.position.copy(physics.pos);
-                camera.quaternion.copy(physics.quat);
+        window.startGame = startGame; 
+        //END SUPPORT
+        function closeNotice() {
+    const modal = document.getElementById('notice-modal');
+    modal.style.transition = 'opacity 0.5s';
+    modal.style.opacity = '0';
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 500);
+}
+window.closeNotice = closeNotice; // 确保 HTML 可以调用
+        //END SUPPORT
+
+        let dirLight, hemiLight; // ⚠️ 声明为全局变量或文件级变量，以便 setQuality 访问
+        
+        // 🚀 FIX: 新增：根据当前飞机模型更新物理离地高度
+        function updatePlanePhysicsHeight(height) {
+            dynamicGroundHeight = height;
+            
+            // 确保物理位置立即更新到新的正确离地高度
+            if (physics.grounded) {
+                physics.pos.y = height;
+            }
+            // 确保初始位置也在新的高度上
+            if (physics.pos.y < height) {
+                physics.pos.y = height;
             }
         }
 
-        updateHUD();
-        renderer.render(scene, camera);
+        // 接受选中的飞机模型路径
+        function init(modelPath) {
+            clock = new THREE.Clock();
+            
+            // ⚠️ 初始化 LoadingManager
+            loadingManager = new THREE.LoadingManager();
+            loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
+                const percent = Math.floor(itemsLoaded / itemsTotal * 100);
+                document.getElementById('loading-progress-fill').style.width = percent + '%';
+                document.getElementById('loading-status').innerText = `(${percent}%) Loading: ${url.split('/').pop()}`;
+            };
+
+            loadingManager.onLoad = function() {
+                // 所有资产加载完毕后，隐藏加载屏幕，启动动画循环
+                console.log('All assets loaded. Starting game...');
+                document.getElementById('loading-screen').style.display = 'none';
+                animate();
+            };
+
+            // ... (渲染器设置) ...
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0; 
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); 
+            scene.fog = new THREE.Fog(0x87CEEB, 2000, 50000); 
+
+            // 相机
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.5, 300000);
+
+            // 环境光
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.7); 
+            scene.add(hemiLight);
+
+            // 太阳光
+            dirLight = new THREE.DirectionalLight(0xfff0dd, 1.8); 
+            dirLight.position.set(3000, 5000, 2000);
+            dirLight.castShadow = true;
+            
+            const d = 5000;
+            dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
+            
+            dirLight.shadow.bias = -0.0001;
+            scene.add(dirLight);
+            
+            setQuality('HD'); // 默认使用 HD
+
+            // 构建世界 (使用 LoadingManager 的 GLTFLoader)
+            createRealisticWorld();
+            createDetailedPlane(modelPath); // 使用传入的模型路径
+
+            // 监听
+            window.addEventListener('resize', onResize);
+            document.addEventListener('keydown', (e) => handleKey(e, 1));
+            document.addEventListener('keyup', (e) => handleKey(e, 0));
+            
+            // 鼠标监听器
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('wheel', onMouseWheel);
+        }
+        // --- 物理引擎核心 (使用固定步长迭代) ---
+        function updatePhysics(dt) {
+            
+            // 累加时间
+            physicsTimeAccumulator += dt;
+            
+            while (physicsTimeAccumulator >= PHYSICS_STEP) {
+                // 确保 dt 使用固定的物理步长
+                performPhysicsStep(PHYSICS_STEP);
+                physicsTimeAccumulator -= PHYSICS_STEP;
+            }
+        }
+
+        // --- 实际的物理计算函数 (已应用 dynamicGroundHeight 修复) ---
+function performPhysicsStep(dt) {
+     // 1. 输入处理
+    if (input.shift) physics.throttle = Math.min(1.0, physics.throttle + dt * 0.4);
+    if (input.space) physics.throttle = Math.max(0.0, physics.throttle - dt * 1.5);
+    
+    // 2. 基础矢量获取
+    const pos = physics.pos;
+    const vel = physics.vel;
+    const rot = physics.quat;
+    
+    let speed = vel.length();
+
+    // 机身坐标系方向
+    const vForward = new THREE.Vector3(0, 0, -1).applyQuaternion(rot).normalize();
+    const vUp = new THREE.Vector3(0, 1, 0).applyQuaternion(rot).normalize();
+    
+    // 3. 速度和迎角计算
+    physics.grounded = (pos.y <= dynamicGroundHeight + 0.1); 
+
+    // 计算前向空速 (投影到机头方向的速度)
+    const forwardSpeed = vel.dot(vForward); 
+    
+    // 计算迎角（Angle of Attack, AoA）
+    const velDir = vel.clone().normalize();
+    let aoa = Math.acos(vForward.dot(velDir));
+    
+    if (velDir.dot(vUp) > 0) { 
+        aoa = -aoa;
+    }
+    
+    aoa = THREE.MathUtils.clamp(aoa, -0.26, 0.26); 
+    
+    let liftFactor = aoa * 3.0; 
+    liftFactor = Math.max(liftFactor, 0.1); 
+
+    // VR 速度阈值：140 KTS (约 72 m/s)
+    const V_R_SPEED = 72; 
+
+    // --- 核心修复：消除漂移 (气动稳定性) ---
+    if (!physics.grounded && speed > 1.0) {
+        const targetVel = vForward.clone().multiplyScalar(speed);
+        const stability = Math.min(speed / 300, 1.0) * 0.15;
+        vel.lerp(targetVel, stability);
     }
 
-    function updateHUD() {
-        document.getElementById('hud-spd').innerText = Math.floor(physics.vel.length() * 1.94);
-        document.getElementById('hud-alt').innerText = Math.floor(physics.pos.y * 3.28);
-        document.getElementById('hud-rpm').innerText = Math.floor(physics.throttle * 100);
-        document.getElementById('throttle-fill').style.height = (physics.throttle * 100) + '%';
+    // --- 力学累加 ---
+    const force = new THREE.Vector3(0, 0, 0);
+    const airDensity = 1.225;
+
+    // A. 重力
+    force.add(new THREE.Vector3(0, -CONFIG.gravity * CONFIG.mass, 0));
+
+    // B. 推力
+    const thrust = vForward.clone().multiplyScalar(physics.throttle * CONFIG.maxThrust);
+    force.add(thrust);
+
+    // C. 升力 (Lift) - 垂直于机翼
+    const speedSq = forwardSpeed * forwardSpeed;
+    let liftForce = 0;
+    if (forwardSpeed > 0) {
+        liftForce = 0.5 * airDensity * speedSq * CONFIG.liftCoeff * CONFIG.wingArea * liftFactor;
+    }
+    
+    const liftVec = vUp.clone().multiplyScalar(liftForce);
+    force.add(liftVec);
+
+
+    // D. 阻力 (Drag)
+    const dragMag = 0.5 * airDensity * (speed * speed) * CONFIG.dragCoeff * CONFIG.wingArea;
+    if (speed > 0) {
+        const dragDir = vel.clone().normalize().negate();
+        const brakeDrag = input.space ? 5.0 : 1.0; 
+        force.add(dragDir.multiplyScalar(dragMag * brakeDrag));
+    }
+
+    // 地面接触反作用力
+    const groundDelta = pos.y - dynamicGroundHeight; 
+    if (groundDelta <= 0.1) { 
+        const springForce = CONFIG.mass * CONFIG.gravity * 3.0 * (0.1 - groundDelta); 
+        const dampForce = -vel.y * CONFIG.mass * 0.5; 
         
-        const euler = new THREE.Euler().setFromQuaternion(physics.quat);
-        let hdg = Math.floor(THREE.MathUtils.radToDeg(-euler.y) % 360);
-        if (hdg < 0) hdg += 360;
-        document.getElementById('hud-hdg').innerText = hdg.toString().padStart(3, '0');
-        document.getElementById('hud-vs').innerText = Math.floor(physics.vel.y * 196);
-    }
+        const reactionForce = new THREE.Vector3(0, springForce + dampForce, 0);
+        force.add(reactionForce);
 
-    function startGame() {
-        document.getElementById('splash').style.display = 'none';
-        document.getElementById('loading-screen').style.display = 'flex';
+        // 地面摩擦
+        const friction = vel.clone().multiplyScalar(-2000);
+        friction.y = 0; // 只影响水平速度
+        force.add(friction);
         
-        setTimeout(() => {
-            document.getElementById('loading-screen').style.display = 'none';
-            isGameRunning = true;
-            loadAircraft();
-        }, 2000);
+        // 确保不穿透地面
+        if (pos.y < dynamicGroundHeight) { 
+            pos.y = dynamicGroundHeight;
+        }
     }
 
-    function changePlane(dir) {
-        currentPlaneIndex = (currentPlaneIndex + dir + planes.length) % planes.length;
-        updatePlaneInfo();
-        loadPreviewModel();
-    }
 
-    function updatePlaneInfo() {
-        const p = planes[currentPlaneIndex];
-        document.getElementById('plane-name').innerText = p.name;
-        document.getElementById('stat-mass').innerText = p.mass;
-        document.getElementById('stat-thrust').innerText = p.thrust;
-        document.getElementById('stat-lift').innerText = p.lift;
-        document.getElementById('stat-height').innerText = p.height;
+    // --- 积分计算 (F=ma) ---
+    physics.acc.copy(force.divideScalar(CONFIG.mass));
+    physics.vel.add(physics.acc.clone().multiplyScalar(dt));
+    physics.pos.add(physics.vel.clone().multiplyScalar(dt));
+    
+    // ⭐ 新增逻辑：飞机在地面且速度 < 50 knots 时禁用wsadqe
+    const V_50_KTS_MPS = 25.7; // 50 节 ≈ 25.7 m/s
+
+    if (physics.grounded && speed < V_50_KTS_MPS) {
+        // 禁用俯仰、滚转和偏航输入
+        input.w = 0;
+        input.s = 0;
+        input.a = 0;
+        input.d = 0;
+        input.q = 0;
+        input.e = 0;
+    }
+    // ⭐ 新增逻辑结束
+
+    // --- 旋转控制 ---
+    const aeroFactor = Math.min(Math.max((forwardSpeed / 100), 0.5), 1.0); 
+
+    let targetRoll = (input.a - input.d) * CONFIG.rollSpeed * aeroFactor;
+    let targetYaw = (input.q - input.e) * CONFIG.yawSpeed * aeroFactor;
+
+    if (physics.grounded && forwardSpeed < V_R_SPEED) {
+        // 如果低于 VR 速度，仍然允许鼻轮转向，但禁用滚转
+        targetRoll = 0; 
+        // 注意：因为上面已经将 input.q/e 置零，所以这行代码如果速度低于 50kts 也不会生效
+        targetYaw = (input.q - input.e) * 0.5; 
+    } else if (physics.grounded) {
+        // 如果高于 VR 速度，混合转向，但仍禁用滚转
+        targetRoll = 0; 
+        targetYaw = (input.q - input.e + (input.a - input.d) * 0.5); 
+    }
+    
+
+    const targetRot = new THREE.Vector3(
+        (input.s - input.w) * CONFIG.pitchSpeed * aeroFactor, 
+        targetYaw,   
+        targetRoll   
+    );
+
+    physics.rotVel.lerp(targetRot, dt * CONFIG.rotDamping);
+
+    const deltaRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        physics.rotVel.x * dt,
+        physics.rotVel.y * dt,
+        physics.rotVel.z * dt,
+        'XYZ'
+    ));
+    physics.quat.multiply(deltaRot).normalize();
+
+
+    // --- UI 逻辑 & 坠毁判定 ---
+    const centerWarn = document.getElementById('center-warning');
+    const speedKnots = Math.floor(speed * 1.94); 
+
+    const inRunwayArea = (pos.x > CONFIG.runwayX - 1000 && pos.x < CONFIG.runwayX + 1000 && pos.y < dynamicGroundHeight + 1.0); 
+    
+    if (physics.crashed) {
+        // 如果已经坠毁，保持警告状态
+    }
+    else if (physics.grounded && speedKnots > 20 && !inRunwayArea) {
+        centerWarn.style.display = 'block';
+        centerWarn.innerText = "CRASH: OFF-RUNWAY LANDING";
         
-        physics.config.mass = p.mass;
-        physics.config.maxThrust = p.thrust;
-        physics.config.liftCoeff = p.lift;
+        physics.vel.set(0, 0, 0);
+        physics.throttle = 0;
+        physics.crashed = true;
+    } 
+    else if (!physics.grounded && speedKnots < 135 && speedKnots > 20) {
+        centerWarn.style.display = 'block';
+        centerWarn.innerText = `STALL WARNING (V=${speedKnots} KTS)`;
+        
+    } else {
+        centerWarn.style.display = 'none';
     }
+}
 
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+        function initSplashModel() {
+            splashClock = new THREE.Clock();
 
-    function closeNotice() {
-        document.getElementById('notice-modal').style.display = 'none';
-    }
+            // 1. 设置渲染器
+            splashRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            splashRenderer.setPixelRatio(window.devicePixelRatio);
+            const container = document.getElementById('plane-model-container');
+            splashRenderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(splashRenderer.domElement);
+            
+            // 2. 场景和相机
+            splashScene = new THREE.Scene();
+            splashCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1, 1000);
+            splashCamera.position.set(0, 10, 50); 
+            splashCamera.lookAt(0, 0, 0);
 
-    function setQuality(q) {
-        if (q === 'low') renderer.setPixelRatio(0.5);
-        else if (q === 'med') renderer.setPixelRatio(1);
-        else renderer.setPixelRatio(window.devicePixelRatio);
-    }
+            // 3. 光照
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // 环境光
+            splashScene.add(ambientLight);
 
-    // 执行启动
-    init();
-    animate();
-</script>
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2.0); // 方向光
+            dirLight.position.set(50, 50, 50);
+            splashScene.add(dirLight);
+
+            // 4. 加载所有模型
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/draco/');
+            loader.setDRACOLoader(dracoLoader);
+            
+            // 异步加载所有飞机模型
+            planeModelPaths.forEach((path, index) => {
+                loader.load(
+                    path,
+                    (gltf) => {
+                        const model = gltf.scene;
+                        
+                        // 🚀 FIX: 根据 index 控制初始方向和大小
+                        if (index === 1) {
+                            // 第二个飞机模型 (plane2.glb)
+                            model.scale.set(0.3, 0.3, 0.3);       // 设置大小为 100%
+                            model.rotation.set(0, Math.PI * 0.75, 0); // 设置初始方向为 Y 轴旋转 135 度 
+                        } else {
+                            // 第一个飞机模型 (plane1.glb) 
+                            model.scale.set(0.8, 0.8, 0.8); 
+                            model.rotation.set(0, Math.PI / 2, 0); 
+                        }
+                        
+                        model.visible = (index === currentPlaneIndex); 
+                        splashScene.add(model);
+                        planeModels.push(model);
+                        console.log(`Plane model ${path} loaded.`);
+                        
+                        // 确保加载完后初始化 UI
+                        if(planeModels.length === planeModelPaths.length) {
+                             changePlane(0);
+                        }
+                    },
+                    undefined,
+                    (error) => {
+                        console.error(`Error loading plane model ${path}:`, error);
+                        const box = new THREE.Mesh(
+                            new THREE.BoxGeometry(10, 10, 30),
+                            new THREE.MeshStandardMaterial({ color: 0xaaaaaa })
+                        );
+                        box.visible = (index === currentPlaneIndex);
+                        splashScene.add(box);
+                        planeModels.push(box);
+                    }
+                );
+            });
+            
+            // 开始模型动画循环
+            animateSplashModel();
+            window.addEventListener('resize', onSplashResize);
+        }
+
+        // 启动界面的动画循环
+        function animateSplashModel() {
+            requestAnimationFrame(animateSplashModel);
+            
+            const dt = splashClock.getDelta();
+
+            // 旋转当前模型
+            if (planeModels.length > 0 && planeModels[currentPlaneIndex]) {
+                planeModels[currentPlaneIndex].rotation.y += 0.2 * dt; // 慢速旋转
+            }
+            
+            splashRenderer.render(splashScene, splashCamera);
+        }
+
+        // 切换飞机模型 (已更新 UI 逻辑)
+        function changePlane(direction) {
+            if (planeModels.length === 0) return;
+            
+            // 隐藏当前模型
+            if (planeModels[currentPlaneIndex]) {
+                 planeModels[currentPlaneIndex].visible = false;
+            }
+
+            // 计算新的索引
+            currentPlaneIndex = (currentPlaneIndex + direction + planeModels.length) % planeModels.length;
+
+            // 显示新模型
+            if (planeModels[currentPlaneIndex]) {
+                 planeModels[currentPlaneIndex].visible = true;
+            }
+            
+            // ⭐ UI/UX 优化：更新参数显示区
+            const currentStats = PLANE_STATS[currentPlaneIndex];
+            document.getElementById('plane-name').innerText = currentStats.name;
+            document.getElementById('stat-mass').innerText = currentStats.mass.toLocaleString();
+            // 转换为 kN 显示
+            document.getElementById('stat-thrust').innerText = (currentStats.maxThrust / 1000).toLocaleString(); 
+            document.getElementById('stat-lift').innerText = currentStats.liftCoeff;
+            document.getElementById('stat-height').innerText = currentStats.groundHeight;
+
+
+            console.log(`Switched to Plane Index: ${currentPlaneIndex}`);
+        }
+        window.changePlane = changePlane; // 暴露给 HTML 的 onclick
+
+        // 启动界面窗口大小调整
+        function onSplashResize() {
+            const container = document.getElementById('plane-model-container');
+            splashCamera.aspect = container.clientWidth / container.clientHeight;
+            splashCamera.updateProjectionMatrix();
+            splashRenderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // ⚠️ 重要：在页面加载时调用初始化函数
+        document.addEventListener('DOMContentLoaded', initSplashModel);
+
+        // ⚠️ 也要更新主游戏的 onResize 函数，以避免冲突
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // 确保在主游戏启动后，不再影响 splash 渲染器
+            if (document.getElementById('splash').style.display !== 'none') {
+                onSplashResize();
+            }
+        }
+        // --- 核心画质控制函数 (修订版) ---
+        function setQuality(quality) {
+            // ⚠️ 确保在游戏启动前调用时 dirLight 和 hemiLight 已经初始化
+            if (!dirLight || !hemiLight) {
+                // 如果在 init 之前调用，则只更新 UI 样式和 currentQuality
+                currentQuality = quality;
+                const sdBtn = document.getElementById('btn-sd');
+                const hdBtn = document.getElementById('btn-hd');
+                if (sdBtn && hdBtn) {
+                    sdBtn.classList.remove('active');
+                    hdBtn.classList.remove('active');
+                    document.getElementById(`btn-${quality.toLowerCase()}`).classList.add('active');
+                }
+                return; 
+            }
+            
+            if (currentQuality === quality) return; 
+
+            currentQuality = quality;
+            const settings = QUALITY_PRESETS[quality];
+
+            // 1. 更新渲染器设置
+            renderer.setPixelRatio(settings.pixelRatio);
+            renderer.shadowMap.needsUpdate = true; // 触发阴影贴图更新
+
+            // 2. 更新光照参数
+            // **修正点**：直接使用全局的 dirLight 和 hemiLight
+            dirLight.shadow.mapSize.width = settings.shadowMapSize; 
+            dirLight.shadow.mapSize.height = settings.shadowMapSize; 
+            dirLight.intensity = settings.dirLightIntensity;
+            dirLight.shadow.camera.far = settings.shadowFar;
+            dirLight.shadow.camera.updateProjectionMatrix();
+
+            hemiLight.intensity = settings.hemiLightIntensity;
+
+            // 3. 更新 UI 按钮样式
+            document.getElementById('btn-sd').classList.remove('active');
+            document.getElementById('btn-hd').classList.remove('active');
+            document.getElementById(`btn-${quality.toLowerCase()}`).classList.add('active');
+            
+            console.log(`Quality set to: ${quality}`);
+        }
+        window.setQuality = setQuality; // 暴露给 HTML 的 onclick
+
+        // --- 视觉构建：写实风格 (未修改) ---
+        function createRealisticWorld() {
+            const simplex = new SimplexNoise();
+            const size = 60000;
+            const segs = 128; 
+            const geo = new THREE.PlaneGeometry(size, size, segs, segs);
+            const pos = geo.attributes.position;
+            const colors = [];
+
+            const cConcrete = new THREE.Color(0x606060); 
+            const cGrass = new THREE.Color(0x3a5f0b);    
+            const cDirt = new THREE.Color(0x5a4d3b);
+            
+            // 定义跑道/机场中心和城市核心的大致位置
+            const airportCenterX = CONFIG.runwayX; // 机场X坐标
+            const airportCenterZ = CONFIG.runwayZ - 4000; // 机场Z坐标附近
+            
+            // 限制山脉的最小距离：10 km = 10000 单位
+            const MIN_MOUNTAIN_DISTANCE = 10000; 
+            
+            // 城市中心的估算位置
+            const cityBlockSize = 8000; 
+            const cityGridSize = 3; 
+            const cityStartPosX = -cityBlockSize * Math.floor(cityGridSize / 2);
+            const cityStartPosZ = -cityBlockSize * Math.floor(cityGridSize / 2);
+            const cityCenterX = cityStartPosX + cityBlockSize * cityGridSize / 2;
+            const cityCenterZ = cityStartPosZ + cityBlockSize * cityGridSize / 2;
+            
+            // 平坦区域的半径
+            const flatRadius = 10000; 
+
+            for(let i=0; i<pos.count; i++){
+                let x = pos.getX(i);
+                let y = pos.getY(i); 
+                
+                let h = 0;
+                let col = cGrass.clone(); // 使用 clone 避免修改常量颜色
+
+                // 距离机场中心的水平距离
+                const distToAirport = Math.sqrt(Math.pow(x - airportCenterX, 2) + Math.pow(y - airportCenterZ, 2));
+                
+                // 距离城市中心的水平距离
+                const distToCity = Math.sqrt(Math.pow(x - cityCenterX, 2) + Math.pow(y - cityCenterZ, 2));
+                
+                // 取两者中较小的距离作为限制距离
+                const distToSafeZone = Math.min(distToAirport, distToCity);
+
+                // 跑道区域
+                const inRunway = (Math.abs(x - CONFIG.runwayX) < 1000 && Math.abs(y - CONFIG.runwayZ) < 500); 
+                const inAirportGrass = (Math.abs(x - CONFIG.runwayX) < 3000 && Math.abs(y - CONFIG.runwayZ) < 6000); 
+
+                if (inRunway) {
+                    h = 0;
+                    col = cConcrete; 
+                } else if (inAirportGrass) {
+                    h = 0;
+                    col = new THREE.Color(0x4a6f1b); // 深色草地
+                } else if (distToSafeZone < MIN_MOUNTAIN_DISTANCE) {
+                    // 平滑过渡到山脉
+                    if (distToSafeZone > MIN_MOUNTAIN_DISTANCE - 4000) {
+                        const transitionFactor = (distToSafeZone - (MIN_MOUNTAIN_DISTANCE - 4000)) / 4000;
+                        let n = simplex.noise2D(x*0.0001, y*0.0001);
+                        h = Math.max(0, n * 2500 * transitionFactor);
+                        if (h > 500) col = cDirt; else col = cGrass;
+                    } else {
+                        // 平坦区域的轻微起伏
+                        if ((Math.sin(x*0.01) * Math.cos(y*0.01)) > 0) col = new THREE.Color(0x355515);
+                    }
+                } else {
+                    // 超过安全区域，正常生成山脉
+                    let n = simplex.noise2D(x*0.0001, y*0.0001);
+                    h = Math.max(0, n * 2500); 
+                    if (h > 500) col = cDirt;
+                    else col = cGrass;
+                }
+
+                // ⚠️ 此处 pos.setZ(i, h) 在 three.js 中是设置 Y 轴高度
+                pos.setZ(i, h); 
+                colors.push(col.r, col.g, col.b);
+            }
+            
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geo.computeVertexNormals();
+            
+            const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ 
+                vertexColors: true, 
+                roughness: 0.9, 
+                metalness: 0.05 
+            }));
+            terrain.rotation.x = -Math.PI/2;
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+
+            // 🚀 2. 加载机场跑道 (Runway) GLTF 模型
+            // ⚠️ 使用 LoadingManager
+            const runwayLoader = new THREE.GLTFLoader(loadingManager);
+            
+            const dracoLoaderRunway = new THREE.DRACOLoader(loadingManager);
+            dracoLoaderRunway.setDecoderPath( 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/' ); 
+            runwayLoader.setDRACOLoader( dracoLoaderRunway );
+
+            runwayLoader.load(
+                'runway.glb', 
+                function (gltf) {
+                    const loadedRunway = gltf.scene;
+
+                    loadedRunway.scale.set(0.1, 0.12, 0.1); 
+                    loadedRunway.position.set(-760, 1, 3800); 
+
+                    loadedRunway.traverse(c => {
+                        if (c.isMesh) {
+                            c.castShadow = true;
+                            c.receiveShadow = true;
+                        }
+                    });
+                    scene.add(loadedRunway);
+                    console.log('Runway model runway.gltf loaded successfully!');
+                },
+                undefined, // 不再需要 onProgress，交给 LoadingManager
+                function (error) {
+                    console.error('An error occurred while loading the runway model (runway.gltf):', error);
+                }
+            );
+
+            // 3. 城市生成
+            createCityModel();
+        }
+
+        // --- 城市 GLB 模型重复放置函数 (未修改) ---
+        function createCityModel() {
+            // ⚠️ 使用 LoadingManager
+            const cityLoader = new THREE.GLTFLoader(loadingManager);
+            
+            const cityBlockSize = 8000; 
+            const cityGridSize = 3; 
+
+            cityLoader.load('city1.glb', function(gltf) {
+
+                const cityBlock = gltf.scene;
+
+                // 统一设置 cityBlock 的几何体缩放（如果需要在模型内部处理）
+                cityBlock.traverse(o => {
+                    if (o.isMesh) {
+                        o.castShadow = true;
+                        o.receiveShadow = true;
+                        // 移除内部的 scale 设置，让外部统一控制
+                        // o.scale.set(3,3,3); 
+                    }
+                });
+
+                const cityGroup = new THREE.Group();
+
+                const startX = -cityBlockSize * Math.floor(cityGridSize / 2);
+                const startZ = -cityBlockSize * Math.floor(cityGridSize / 2);
+
+                for (let x = 0; x < cityGridSize; x++) {
+                    for (let z = 0; z < cityGridSize; z++) {
+
+                        const instance = cityBlock.clone();
+
+                        // 统一在实例上设置缩放，并应用位移
+                        instance.scale.set(20, 20, 20); 
+                        instance.position.set(
+                            startX + x * cityBlockSize,
+                            0, // 确保高度为 0
+                            startZ + z * cityBlockSize
+                        );
+
+                        cityGroup.add(instance);
+                    }
+                }
+
+                scene.add(cityGroup);
+            });
+        }
+
+
+        // --- 飞机细节模型 (已应用高度、旋转和摄像机修复) ---
+
+        // 🚀 修改为接受路径参数
+        function createDetailedPlane(modelPath) {
+            // 1. 如果旧飞机模型存在，先从场景中移除并清理
+            if (planeGroup) {
+                scene.remove(planeGroup);
+            }
+            
+            // 2. 初始化 GLTFLoader
+            const loader = new THREE.GLTFLoader(loadingManager);
+            
+            // *** 关键修复：设置 DRACOLoader ***
+            const dracoLoaderPlane = new THREE.DRACOLoader(loadingManager);
+            dracoLoaderPlane.setDecoderPath( 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/' ); 
+            loader.setDRACOLoader( dracoLoaderPlane );
+            // **********************************
+            
+            // 3. 加载选中的 .glb 模型
+            loader.load(
+                modelPath,
+                function (gltf) {
+                    planeGroup = gltf.scene; 
+                    
+                    // 🚀 FIX: 重置模型偏移四元数
+                    modelOffsetQuat.identity();
+
+                    // 核心修复：在游戏内控制第二个飞机的 大小 和 方向
+                    let scaleFactor = 1.0;
+                    let rotationOffsetY = 0; // 局部 Y 轴旋转偏移量 (弧度制)
+                    
+                    // 从 PLANE_STATS 获取当前飞机的参数
+                    const currentStats = PLANE_STATS[currentPlaneIndex];
+                    let requiredGroundHeight = currentStats.groundHeight; 
+
+                    if (modelPath === 'plane2.glb') {
+                        // ****** 设置第二个飞机在游戏中的参数 ******
+                        scaleFactor = 0.35;          
+                        rotationOffsetY = Math.PI * 1.5; // 270 度旋转修正：跑道对齐 + 摄像头对齐
+                    } else {
+                        // 第一个飞机 (plane1.glb)
+                        scaleFactor = 0.8; 
+                        rotationOffsetY = 0;
+                    }
+                    
+                    // 应用大小
+                    planeGroup.scale.set(scaleFactor, scaleFactor, scaleFactor); 
+                    
+                    // 🚀 调用新函数，更新当前飞机的物理高度
+                    updatePlanePhysicsHeight(requiredGroundHeight); 
+                    
+                    // ⚠️ 最终保险：强制重置物理位置Y轴到新的高度，防止初始化错误
+                    physics.pos.y = requiredGroundHeight;
+                    
+                    // 🚀 将旋转偏移存入 modelOffsetQuat
+                    if (rotationOffsetY !== 0) {
+                        modelOffsetQuat.setFromAxisAngle(
+                            new THREE.Vector3(0, 1, 0), // 沿 Y 轴旋转
+                            rotationOffsetY
+                        );
+                    }
+                    // *************************************************
+                    
+                    planeGroup.castShadow = true;
+                    planeGroup.traverse(c => { 
+                        if (c.isMesh) { 
+                            c.castShadow = true; 
+                            c.receiveShadow = true; 
+                        }
+                    });
+
+                    // 保持飞机在跑道起点
+                    // 此时 physics.pos.y 已经是最新的 requiredGroundHeight
+                    planeGroup.position.copy(physics.pos);
+                    planeGroup.quaternion.copy(physics.quat);
+                    
+                    scene.add(planeGroup);
+                    console.log(`Plane model ${modelPath} loaded successfully!`);
+                    
+                    // 影子跟随飞机添加到场景中
+                    if (shadowPlane) {
+                        scene.add(shadowPlane);
+                    }
+                },
+                undefined, 
+                function (error) {
+                    console.error(`An error occurred while loading the plane model (${modelPath}):`, error);
+                }
+            );
+            
+            // 影子平面只需创建一次...
+            if (!shadowPlane) {
+                shadowPlane = new THREE.Mesh(
+                    new THREE.CircleGeometry(15, 32), 
+                    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })
+                );
+                shadowPlane.rotation.x = -Math.PI / 2;
+                shadowPlane.position.y = 0.05; 
+            }
+        }
+        
+        // **修改**：V 键切换相机模式 (新增 Orbit 模式)
+        function changeCamera() {
+            cameraMode = (cameraMode + 1) % 3; // 0: Chase, 1: Cockpit, 2: Orbital 循环
+        }
+
+        function handleKey(e, val) {
+            let k = e.key.toLowerCase();
+            if (k === " ") k = "space";
+            if (k === "v" && val === 1) changeCamera();
+            if (input.hasOwnProperty(k)) input[k] = val;
+        }
+        
+        // **新增**：鼠标事件处理函数 (未修改)
+        function onMouseDown(event) {
+            if (cameraMode === 2) {
+                isDragging = true;
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            }
+        }
+
+        function onMouseMove(event) {
+            if (isDragging && cameraMode === 2) {
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+
+                orbitAlpha -= deltaX * 0.005; // 水平旋转
+                orbitBeta += deltaY * 0.005;  // 垂直旋转
+
+                // 限制垂直旋转范围，防止视角翻转
+                orbitBeta = THREE.MathUtils.clamp(orbitBeta, 0.1, Math.PI - 0.1); 
+
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+        }
+        
+        function onMouseWheel(event) {
+            if (cameraMode === 2) {
+                const zoomFactor = event.deltaY * 0.01; 
+                // ⚠️ 滚轮缩放功能（当前禁用）
+            }
+        }
+
+
+        function onResize() {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 动画循环 (已应用旋转、摄像机和 UI 修复) ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta(); // 获取实际的渲染时间差
+
+            // 1. **物理更新**：使用固定步长迭代，保证物理计算的精确性和独立于帧率
+            updatePhysics(dt); 
+
+            // 2. **渲染/视觉更新**
+            if (planeGroup) {
+                // 物理同步
+                planeGroup.position.copy(physics.pos);
+                
+                // 180度修正 (固定修正)
+                const correctionQuat = new THREE.Quaternion().setFromAxisAngle(
+                    new THREE.Vector3(0, 1, 0), 
+                    Math.PI
+                );
+                
+                // 🚀 FIX: 核心旋转：结合物理姿态 + 180度修正 + 模型的本地偏移
+                planeGroup.quaternion
+                    .copy(physics.quat)
+                    .multiply(correctionQuat)
+                    .multiply(modelOffsetQuat); 
+                
+                // ----------------------------------------------------
+                // 🚀 FIX: 摄像机偏移修正
+                
+                // 1. 定义标准偏移向量 (基于模型本地的 -Z 为前方)
+                const chaseOffset = new THREE.Vector3(0, 15, -80); 
+                const cockpitOffset = new THREE.Vector3(0, 6, 39);
+                
+                // 2. 如果存在模型偏移 (plane2被选中)
+                if (!modelOffsetQuat.equals(new THREE.Quaternion())) {
+                    // 将模型偏移四元数的共轭（即逆旋转）应用到摄像机偏移向量上。
+                    const inverseOffsetQuat = modelOffsetQuat.clone().conjugate();
+                    
+                    chaseOffset.applyQuaternion(inverseOffsetQuat);
+                    cockpitOffset.applyQuaternion(inverseOffsetQuat);
+                }
+                
+                const groundHeight = dynamicGroundHeight; // ⭐ 使用动态高度
+
+                // 影子跟随
+                shadowPlane.position.set(physics.pos.x, 0.05, physics.pos.z);
+                
+                const euler = new THREE.Euler().setFromQuaternion(physics.quat, 'YXZ');
+                shadowPlane.rotation.z = euler.y; 
+
+                // 摄像机逻辑
+                if (cameraMode === 0) { // 尾随视角
+                    
+                    // 将修正后的偏移向量转换到世界坐标
+                    const idealCameraPosition = chaseOffset.clone().applyMatrix4(planeGroup.matrixWorld);
+                    
+                    const safeBuffer = 1.5;   
+                    const minCameraY = groundHeight + safeBuffer;
+                    
+                    if (idealCameraPosition.y < minCameraY) {
+                        idealCameraPosition.y = minCameraY;
+                    }
+
+                    camera.position.lerp(idealCameraPosition, 0.1); 
+                    
+                    // LookAt logic is fine, as it uses physics.quat
+                    const forward = new THREE.Vector3(0,0,-1).applyQuaternion(physics.quat);
+                    const lookAtPos = planeGroup.position.clone().add(forward.multiplyScalar(50));
+                    camera.lookAt(lookAtPos);
+                } else if (cameraMode === 1) { // 座舱视角
+                    
+                    // 将修正后的偏移向量转换到世界坐标
+                    const cockpitPos = cockpitOffset.clone().applyMatrix4(planeGroup.matrixWorld);
+                    
+                    camera.position.copy(cockpitPos);
+                    // FIX: 摄像机旋转必须使用包含所有偏移的 planeGroup.quaternion
+                    camera.quaternion.copy(planeGroup.quaternion); 
+                    
+                } else if (cameraMode === 2) { // 鼠标拖动的全景视角
+                    const target = planeGroup.position.clone();
+                    
+                    const sinAlpha = Math.sin(orbitAlpha);
+                    const cosAlpha = Math.cos(orbitAlpha);
+                    const sinBeta = Math.sin(orbitBeta);
+                    const cosBeta = Math.cos(orbitBeta);
+                    
+                    const camX = target.x + orbitDistance * sinBeta * sinAlpha;
+                    const camY = target.y + orbitDistance * cosBeta;
+                    const camZ = target.z + orbitDistance * sinBeta * cosAlpha;
+                    
+                    camera.position.set(camX, camY, camZ);
+                    camera.lookAt(target); 
+                }
+            }
+            
+            // 3. UI 更新 (只在每次渲染时更新一次)
+            const speedKnots = Math.floor(physics.vel.length() * 1.94);
+            const vertSpeedFps = Math.floor(physics.vel.y * 3.28); // m/s 转换为 ft/s
+
+            document.getElementById('hud-spd').innerText = speedKnots;
+            document.getElementById('hud-alt').innerText = Math.floor(physics.pos.y * 3.28);
+            document.getElementById('hud-rpm').innerText = Math.floor(physics.throttle * 100);
+            document.getElementById('throttle-fill').style.height = (physics.throttle * 100) + '%';
+            
+            // 优化：更新垂直速度
+            document.getElementById('hud-vs').innerText = vertSpeedFps;
+
+            // 航向
+            const eulerUI = new THREE.Euler().setFromQuaternion(physics.quat, 'YXZ'); // 避免与物理计算中的 euler 冲突，使用 eulerUI
+            let hdg = Math.floor(THREE.MathUtils.radToDeg(-eulerUI.y) % 360);
+            if (hdg < 0) hdg += 360; // 转换为 0-360 度
+            document.getElementById('hud-hdg').innerText = hdg.toString().padStart(3, '0');
+            
+            renderer.render(scene, camera);
+        }
+    </script>
 </body>
 </html>
