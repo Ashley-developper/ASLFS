@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OPEN WORLD HYPER DRIVE + ASL FLIGHT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================================================
+         * SHARED STYLES & UI
+         * ========================================================================= */
+        body { 
+            margin: 0; overflow: hidden; background: #000; 
+            font-family: 'Rajdhani', sans-serif; color: #E0FFFF; user-select: none; 
+        }
+        
+        #hud-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
+            padding: 30px; box-sizing: border-box; z-index: 10;
+        }
+
+        /* --- CAR HUD STYLES --- */
+        .hud-group { display: none; } /* Hidden by default, toggled via JS */
+        .active-hud { display: flex !important; }
+
+        .hud-top-left { display: flex; gap: 20px; flex-wrap: wrap; }
+        .hud-top-right { position: absolute; top: 30px; right: 30px; }
+        
+        .instrument {
+            background: rgba(0, 15, 30, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-left: 5px solid #00FFFF;
+            backdrop-filter: blur(10px);
+            padding: 12px 22px;
+            min-width: 120px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            border-radius: 4px;
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
+            margin-bottom: 10px;
+        }
+        
+        .label {
+            font-family: 'Orbitron', sans-serif; font-size: 10px; color: #00FFFF; 
+            font-weight: 700; letter-spacing: 2px; margin-bottom: 3px; display:block; 
+            text-transform: uppercase; text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+        }
+        .value {
+            font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; 
+            letter-spacing: -2px; line-height: 1; color: #FFFFFF;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        .unit { font-size: 14px; color: #888888; margin-left: 6px; font-weight: 400; }
+
+        /* Specific Colors */
+        .spd-color { border-left-color: #00FFFF !important; }
+        .rpm-color { border-left-color: #FF00FF !important; }
+        .gear-color { border-left-color: #FFD700 !important; }
+        .throttle-color { border-left-color: #00FF00 !important; }
+        .plane-color { border-left-color: #0093E9 !important; } /* Plane Theme */
+
+        /* COIN HUD */
+        #hud-coin {
+            background: rgba(35, 18, 0, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-left: 5px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.06);
+            min-width: 140px; margin-bottom: 20px;
+        }
+        #hud-coin .label { color: #FFD700; }
+        #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
+
+        /* DELIVERY HUD */
+        #delivery-hud {
+            position: absolute; top: 220px; left: 30px;
+            background: rgba(0, 30, 0, 0.7);
+            border: 1px solid rgba(0, 255, 0, 0.2);
+            border-left: 5px solid #00FF00;
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+            border-radius: 4px;
+            min-width: 250px;
+            display: none;
+        }
+        #delivery-hud .mission-title { 
+            font-family: 'Orbitron', sans-serif; font-size: 14px; color: #00FF00; 
+            margin-bottom: 8px; font-weight: 700; border-bottom: 1px dashed rgba(0, 255, 0, 0.3);
+            padding-bottom: 5px;
+        }
+        #delivery-hud .mission-detail { font-size: 16px; color: #E0FFE0; margin-bottom: 5px; }
+        #delivery-distance-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #FFFFFF; }
+        #delivery-timer-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #FFD700; }
+
+        /* CONTROLS HINT */
+        #control-hints {
+            position: absolute; bottom: 30px; left: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 5px solid #00FF00;
+            backdrop-filter: blur(10px); padding: 18px 25px;
+            color: #eee; font-size: 13px; border-radius: 4px;
+            max-width: 250px; line-height: 1.8;
+        }
+        .hint-title { color: #00FF00; font-family: 'Orbitron', sans-serif; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 0, 0.3); padding-bottom: 5px; }
+        .transform-hint { color: #FF00FF; font-weight: bold; font-size: 15px; border-top: 1px solid #555; margin-top:5px; padding-top:5px;}
+
+        /* PLANE SPECIFIC HUD (THROTTLE BAR & WARNING) */
+        #plane-hud-extras { display: none; }
+        #throttle-wrapper {
+            position: absolute; left: 30px; bottom: 250px; width: 12px; height: 200px;
+            background: rgba(0,0,0,0.6); border: 1px solid #555; border-radius: 8px; padding: 2px;
+        }
+        #throttle-fill {
+            position: absolute; bottom: 2px; left: 2px; width: 12px; height: 0%;
+            background: linear-gradient(to top, #4caf50, #ffeb3b, #ff5722);
+            border-radius: 4px; transition: height 0.1s;
+        }
+        #throttle-label {
+            position: absolute; left: 50px; bottom: 250px; color: #fff; font-size: 12px; font-weight: bold;
+            transform: rotate(-90deg); transform-origin: left bottom; opacity: 0.7;
+        }
+        #center-warning {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ff3333; font-size: 24px; font-weight: bold; border: 2px solid #ff3333;
+            padding: 10px 30px; background: rgba(0,0,0,0.7); display: none;
+            animation: blink 0.5s step-end infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+        /* =========================================================================
+         * SPLASH SCREEN
+         * ========================================================================= */
+        #splash {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.8) 100%);
+            z-index: 999; display: block; cursor: grab; transition: opacity 0.5s;
+        }
+        .splash-header {
+            position: absolute; top: 60px; left: 0; width: 100%; text-align: center; pointer-events: none;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif; font-size: 64px; margin: 0; font-weight: 900;
+            letter-spacing: 12px; text-transform: uppercase;
+            background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 35px rgba(0, 255, 255, 0.7);
+        }
+        .splash-footer {
+            position: absolute; bottom: 60px; right: 60px; display: flex; gap: 20px; align-items: flex-end;
+        }
+        #start-button {
+            padding: 20px 80px; font-size: 24px; font-weight: 900;
+            color: #000000; background: #00FFFF; border: none;
+            letter-spacing: 4px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+            cursor: pointer; transition: 0.3s;
+        }
+        #start-button:hover { background: #FF00FF; color: #fff; transform: scale(1.05); }
+        
+        #delivery-mode-btn { 
+            padding: 15px 40px; font-size: 16px; font-weight: 700;
+            color: #00FFFF; background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #00FFFF; letter-spacing: 2px; cursor: pointer;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 20%);
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #00FFFF; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; }
+        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; transition: width 0.3s; }
+        
+        .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
+        <p style="font-family:'Orbitron'; letter-spacing:2px;">HYPER DRIVE x ASL FLIGHT</p>
+        <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
+        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p> 
+    </div>
+
+    <div id="splash">
+        <div class="splash-header">
+            <h1>OPEN WORLD<br>HYPER DRIVE</h1>
+            <p style="font-size:20px; color:#00FFFF; letter-spacing:5px;">NOW WITH FLIGHT MODE</p>
+        </div>
+
+        <div style="position: absolute; top: 40px; right: 40px; text-align: right;">
+            <span class="label">GOLD COINS</span><br>
+            <span class="value" id="splash-coin-count">0</span>
+        </div>
+
+        <div class="splash-footer">
+            <button id="delivery-mode-btn" onclick="startDeliveryMode()">DELIVERY MODE</button>
+            <button id="start-button" onclick="enterGame()">PLAY NOW</button>
+        </div>
+    </div>
+
+    <div id="hud-layer" style="display:none;">
+        
+        <div id="hud-car" class="hud-top-left hud-group active-hud">
+            <div class="instrument spd-color">
+                <span class="label">Speed</span> <span class="value" id="hud-spd">0</span> <span class="unit">KM/H</span>
+            </div>
+            <div class="instrument rpm-color">
+                <span class="label">RPM</span> <span class="value" id="hud-rpm">0</span> <span class="unit">x100</span>
+            </div>
+            <div class="instrument gear-color">
+                <span class="label">Gear</span> <span class="value" id="hud-gear">P</span> <span class="unit">MODE</span>
+            </div>
+            <div class="instrument throttle-color">
+                <span class="label">Throttle</span> <span class="value" id="hud-throttle">0%</span>
+            </div>
+        </div>
+
+        <div id="hud-plane" class="hud-top-left hud-group">
+            <div class="instrument plane-color">
+                <span class="label">Airspeed</span> <span class="value" id="plane-spd">0</span> <span class="unit">KTS</span>
+            </div>
+            <div class="instrument plane-color">
+                <span class="label">Altitude</span> <span class="value" id="plane-alt">0</span> <span class="unit">FT</span>
+            </div>
+            <div class="instrument plane-color">
+                <span class="label">Heading</span> <span class="value" id="plane-hdg">000</span> <span class="unit">DEG</span>
+            </div>
+            <div class="instrument" style="border-left-color: #ff9900;">
+                <span class="label" style="color:#ff9900">Vert Speed</span> <span class="value" id="plane-vs">0</span> <span class="unit">FT/S</span>
+            </div>
+        </div>
+
+        <div class="hud-top-right">
+            <div class="instrument" id="hud-coin">
+                <span class="label">GOLD COIN</span> <span class="value" id="coin-count">0</span>
+            </div>
+        </div>
+        
+        <div id="delivery-hud">
+            <div class="mission-title" id="mission-status-text">MISSION: OFFLINE</div>
+            <div class="mission-detail">DISTANCE: <span id="delivery-distance-value">0</span> M</div>
+            <div class="mission-detail">TIME LEFT: <span id="delivery-timer-value">--:--</span></div>
+        </div>
+
+        <div id="plane-hud-extras">
+            <div id="throttle-wrapper"><div id="throttle-fill"></div></div>
+            <div id="throttle-label">THRUST</div>
+            <div id="center-warning">STALL WARNING</div>
+        </div>
+
+        <div id="control-hints">
+            <div class="hint-title">CONTROLS</div>
+            <div class="transform-hint">[E] TRANSFORM CAR/PLANE</div>
+            <div id="hint-text-car">
+                [SHIFT] NITRO<br>[SPACE] BRAKE/DRIFT<br>[WASD] DRIVE<br>[V] CAMERA
+            </div>
+            <div id="hint-text-plane" style="display:none;">
+                [SHIFT] THRUST UP<br>[SPACE] THRUST DOWN<br>[W/S] PITCH<br>[A/D] ROLL<br>[Q/C] YAW<br>[V] CAMERA
+            </div>
+            <div style="margin-top:5px; color:#888;">[R] RESPAWN</div>
+        </div>
+    </div>
+
+    <div class="copyright-tag">ZHANYI ZHOU DESIGN © 2026</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+
+    <script>
+        // =========================================================================
+        // ** GLOBAL GAME STATE **
+        // =========================================================================
+        const GAME_MODE = { CAR: 'car', PLANE: 'plane' };
+        let currentMode = GAME_MODE.CAR;
+        let isGameRunning = false;
+        
+        // Scene Globals
+        let scene, renderer, clock;
+        let camera, cameraChase, cameraCockpit; // Three.js cameras
+        
+        // Physics Globals
+        let world; // Cannon.js World (for Car)
+        
+        // Inputs
+        const input = { w:0, s:0, a:0, d:0, q:0, c:0, shift:0, space:0, e:0 }; // Combined Input State
+        
+        // =========================================================================
+        // ** CAR VARIABLES (CANNON.JS) **
+        // =========================================================================
+        let vehicle, chassisBody;
+        let carMesh, wheelMeshes = [];
+        let flameMesh;
+        const initialCarPosition = new CANNON.Vec3(-3320, 2, -20);
+        let maxEngineForce = 9000, maxSteerVal = 0.7, brakeForce = 40;
+        let engineForce = 0, steeringValue = 0;
+        
+        // =========================================================================
+        // ** PLANE VARIABLES (CUSTOM PHYSICS) **
+        // =========================================================================
+        let planeGroup, shadowPlane;
+        // F-35 Config
+        const PLANE_CONFIG = {
+            mass: 10000, maxThrust: 250000, liftCoeff: 0.8, 
+            wingArea: 75, dragCoeff: 0.035, gravity: 9.81,
+            pitchSpeed: 1.2, rollSpeed: 2.0, yawSpeed: 0.8,
+            groundHeight: 0.5 // Visual offset from center
+        };
+        const planePhysics = {
+            pos: new THREE.Vector3(),
+            vel: new THREE.Vector3(),
+            acc: new THREE.Vector3(),
+            quat: new THREE.Quaternion(),
+            rotVel: new THREE.Vector3(),
+            throttle: 0,
+            grounded: true
+        };
+        // Reuse Simplex for visual terrain
+        const simplex = new SimplexNoise();
+
+        // =========================================================================
+        // ** ASSET LOADING **
+        // =========================================================================
+        let loadingManager, gltfLoader, dracoLoader;
+        
+        function initLoaders() {
+            loadingManager = new THREE.LoadingManager();
+            loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
+                const percent = Math.floor(itemsLoaded / itemsTotal * 100);
+                document.getElementById('loading-progress-fill').style.width = percent + '%';
+                document.getElementById('loading-status').innerText = `(${percent}%) Loading: ${url.split('/').pop()}`;
+            };
+            loadingManager.onLoad = function() {
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('splash').style.opacity = '1';
+                animate(); // Start Loop
+            };
+
+            dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+            gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.setDRACOLoader(dracoLoader);
+        }
+
+        // =========================================================================
+        // ** INITIALIZATION **
+        // =========================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initThree();
+            initCannon();
+            initLoaders();
+            
+            // Load Game Assets
+            createEnvironment(); // Ground/City/Terrain
+            loadCarAssets();
+            loadPlaneAssets(); // F-35
+            loadCoinSystem();
+            
+            // Setup Listeners
+            setupInputs();
+            window.addEventListener('resize', onResize);
+            
+            // Retrieve Coins
+            const stored = localStorage.getItem('goldCoinCount');
+            if(stored) {
+                coinCount = parseInt(stored);
+                document.getElementById('splash-coin-count').innerText = coinCount;
+                document.getElementById('coin-count').innerText = coinCount;
+            }
+        });
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 500, 20000); // Extended fog for flying
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // Lighting
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.7);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.5);
+            dirLight.position.set(3000, 5000, 2000);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 4096;
+            dirLight.shadow.mapSize.height = 4096;
+            dirLight.shadow.camera.far = 10000;
+            const d = 2000;
+            dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            // Cameras
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.5, 300000);
+            cameraChase = new THREE.Object3D(); // Virtual handles
+            cameraCockpit = new THREE.Object3D();
+        }
+
+        function initCannon() {
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+            world.broadphase = new CANNON.SAPBroadphase(world);
+            
+            const defMat = new CANNON.Material('default');
+            const conMat = new CANNON.ContactMaterial(defMat, defMat, { friction: 1.0, restitution: 0.0 });
+            world.addContactMaterial(conMat);
+        }
+
+        // =========================================================================
+        // ** ENVIRONMENT (MERGED) **
+        // =========================================================================
+        function createEnvironment() {
+            // 1. Flat Physics Plane (Cannon) for City Driving
+            const groundShape = new CANNON.Plane();
+            const groundBody = new CANNON.Body({ mass: 0 });
+            groundBody.addShape(groundShape);
+            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+            world.addBody(groundBody);
+
+            // 2. Load City Model (Visual)
+            gltfLoader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
+                const city = gltf.scene;
+                city.scale.set(4, 4, 4);
+                city.traverse(c => { 
+                    if(c.isMesh) { c.castShadow=true; c.receiveShadow=true; } 
+                });
+                scene.add(city);
+                
+                // Add Physics Trimeshes for Buildings
+                city.updateMatrixWorld(true);
+                city.traverse(node => {
+                    if (node.isMesh) {
+                        // Simple spherical approximation for buildings to save performance
+                        // or strict bounding boxes. For merged code, let's use the distance-based loader logic
+                        // from the Car game (simplified here for brevity)
+                        const box = new THREE.Box3().setFromObject(node);
+                        const size = new THREE.Vector3(); box.getSize(size);
+                        if(size.y > 2) { // Only obstacles
+                             const shape = new CANNON.Box(new CANNON.Vec3(size.x/2, size.y/2, size.z/2));
+                             const body = new CANNON.Body({mass:0});
+                             body.addShape(shape);
+                             node.getWorldPosition(body.position);
+                             body.position.y += size.y/2; // Adjust center
+                             world.addBody(body);
+                        }
+                    }
+                });
+            });
+
+            // 3. Procedural Terrain (Visual - from Flight Sim)
+            // We flatten it near the city (0,0)
+            const geo = new THREE.PlaneGeometry(60000, 60000, 128, 128);
+            const pos = geo.attributes.position;
+            const colors = [];
+            const cGrass = new THREE.Color(0x3a5f0b); 
+            const cDirt = new THREE.Color(0x5a4d3b);
+            const cConcrete = new THREE.Color(0x555555);
+
+            for(let i=0; i<pos.count; i++){
+                let x = pos.getX(i);
+                let y = pos.getY(i);
+                let h = 0;
+                let col = cGrass.clone();
+
+                const dist = Math.sqrt(x*x + y*y);
+                // Safe Zone radius 5000 around city
+                if(dist < 5000) {
+                    h = -0.1; // Slightly below flat physics plane
+                    if(dist < 3000) col = cConcrete; 
+                } else {
+                    let n = simplex.noise2D(x*0.0001, y*0.0001);
+                    h = Math.max(0, n * 2000); // Mountains
+                    if(h > 300) col = cDirt;
+                }
+                pos.setZ(i, h); // Z in Geometry is Y in World
+                colors.push(col.r, col.g, col.b);
+            }
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geo.computeVertexNormals();
+            const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
+            terrain.rotation.x = -Math.PI/2;
+            terrain.receiveShadow = true;
+            terrain.position.y = -0.1;
+            scene.add(terrain);
+        }
+
+        // =========================================================================
+        // ** VEHICLE: CAR **
+        // =========================================================================
+        function loadCarAssets() {
+            // Load Car Model
+            gltfLoader.load('car1.glb', (gltf) => {
+                carMesh = gltf.scene;
+                carMesh.scale.set(104.7, 104.7, 104.7);
+                carMesh.rotation.y = Math.PI;
+                carMesh.traverse(c => { if(c.isMesh) c.castShadow=true; });
+                scene.add(carMesh);
+
+                // Nitro Flame
+                const fGeo = new THREE.ConeGeometry(0.3, 1, 16);
+                const fMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.8 });
+                flameMesh = new THREE.Mesh(fGeo, fMat);
+                flameMesh.rotation.x = -Math.PI/2;
+                flameMesh.position.set(0, 0, 2.5);
+                flameMesh.visible = false;
+                carMesh.add(flameMesh);
+                
+                // Initialize Physics
+                initCarPhysics();
+            });
+
+            // Load Wheels
+            gltfLoader.load('tire1.glb', (gltf) => {
+                const wheelProto = gltf.scene;
+                wheelProto.scale.set(0.75, 0.75, 0.75);
+                wheelProto.rotation.x = Math.PI/2;
+                // Create 4 visual wheels
+                for(let i=0; i<4; i++) {
+                    const w = wheelProto.clone();
+                    if(i===0 || i===2) w.rotation.y = Math.PI; // Flip left side
+                    scene.add(w);
+                    wheelMeshes.push(w);
+                }
+            });
+        }
+
+        function initCarPhysics() {
+            const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.9, 2.2));
+            chassisBody = new CANNON.Body({ mass: 2500, position: initialCarPosition.clone() });
+            chassisBody.addShape(chassisShape);
+            chassisBody.addShape(new CANNON.Sphere(1.2), new CANNON.Vec3(0,0,0)); // Anti-tunneling
+            chassisBody.angularDamping = 0.9;
+            world.addBody(chassisBody);
+
+            vehicle = new CANNON.RaycastVehicle({
+                chassisBody: chassisBody,
+                indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
+            });
+
+            const wheelOpts = {
+                radius: 0.5, directionLocal: new CANNON.Vec3(0, -1, 0),
+                suspensionStiffness: 150, suspensionRestLength: 0.8,
+                frictionSlip: 5.0, dampingRelaxation: 2.3, dampingCompression: 4.4,
+                maxSuspensionForce: 100000, rollInfluence: 0.01,
+                axleLocal: new CANNON.Vec3(1, 0, 0), chassisConnectionPointLocal: new CANNON.Vec3(1, 0, 1)
+            };
+
+            const axleW = 1.0, wheelBase = 1.5;
+            wheelOpts.chassisConnectionPointLocal.set(-axleW, -0.4, wheelBase); vehicle.addWheel(wheelOpts);
+            wheelOpts.chassisConnectionPointLocal.set( axleW, -0.4, wheelBase); vehicle.addWheel(wheelOpts);
+            wheelOpts.chassisConnectionPointLocal.set(-axleW, -0.4, -wheelBase); vehicle.addWheel(wheelOpts);
+            wheelOpts.chassisConnectionPointLocal.set( axleW, -0.4, -wheelBase); vehicle.addWheel(wheelOpts);
+
+            vehicle.addToWorld(world);
+        }
+
+        // =========================================================================
+        // ** VEHICLE: PLANE **
+        // =========================================================================
+        function loadPlaneAssets() {
+            // Load F-35B (plane2.glb)
+            gltfLoader.load('plane2.glb', (gltf) => {
+                planeGroup = gltf.scene;
+                planeGroup.scale.set(0.35, 0.35, 0.35);
+                
+                // Rotational fix for this specific model
+                const fixRot = new THREE.Object3D();
+                fixRot.add(planeGroup);
+                
+                // We wrap it in a parent to handle physics easier
+                // The physics object tracks 'planeGroup'
+                // Actually, let's just rotate the mesh inside the group or handle offset
+                // To keep it simple, we will apply rotation in the render loop.
+                
+                planeGroup.traverse(c => { if(c.isMesh) { c.castShadow=true; c.receiveShadow=true; } });
+                planeGroup.visible = false; // Start hidden
+                scene.add(planeGroup);
+
+                // Shadow
+                shadowPlane = new THREE.Mesh(new THREE.CircleGeometry(15,32), new THREE.MeshBasicMaterial({color:0x000000, opacity:0.5, transparent:true}));
+                shadowPlane.rotation.x = -Math.PI/2;
+                shadowPlane.visible = false;
+                scene.add(shadowPlane);
+            });
+        }
+
+        // =========================================================================
+        // ** GAMEPLAY LOGIC: SWITCHING **
+        // =========================================================================
+        function toggleVehicle() {
+            if(!chassisBody || !planeGroup) return;
+
+            if (currentMode === GAME_MODE.CAR) {
+                // SWITCH TO PLANE
+                currentMode = GAME_MODE.PLANE;
+
+                // Sync Physics: Plane starts at Car's location
+                const carPos = chassisBody.position;
+                const carQuat = chassisBody.quaternion;
+                
+                // Add height so we don't spawn in ground
+                planePhysics.pos.set(carPos.x, carPos.y + 5.0, carPos.z);
+                
+                // Match rotation
+                planePhysics.quat.copy(carQuat);
+                
+                // Give some initial forward velocity if car was moving, else 0
+                const speed = chassisBody.velocity.length();
+                const forward = new THREE.Vector3(0,0,1).applyQuaternion(carQuat);
+                // If slow, give hover power (F35 logic)
+                planePhysics.vel.copy(forward.multiplyScalar(Math.max(speed, 0)));
+                planePhysics.throttle = 0; // Reset throttle
+
+                // Visuals
+                carMesh.visible = false;
+                wheelMeshes.forEach(w => w.visible = false);
+                planeGroup.visible = true;
+                shadowPlane.visible = true;
+
+                // Physics Body Management
+                // We can't easily remove car from world without breaking vehicle, 
+                // so we teleport it far away or set it to sleep
+                chassisBody.position.set(0, -1000, 0); // Hide underground
+                chassisBody.velocity.set(0,0,0);
+                chassisBody.sleep();
+
+                // HUD
+                document.getElementById('hud-car').classList.remove('active-hud');
+                document.getElementById('hud-plane').classList.add('active-hud');
+                document.getElementById('plane-hud-extras').style.display = 'block';
+                document.getElementById('hint-text-car').style.display = 'none';
+                document.getElementById('hint-text-plane').style.display = 'block';
+
+            } else {
+                // SWITCH TO CAR
+                currentMode = GAME_MODE.CAR;
+
+                // Sync Physics
+                const planePos = planePhysics.pos;
+                // Raycast down to find ground y? Or just assume safe drop
+                // For simplicity, spawn exactly at plane pos
+                chassisBody.position.set(planePos.x, planePos.y, planePos.z);
+                chassisBody.velocity.set(planePhysics.vel.x, planePhysics.vel.y, planePhysics.vel.z);
+                
+                // Align rotation (Level out X/Z slightly to land wheels down)
+                const euler = new THREE.Euler().setFromQuaternion(planePhysics.quat);
+                euler.x = 0; euler.z = 0; // Flatten
+                chassisBody.quaternion.setFromEuler(euler);
+                
+                chassisBody.wakeUp();
+
+                // Visuals
+                carMesh.visible = true;
+                wheelMeshes.forEach(w => w.visible = true);
+                planeGroup.visible = false;
+                shadowPlane.visible = false;
+
+                // HUD
+                document.getElementById('hud-plane').classList.remove('active-hud');
+                document.getElementById('hud-car').classList.add('active-hud');
+                document.getElementById('plane-hud-extras').style.display = 'none';
+                document.getElementById('hint-text-plane').style.display = 'none';
+                document.getElementById('hint-text-car').style.display = 'block';
+            }
+        }
+
+        function setupInputs() {
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if(k === 'w') input.w = 1;
+                if(k === 's') input.s = 1;
+                if(k === 'a') input.a = 1;
+                if(k === 'd') input.d = 1;
+                if(k === 'q') input.q = 1;
+                if(k === 'c') input.c = 1; // Plane Yaw Right
+                if(k === ' ') input.space = 1;
+                if(k === 'shift') input.shift = 1;
+                
+                if(k === 'e') {
+                     if(!e.repeat) toggleVehicle();
+                }
+                
+                if(k === 'r') {
+                    if(currentMode === GAME_MODE.CAR) {
+                        chassisBody.position.copy(initialCarPosition);
+                        chassisBody.velocity.set(0,0,0);
+                        chassisBody.quaternion.set(0,0,0,1);
+                    }
+                }
+                if(k === 'v') {
+                    // Toggle Camera
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if(k === 'w') input.w = 0;
+                if(k === 's') input.s = 0;
+                if(k === 'a') input.a = 0;
+                if(k === 'd') input.d = 0;
+                if(k === 'q') input.q = 0;
+                if(k === 'c') input.c = 0;
+                if(k === ' ') input.space = 0;
+                if(k === 'shift') input.shift = 0;
+            });
+        }
+
+        // =========================================================================
+        // ** PHYSICS LOOPS **
+        // =========================================================================
+        
+        // 1. CAR PHYSICS UPDATE
+        function updateCarPhysics() {
+            // Engine
+            if(input.w) {
+                engineForce = -maxEngineForce;
+                // Check reverse
+                if(chassisBody.velocity.dot(new CANNON.Vec3(0,0,1).applyQuaternion(chassisBody.quaternion)) > 1) {
+                    // Braking if moving opposite
+                }
+            } else if(input.s) {
+                engineForce = maxEngineForce * 0.5;
+            } else {
+                engineForce = 0;
+            }
+
+            if(input.shift && engineForce !== 0) engineForce *= 2.5; // Nitro
+
+            // Steering
+            if(input.a) steeringValue = maxSteerVal;
+            else if(input.d) steeringValue = -maxSteerVal;
+            else steeringValue = 0;
+
+            // Apply
+            vehicle.applyEngineForce(engineForce, 0);
+            vehicle.applyEngineForce(engineForce, 1);
+            vehicle.applyEngineForce(engineForce, 2);
+            vehicle.applyEngineForce(engineForce, 3);
+            vehicle.setSteeringValue(steeringValue, 0);
+            vehicle.setSteeringValue(steeringValue, 1);
+            
+            // Brakes
+            let b = 0;
+            if(input.space) b = 50;
+            vehicle.setBrake(b, 0); vehicle.setBrake(b, 1); vehicle.setBrake(b, 2); vehicle.setBrake(b, 3);
+
+            // Step World
+            world.step(1/60);
+        }
+
+        // 2. PLANE PHYSICS UPDATE
+        function updatePlanePhysics(dt) {
+            // Inputs
+            if(input.shift) planePhysics.throttle = Math.min(1.0, planePhysics.throttle + dt * 0.4);
+            if(input.space) planePhysics.throttle = Math.max(0.0, planePhysics.throttle - dt * 1.5);
+
+            const pos = planePhysics.pos;
+            const vel = planePhysics.vel;
+            const rot = planePhysics.quat;
+            const speed = vel.length();
+
+            // Directions
+            const vForward = new THREE.Vector3(0,0,-1).applyQuaternion(rot).normalize();
+            const vUp = new THREE.Vector3(0,1,0).applyQuaternion(rot).normalize();
+
+            // Gravity
+            const forces = new THREE.Vector3(0, -PLANE_CONFIG.gravity * PLANE_CONFIG.mass, 0);
+
+            // Thrust
+            forces.add(vForward.clone().multiplyScalar(planePhysics.throttle * PLANE_CONFIG.maxThrust));
+
+            // Aerodynamics
+            const forwardSpeed = vel.dot(vForward);
+            const airDensity = 1.225;
+            
+            // Lift
+            let liftFactor = 1.0; 
+            // Simplified AoA
+            const liftForce = 0.5 * airDensity * (forwardSpeed*forwardSpeed) * PLANE_CONFIG.liftCoeff * PLANE_CONFIG.wingArea;
+            forces.add(vUp.clone().multiplyScalar(liftForce));
+
+            // Drag
+            const dragForce = 0.5 * airDensity * (speed*speed) * PLANE_CONFIG.dragCoeff * PLANE_CONFIG.wingArea;
+            if(speed > 0) forces.add(vel.clone().normalize().negate().multiplyScalar(dragForce));
+
+            // Integration
+            const acc = forces.divideScalar(PLANE_CONFIG.mass);
+            vel.add(acc.multiplyScalar(dt));
+            pos.add(vel.clone().multiplyScalar(dt));
+
+            // Ground Collision
+            // Check terrain height at pos.x, pos.z
+            // For now, assume flat 0 near city, else calculate
+            let terrainH = 0;
+            const dist = Math.sqrt(pos.x*pos.x + pos.z*pos.z);
+            if(dist >= 5000) {
+                 terrainH = Math.max(0, simplex.noise2D(pos.x*0.0001, pos.z*0.0001) * 2000);
+            }
+            if(pos.y < terrainH + 2) {
+                pos.y = terrainH + 2;
+                vel.y = Math.max(0, vel.y);
+                // Friction
+                vel.multiplyScalar(0.95);
+            }
+
+            // Rotation
+            const pitch = (input.s - input.w) * PLANE_CONFIG.pitchSpeed;
+            const roll = (input.a - input.d) * PLANE_CONFIG.rollSpeed;
+            const yaw = (input.q - input.c) * PLANE_CONFIG.yawSpeed; // Q/C for Yaw
+
+            // Damping logic
+            const targetRotVel = new THREE.Vector3(pitch, yaw, roll);
+            planePhysics.rotVel.lerp(targetRotVel, dt * 2.0);
+
+            const deltaRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+                planePhysics.rotVel.x * dt,
+                planePhysics.rotVel.y * dt,
+                planePhysics.rotVel.z * dt,
+                'XYZ'
+            ));
+            rot.multiply(deltaRot).normalize();
+        }
+
+        // =========================================================================
+        // ** COIN & DELIVERY SYSTEM **
+        // =========================================================================
+        let coinMeshes = [], coinBodies = [], coinCount = 0;
+        let isDeliveryMode = false;
+        
+        function loadCoinSystem() {
+            gltfLoader.load('gold_coin.glb', (gltf) => {
+                const coinProto = gltf.scene;
+                // Spawn 50 coins randomly
+                for(let i=0; i<50; i++) {
+                    const c = coinProto.clone();
+                    const x = (Math.random()-0.5)*3000;
+                    const z = (Math.random()-0.5)*3000;
+                    c.position.set(x, 1, z);
+                    scene.add(c);
+                    coinMeshes.push(c);
+                    
+                    // Trigger body
+                    const shape = new CANNON.Sphere(0.5);
+                    const body = new CANNON.Body({mass:0, isTrigger:true, position:new CANNON.Vec3(x,1,z)});
+                    body.addShape(shape);
+                    world.addBody(body);
+                    coinBodies.push(body);
+                    
+                    // Simple collision check in loop
+                }
+            }, undefined, () => { console.warn("Coin load failed, skipping"); });
+        }
+
+        window.startDeliveryMode = function() {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('hud-layer').style.display = 'flex';
+            document.getElementById('delivery-hud').style.display = 'block';
+            isGameRunning = true;
+            isDeliveryMode = true;
+            document.getElementById('mission-status-text').innerText = "MISSION: FIND THE TARGET";
+            // (Simplified delivery logic: Just showing UI for merged demo)
+        }
+        
+        window.enterGame = function() {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('hud-layer').style.display = 'flex';
+            isGameRunning = true;
+        }
+
+        // =========================================================================
+        // ** MAIN RENDER LOOP **
+        // =========================================================================
+        function animate() {
+            requestAnimationFrame(animate);
+            if(!isGameRunning) return;
+
+            const dt = clock.getDelta();
+
+            if (currentMode === GAME_MODE.CAR) {
+                if(chassisBody) {
+                    updateCarPhysics(); // Cannon Step
+                    // Sync Visuals
+                    carMesh.position.copy(chassisBody.position);
+                    carMesh.position.y -= 0.9; // Visual Offset
+                    carMesh.quaternion.copy(chassisBody.quaternion);
+                    
+                    if(flameMesh) flameMesh.visible = (engineForce !== 0 && input.shift);
+
+                    // Wheels
+                    for(let i=0; i<vehicle.wheelInfos.length; i++){
+                        vehicle.updateWheelTransform(i);
+                        const t = vehicle.wheelInfos[i].worldTransform;
+                        if(wheelMeshes[i]) {
+                            wheelMeshes[i].position.copy(t.position);
+                            wheelMeshes[i].quaternion.copy(t.quaternion);
+                        }
+                    }
+
+                    // Camera
+                    const relOffset = new THREE.Vector3(0, 3, -7);
+                    relOffset.applyQuaternion(chassisBody.quaternion);
+                    const camPos = new THREE.Vector3().copy(chassisBody.position).add(relOffset);
+                    camera.position.lerp(camPos, 0.1);
+                    camera.lookAt(chassisBody.position.x, chassisBody.position.y+1, chassisBody.position.z);
+                    
+                    // HUD
+                    const v = chassisBody.velocity.length() * 3.6;
+                    document.getElementById('hud-spd').innerText = Math.floor(v);
+                    document.getElementById('hud-rpm').innerText = Math.floor(v*1.5);
+                    document.getElementById('hud-gear').innerText = (engineForce > 0) ? 'R' : 'D';
+                    document.getElementById('hud-throttle').innerText = Math.floor(Math.abs(engineForce/maxEngineForce)*100) + '%';
+                }
+            } 
+            else if (currentMode === GAME_MODE.PLANE) {
+                if(planeGroup) {
+                    updatePlanePhysics(dt);
+                    
+                    // Sync Visuals
+                    planeGroup.position.copy(planePhysics.pos);
+                    // 180 deg fix for model + Physics Quat + 90 deg Y offset fix for F35 model
+                    const qFix = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI); 
+                    const qModel = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), -Math.PI/2); // F35 points X usually
+                    
+                    planeGroup.quaternion.copy(planePhysics.quat).multiply(qFix).multiply(qModel);
+                    
+                    shadowPlane.position.set(planePhysics.pos.x, 0.1, planePhysics.pos.z);
+                    shadowPlane.rotation.z = new THREE.Euler().setFromQuaternion(planePhysics.quat).y;
+
+                    // Camera
+                    const offset = new THREE.Vector3(0, 8, -40).applyQuaternion(planePhysics.quat);
+                    const camPos = planePhysics.pos.clone().add(offset);
+                    camera.position.lerp(camPos, 0.1);
+                    camera.lookAt(planePhysics.pos.clone().add(new THREE.Vector3(0,0,-100).applyQuaternion(planePhysics.quat)));
+
+                    // HUD
+                    const speed = planePhysics.vel.length() * 1.94; // Knots
+                    const alt = planePhysics.pos.y * 3.28; // Feet
+                    document.getElementById('plane-spd').innerText = Math.floor(speed);
+                    document.getElementById('plane-alt').innerText = Math.floor(alt);
+                    document.getElementById('plane-vs').innerText = Math.floor(planePhysics.vel.y * 3.28);
+                    
+                    const hdg = (360 - (new THREE.Euler().setFromQuaternion(planePhysics.quat).y * (180/Math.PI)) % 360) % 360;
+                    document.getElementById('plane-hdg').innerText = Math.floor(hdg).toString().padStart(3,'0');
+                    
+                    document.getElementById('throttle-fill').style.height = (planePhysics.throttle*100)+'%';
+                    if(speed < 100 && planePhysics.pos.y > 50) {
+                        document.getElementById('center-warning').style.display = 'block';
+                    } else {
+                        document.getElementById('center-warning').style.display = 'none';
+                    }
+                }
+            }
+
+            // Shared Coin Logic (Distance Check)
+            if(currentMode === GAME_MODE.CAR && chassisBody) {
+                const p = chassisBody.position;
+                coinBodies.forEach((b, i) => {
+                    const d = p.distanceTo(b.position);
+                    if(d < 2.0) {
+                        // Collected
+                        if(coinMeshes[i]) coinMeshes[i].visible = false;
+                        b.position.y = -1000; // Hide
+                        coinCount++;
+                        document.getElementById('coin-count').innerText = coinCount;
+                    }
+                });
+            }
+
+            // Animate Coins
+            coinMeshes.forEach(c => { if(c.visible) c.rotation.y += 0.02; });
+
+            renderer.render(scene, camera);
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+    </script>
+</body>
+</html>
