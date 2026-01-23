@@ -10,178 +10,18 @@
         #throttle-fill {position: absolute; bottom: 2px; left: 2px; width: 12px; height: 0%;background: linear-gradient(to top, #4caf50, #ffeb3b, #ff5722);border-radius: 4px; transition: height 0.1s;}
         #throttle-label {position: absolute; left: 50px; bottom: 120px; color: #fff; font-size: 12px; font-weight: boldtransform: rotate(-90deg); transform-origin: left bottom; opacity: 0.7;}
         @keyframes blink {0%, 100% { opacity: 1; }50% { opacity: 0.2; }}
-        #center-warning {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #ff3333; font-size: 24px; font-weight: bold; border: 2px solid #ff3333;
-            padding: 10px 30px; background: rgba(0,0,0,0.7); display: none;
-            /* 优化：新增闪烁效果 */
-            animation: blink 0.5s step-end infinite;
-        }
-
-        /* 启动画面 */
-#splash {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    /* 🎨 天蓝色立体背景 */
-    background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
-    z-index: 999; 
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: white;
-    /* 投影效果 */
-    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
-}
-
-h1 { 
-    font-size: 32px; 
-    margin: 0; 
-    font-weight: 400; 
-    letter-spacing: 5px; 
-    text-transform: uppercase;
-    color: #fff;
-    /* 投影效果 */
-    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); 
-}
-
-/* 标题样式：Choose Your Plane */
-#plane-chooser-title {
-    font-size: 20px; 
-    margin-bottom: 20px; 
-    font-weight: 600; 
-    color: #f0f0f0; 
-    letter-spacing: 3px;
-}
-
-/* 3D 模型容器样式 */
-#plane-model-container {
-    width: 600px;
-    height: 300px;
-    margin: 20px 0 10px; /* 调整 margin */
-    /* 现代边框和背景 */
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-    position: relative;
-}
-
-/* 模型切换按钮样式 */
-.model-nav-button {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(0, 0, 0, 0.4);
-    border: none;
-    color: white;
-    padding: 10px;
-    cursor: pointer;
-    font-size: 24px;
-    z-index: 10;
-    transition: background 0.2s;
-}
-
-.model-nav-button:hover {
-    background: rgba(0, 0, 0, 0.7);
-}
-
-#prev-plane { left: 10px; border-radius: 50%; }
-#next-plane { right: 10px; border-radius: 50%; }
-
-/* 飞机参数展示区样式 (新增) */
-#plane-info-display {
-    text-align: center;
-    margin-top: 15px;
-    padding: 15px 30px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    min-width: 450px;
-}
-
-.plane-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px 20px;
-    font-size: 13px;
-    color: #c0e0f0;
-}
-
-.stat-value {
-    font-family: 'Consolas', monospace;
-    font-weight: bold;
-    color: #80D0C7;
-    margin-left: 5px;
-}
-
-
-/* 按钮和控制网格样式更新 */
-.controls-grid {
-    display: grid; grid-template-columns: auto auto; gap: 10px 20px; 
-    margin-top: 20px;
-    text-align: left; 
-    background: rgba(0,0,0,0.3); /* 深色透明背景 */
-    padding: 20px; 
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.2);
-    font-size: 14px;
-}
-
-.key-box { 
-    font-family: 'Consolas', monospace; 
-    color: #80D0C7; /* 匹配主题色 */
-    font-weight: bold; 
-    margin-right: 8px;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid #80D0C7;
-}
-
-button#start-button {
-    margin-top: 40px; 
-    padding: 14px 50px; 
-    font-size: 16px; 
-    font-weight: 700; 
-    border: none; /* 移除边框 */
-    background: #0093E9; 
-    color: #fff; 
-    cursor: pointer; 
-    letter-spacing: 2px;
-    transition: all 0.3s; 
-    text-transform: uppercase;
-    border-radius: 30px; /* 圆角按钮 */
-    box-shadow: 0 6px 20px rgba(0, 147, 233, 0.6);
-}
-button#start-button:hover { 
-    background: #80D0C7; 
-    color: #000; 
-    box-shadow: 0 6px 25px rgba(128, 208, 199, 0.8); 
-}
-/* 优化：按钮按下效果 */
-button#start-button:active {
-    transform: translateY(2px);
-    box-shadow: 0 3px 10px rgba(0, 147, 233, 0.6);
-}
-
-        /* 🚀 样式：画质选择面板 */
-#quality-selector {
-    position: absolute; 
-    right: 25px; 
-    bottom: 25px; 
-    z-index: 10;
-    pointer-events: all; /* 确保可以点击 */
-    background: rgba(10, 20, 30, 0.75); 
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-right: 4px solid #00aaff; /* 匹配仪表盘样式 */
-    backdrop-filter: blur(8px); 
+        #center-warning {position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);color: #ff3333; font-size: 24px; font-weight: bold; border: 2px solid #ff3333; padding: 10px 30px; background: rgba(0,0,0,0.7); display: none;animation: blink 0.5s step-end infinite;}#splash { position: absolute; top: 0; left: 0; width: 100%; height: 100%;background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center;color: white;text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); }
+        h1 { font-size: 32px; margin: 0; font-weight: 400; letter-spacing: 5px; text-transform: uppercase;color: #fff;text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); }#plane-chooser-title {font-size: 20px; margin-bottom: 20px; font-weight: 600; color: #f0f0f0; letter-spacing: 3px;}
+        #plane-model-container {width: 600px;height: 300px;margin: 20px 0 10px; background: rgba(255, 255, 255, 0.1);border-radius: 12px;box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);overflow: hidden;position: relative}
+        .model-nav-button {position: absolute;top: 50%;transform: translateY(-50%);background: rgba(0, 0, 0, 0.4);border: none;color: white;padding: 10px;cursor: pointer;font-size: 24px;z-index: 10;transition: background 0.2s;}.model-nav-button:hover {background: rgba(0, 0, 0, 0.7);}
+        #prev-plane { left: 10px; border-radius: 50%; }#next-plane { right: 10px; border-radius: 50%; }#plane-info-display {text-align: center; margin-top: 15px;padding: 15px 30px;background: rgba(255, 255, 255, 0.1);border-radius: 8px;border: 1px solid rgba(255, 255, 255, 0.2);box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        min-width: 450px;}.plane-title {font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase;}.stats-grid { display: grid;grid-template-columns: 1fr 1fr;
+        gap: 5px 20px;font-size: 13px;color: #c0e0f0;}.stat-value {font-family: 'Consolas', monospace;font-weight: bold;color: #80D0C7;margin-left: 5px;}.controls-grid { display: grid; grid-template-columns: auto auto; gap: 10px 20px; margin-top: 20px;
+        text-align: left; background: rgba(0,0,0,0.3);padding: 20px; border-radius: 8px;border: 1px solid rgba(255,255,255,0.2);font-size: 14px;}.key-box { font-family: 'Consolas', monospace; color: #80D0C7;
+        font-weight: bold; margin-right: 8px;background: rgba(255, 255, 255, 0.15);padding: 2px 6px;border-radius: 4px;border: 1px solid #80D0C7;}button#start-button {margin-top: 40px; padding: 14px 50px; 
+        font-size: 16px; font-weight: 700; border: none; background: #0093E9; color: #fff; cursor: pointer; letter-spacing: 2px;transition: all 0.3s; text-transform: uppercase;border-radius: 30px;box-shadow: 0 6px 20px rgba(0, 147, 233, 0.6);}
+        button#start-button:hover { background: #80D0C7; color: #000; box-shadow: 0 6px 25px rgba(128, 208, 199, 0.8); }button#start-button:active {transform: translateY(2px);box-shadow: 0 3px 10px rgba(0, 147, 233, 0.6);}
+        #quality-selector {position: absolute; right: 25px; bottom: 25px; z-index: 10;pointer-events: all; /* 确保可以点击 */background: rgba(10, 20, 30, 0.75);  border: 1px solid rgba(255, 255, 255, 0.15);border-right: 4px solid #00aaff; /* 匹配仪表盘样式 */backdrop-filter: blur(8px); 
     padding: 10px 18px; 
     color: #eee; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -198,7 +38,6 @@ button#start-button:active {
 }
 
 .button-group button {
-    /* 重置默认按钮样式 */
     all: unset; 
     cursor: pointer;
     font-size: 14px;
@@ -214,15 +53,12 @@ button#start-button:active {
     margin-left: 0;
 }
 
-/* 选中状态 */
 .button-group button.active,
 .button-group button:hover {
     background-color: #00aaff;
     color: #1a2a3a;
     font-weight: bold;
 }
-
-/* 🚀 新增：Loading 界面样式 */
 #loading-screen {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.95);
@@ -469,29 +305,22 @@ button#start-button:active {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script> 
-    
-    <script>
-        // --- 常量配置 (真实物理参数) ---
+     <script>
         const CONFIG = {
-            runwayZ: 4000,       // 跑道起点Z坐标
-            runwayX: -2000,      // 跑道中心X坐标
-            
-            // 物理参数 - 默认使用 F-35 的参数，将在 changePlane 中被覆盖
+            runwayZ: 4000,    
+            runwayX: -2000,    
             mass: 18000,         
             maxThrust: 420000,   
             dragCoeff: 0.035,    
             liftCoeff: 0.6,      
             wingArea: 75,        
             gravity: 9.81,       
-            
-            // 操控响应 (由于质量大，响应会变慢，模拟惯性)
             rotDamping: 2.5,     
             pitchSpeed: 1.2,
             rollSpeed: 2.0,
             yawSpeed: 0.8
         };
         
-        // 优化：新增飞机统计数据，用于更新 UI 和物理参数
         const PLANE_STATS = [
             {
                 name: "BOEING 777ER COMMERCIAL",
@@ -512,11 +341,8 @@ button#start-button:active {
         ];
 
 
-        // --- 帧率/物理优化常量 ---
-        const PHYSICS_STEP = 1/120; // 物理步长：120 Hz
-        let physicsTimeAccumulator = 0; // 物理时间累加器
-
-        // --- 全局画质预设 ---
+        const PHYSICS_STEP = 1/120; 
+        let physicsTimeAccumulator = 0; 
         const QUALITY_PRESETS = {
             SD: {
                 shadowMapSize: 2048,
@@ -534,66 +360,48 @@ button#start-button:active {
             }
         };
 
-        let currentQuality = 'SD'; // 默认设置为 SD
+        let currentQuality = 'SD'; 
 
         let splashScene, splashCamera, splashRenderer, splashClock;
         let splashPlaneGroup;
         let planeModels = [];
         let currentPlaneIndex = 0;
         const planeModelPaths = PLANE_STATS.map(stat => stat.path);
-
-        // --- 全局变量 ---
         let scene, camera, renderer, clock;
         let planeGroup; 
         let propL, propR; 
         let shadowPlane; 
         
         let input = { w:0, s:0, a:0, d:0, q:0, e:0, shift:0, space:0 };
-        let cameraMode = 0; // 0: Chase (尾随), 1: Cockpit (座舱), 2: Orbital (全景/塔台)
-
-        // 鼠标控制变量
+        let cameraMode = 0;
         let isDragging = false;
         let mouseX = 0, mouseY = 0;
-        let orbitAlpha = 0; // 水平旋转角度
-        let orbitBeta = 0.4; // 垂直旋转角度
-        const orbitDistance = 150; // 环绕半径
-        
-        // 🚀 FIX: 模型本地旋转偏移量 和 动态离地高度
+        let orbitAlpha = 0; 
+        let orbitBeta = 0.4; 
+        const orbitDistance = 150; 
         let modelOffsetQuat = new THREE.Quaternion(); 
         let dynamicGroundHeight = 2.8; 
-
-        // 物理状态对象
         const physics = {
-            // 🚀 FIX: 初始位置使用动态高度
             pos: new THREE.Vector3(CONFIG.runwayX, dynamicGroundHeight, CONFIG.runwayZ), 
             vel: new THREE.Vector3(0, 0, 0),
             acc: new THREE.Vector3(0, 0, 0),
             quat: new THREE.Quaternion(),
-            rotVel: new THREE.Vector3(0, 0, 0), // 角速度
+            rotVel: new THREE.Vector3(0, 0, 0),
             throttle: 0,
             brake: false,
             grounded: true,
             crashed: false
         };
-
-        // ⚠️ 新增 LoadingManager
         let loadingManager;
-        
         function startGame() {
             document.getElementById('splash').style.display = 'none';
-            document.getElementById('loading-screen').style.display = 'flex'; // 显示加载屏幕
-            
-            // 确保创建正确的飞机模型
+            document.getElementById('loading-screen').style.display = 'flex'; 
             const selectedModelPath = PLANE_STATS[currentPlaneIndex].path;
-            
-            // 启动游戏前，将当前飞机的物理参数写入 CONFIG
             const currentStats = PLANE_STATS[currentPlaneIndex];
             CONFIG.mass = currentStats.mass;
             CONFIG.maxThrust = currentStats.maxThrust;
             CONFIG.liftCoeff = currentStats.liftCoeff;
             dynamicGroundHeight = currentStats.groundHeight;
-
-            // 重置物理状态到新的高度
             physics.pos.set(CONFIG.runwayX, dynamicGroundHeight, CONFIG.runwayZ);
             physics.vel.set(0, 0, 0);
             physics.quat.identity();
@@ -601,15 +409,11 @@ button#start-button:active {
             physics.throttle = 0;
             physics.grounded = true;
             physics.crashed = false;
-            
-            // 确保 HUD 警告隐藏
             document.getElementById('center-warning').style.display = 'none';
 
             init(selectedModelPath);
-        }
-        
+        }       
         window.startGame = startGame; 
-        //END SUPPORT
         function closeNotice() {
     const modal = document.getElementById('notice-modal');
     modal.style.transition = 'opacity 0.5s';
@@ -618,30 +422,19 @@ button#start-button:active {
         modal.style.display = 'none';
     }, 500);
 }
-window.closeNotice = closeNotice; // 确保 HTML 可以调用
-        //END SUPPORT
-
-        let dirLight, hemiLight; // ⚠️ 声明为全局变量或文件级变量，以便 setQuality 访问
-        
-        // 🚀 FIX: 新增：根据当前飞机模型更新物理离地高度
+window.closeNotice = closeNotice; 
+ let dirLight, hemiLight; 
         function updatePlanePhysicsHeight(height) {
             dynamicGroundHeight = height;
-            
-            // 确保物理位置立即更新到新的正确离地高度
             if (physics.grounded) {
                 physics.pos.y = height;
             }
-            // 确保初始位置也在新的高度上
             if (physics.pos.y < height) {
                 physics.pos.y = height;
             }
         }
-
-        // 接受选中的飞机模型路径
         function init(modelPath) {
             clock = new THREE.Clock();
-            
-            // ⚠️ 初始化 LoadingManager
             loadingManager = new THREE.LoadingManager();
             loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
                 const percent = Math.floor(itemsLoaded / itemsTotal * 100);
@@ -650,13 +443,10 @@ window.closeNotice = closeNotice; // 确保 HTML 可以调用
             };
 
             loadingManager.onLoad = function() {
-                // 所有资产加载完毕后，隐藏加载屏幕，启动动画循环
                 console.log('All assets loaded. Starting game...');
                 document.getElementById('loading-screen').style.display = 'none';
                 animate();
             };
-
-            // ... (渲染器设置) ...
             renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             
@@ -666,34 +456,22 @@ window.closeNotice = closeNotice; // 确保 HTML 可以调用
             renderer.toneMappingExposure = 1.0; 
             renderer.outputEncoding = THREE.sRGBEncoding;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-            // 场景
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87CEEB); 
             scene.fog = new THREE.Fog(0x87CEEB, 2000, 50000); 
-
-            // 相机
             camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.5, 300000);
-
-            // 环境光
             hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b4c5a, 0.7); 
             scene.add(hemiLight);
-
-            // 太阳光
             dirLight = new THREE.DirectionalLight(0xfff0dd, 1.8); 
             dirLight.position.set(3000, 5000, 2000);
             dirLight.castShadow = true;
-            
             const d = 5000;
             dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
             dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
             
             dirLight.shadow.bias = -0.0001;
             scene.add(dirLight);
-            
-            setQuality('HD'); // 默认使用 HD
-
-            // 构建世界 (使用 LoadingManager 的 GLTFLoader)
+            setQuality('HD');
             createRealisticWorld();
             createDetailedPlane(modelPath); // 使用传入的模型路径
 
