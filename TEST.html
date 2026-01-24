@@ -216,11 +216,65 @@
         }
 
         function CreateGroundAndWalls() {
+            // 1. 地面纹理设置
             const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 1000, width: 1000 });
             ground.position.y = -5;
+            
+            const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+            // 使用自带的网格纹理（或你可以替换为具体URL）
+            groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
+            groundMat.diffuseTexture.uScale = 50; // 纹理重复次数
+            groundMat.diffuseTexture.vScale = 50;
+            groundMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            ground.material = groundMat;
+            
             AddStaticPhysics(ground, 300);
-        }
 
+            // 2. 添加围墙 (长、宽、高)
+            const wallSize = 1000;
+            const wallHeight = 20;
+            const wallThickness = 2;
+            
+            const wallData = [
+                { pos: [0, wallHeight/2 - 5, wallSize/2], size: [wallSize, wallHeight, wallThickness] }, // 北
+                { pos: [0, wallHeight/2 - 5, -wallSize/2], size: [wallSize, wallHeight, wallThickness] }, // 南
+                { pos: [wallSize/2, wallHeight/2 - 5, 0], size: [wallThickness, wallHeight, wallSize] }, // 东
+                { pos: [-wallSize/2, wallHeight/2 - 5, 0], size: [wallThickness, wallHeight, wallSize] }  // 西
+            ];
+
+            wallData.forEach((data, i) => {
+                const wall = BABYLON.MeshBuilder.CreateBox("Wall" + i, { width: data.size[0], height: data.size[1], depth: data.size[2] }, scene);
+                wall.position = new BABYLON.Vector3(data.pos[0], data.pos[1], data.pos[2]);
+                const wallMat = new BABYLON.StandardMaterial("wallMat", scene);
+                wallMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                wall.material = wallMat;
+                
+                AddStaticPhysics(wall, 10);
+                wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+            });
+
+            // 3. 添加一些“房子”来测试碰撞
+            const housePositions = [
+                new BABYLON.Vector3(30, 0, 30),
+                new BABYLON.Vector3(-40, 0, 50),
+                new BABYLON.Vector3(60, 0, -20),
+                new BABYLON.Vector3(-20, 0, -60)
+            ];
+
+            housePositions.forEach((pos, i) => {
+                const house = BABYLON.MeshBuilder.CreateBox("House" + i, { width: 15, height: 20, depth: 15 }, scene);
+                house.position = pos;
+                house.position.y = 5; // 让房子底部在地面上
+
+                const houseMat = new BABYLON.StandardMaterial("houseMat", scene);
+                houseMat.diffuseColor = new BABYLON.Color3(0.6, 0.4, 0.3);
+                house.material = houseMat;
+
+                AddStaticPhysics(house, 10);
+                // 确保房子属于环境层，以便与车辆碰撞
+                house.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+            });
+        }
         function AddWheelPhysics(mesh, mass, bounce, friction) {
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 2, scene);
             const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
