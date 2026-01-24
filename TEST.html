@@ -2,225 +2,267 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Babylon GTA Pro - Havok Edition</title>
+    <title>Babylon GTA - Havok Pro Module</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
         #renderCanvas { width: 100%; height: 100%; touch-action: none; }
-        #ui { position: absolute; top: 20px; left: 20px; color: white; font-family: sans-serif; pointer-events: none; }
+        #instructions { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.5); padding: 10px; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="ui">WASD 移动 | F 上下车 | 空格 刹车</div>
+    <div id="instructions">
+        <b>[Walking]</b> WASD to Move, F to Enter Car<br>
+        <b>[Driving]</b> WASD to Drive, Space to Brake, F to Exit
+    </div>
     <canvas id="renderCanvas"></canvas>
 
-    <script>
-        const canvas = document.getElementById("renderCanvas");
-        const FILTERS = { Player: 1, Car: 2, Environment: 4 };
+<script>
+/**
+ * ============================================================
+ * 模块 1: 全局配置与输入管理器
+ * ============================================================
+ */
+class InputManager {
+    constructor(scene) {
+        this.keys = {};
+        scene.onKeyboardObservable.add((kbInfo) => {
+            this.keys[kbInfo.event.key.toLowerCase()] = kbInfo.type === BABYLON.KeyboardEventTypes.KEYDOWN;
+        });
+    }
+    isPressed(key) { return this.keys[key.toLowerCase()] || false; }
+}
 
-        // --- 车辆类 ---
-        class Vehicle {
-            constructor(name, position, scene, hkWasm) {
-                this.scene = scene;
-                this.isOccupied = false;
-                this.speed = 0;
-                this.steeringAngle = 0;
-                
-                // 1. 创建车身
-                this.mesh = BABYLON.MeshBuilder.CreateBox(name + "_frame", { height: 1.2, width: 6, depth: 12 }, scene);
-                this.mesh.position = position;
-                this.mesh.visibility = 0.7;
+/**
+ * ============================================================
+ * 模块 2: 车辆实体类 (Vehicle)
+ * ============================================================
+ */
+class Vehicle {
+    constructor(name, position, scene) {
+        this.scene = scene;
+        this.steerJoints = [];
+        this.motors = [];
+        this.isOccupied = false;
+        
+        // 1. 创建底盘 (使用 Box 碰撞体代替 Mesh 提高性能)
+        this.chassis = BABYLON.MeshBuilder.CreateBox(name + "_chassis", { height: 1.2, width: 6, depth: 12 }, scene);
+        this.chassis.position = position;
+        this.chassis.visibility = 0.6;
+        
+        const chassisShape = new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(6, 1.2, 12), scene);
+        this.body = new BABYLON.PhysicsBody(this.chassis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+        this.body.setMassProperties({ mass: 1500 });
+        this.body.shape = chassisShape;
+        chassisShape.material = { friction: 0.2, restitution: 0.1 };
 
-                // 使用 Box 替代 Mesh 碰撞，性能提升 10 倍且不穿模
-                const chassisShape = new BABYLON.PhysicsShapeBox(new BABYLON.Vector3(0,0,0), new BABYLON.Quaternion(0,0,0,1), new BABYLON.Vector3(6, 1.2, 12), scene);
-                this.body = new BABYLON.PhysicsBody(this.mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
-                chassisShape.material = { friction: 0.2, restitution: 0.1 };
-                this.body.shape = chassisShape;
-                this.body.setMassProperties({ mass: 1000 });
-                chassisShape.filterMembershipMask = FILTERS.Car;
-                chassisShape.filterCollideMask = FILTERS.Environment | FILTERS.Player;
+        // 2. 创建车轮与轴
+        this._initWheels(position);
+    }
 
-                // 2. 轮子逻辑 (简化演示：2个驱动轮，2个转向轮)
-                this.steerJoints = [];
-                this.driveMotors = [];
-                this._createWheels();
-            }
+    _initWheels(pos) {
+        const wheelData = [
+            { name: "fl", pos: new BABYLON.Vector3(3, -0.5, 4), steer: true, drive: true },
+            { name: "fr", pos: new BABYLON.Vector3(-3, -0.5, 4), steer: true, drive: true },
+            { name: "rl", pos: new BABYLON.Vector3(3, -0.5, -4), steer: false, drive: false },
+            { name: "rr", pos: new BABYLON.Vector3(-3, -0.5, -4), steer: false, drive: false }
+        ];
 
-            _createWheels() {
-                const wheelPos = [
-                    { p: new BABYLON.Vector3(3, -0.5, 4), steer: true },   // 前左
-                    { p: new BABYLON.Vector3(-3, -0.5, 4), steer: true },  // 前右
-                    { p: new BABYLON.Vector3(3, -0.5, -4), steer: false }, // 后左
-                    { p: new BABYLON.Vector3(-3, -0.5, -4), steer: false } // 后右
-                ];
+        wheelData.forEach(data => {
+            // 创建轴 (Axle)
+            const axle = BABYLON.MeshBuilder.CreateBox("axle", { size: 0.5 }, this.scene);
+            axle.position = this.chassis.position.add(data.pos);
+            const axleBody = new BABYLON.PhysicsBody(axle, BABYLON.PhysicsMotionType.DYNAMIC, false, this.scene);
+            axleBody.shape = new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(0.5, 0.5, 0.5), this.scene);
+            axleBody.setMassProperties({ mass: 50 });
 
-                wheelPos.forEach((config, i) => {
-                    const wheel = BABYLON.MeshBuilder.CreateCylinder("w"+i, {height: 0.8, diameter: 2.5}, this.scene);
-                    wheel.rotation.z = Math.PI/2;
-                    wheel.bakeCurrentTransformIntoVertices();
-                    wheel.position = this.mesh.position.add(config.p);
-                    
-                    const wheelBody = new BABYLON.PhysicsBody(wheel, BABYLON.PhysicsMotionType.DYNAMIC, false, this.scene);
-                    const wheelShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.4,0,0), new BABYLON.Vector3(0.4,0,0), 1.25, this.scene);
-                    wheelShape.material = { friction: 0.8, restitution: 0.1 };
-                    wheelBody.shape = wheelShape;
-                    wheelBody.setMassProperties({ mass: 50 });
-                    wheelShape.filterMembershipMask = FILTERS.Car;
-
-                    // 6DoF 约束
-                    const joint = new BABYLON.Physics6DoFConstraint({
-                        pivotA: config.p,
-                        pivotB: BABYLON.Vector3.Zero(),
-                        axisA: BABYLON.Vector3.Forward(),
-                        axisB: BABYLON.Vector3.Forward()
-                    }, [
-                        { axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE, minLimit: 0, maxLimit: 0 },
-                        { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: config.steer ? -0.5 : 0, maxLimit: config.steer ? 0.5 : 0 }
-                    ], this.scene);
-
-                    this.body.addConstraint(wheelBody, joint);
-
-                    if(config.steer) {
-                        joint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, BABYLON.PhysicsConstraintMotorType.POSITION);
-                        this.steerJoints.push(joint);
-                    }
-                    
-                    joint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_X, BABYLON.PhysicsConstraintMotorType.VELOCITY);
-                    joint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 100000);
-                    this.driveMotors.push(joint);
-                });
-            }
-
-            update(input) {
-                if(!this.isOccupied) {
-                    this.driveMotors.forEach(m => m.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0));
-                    return;
-                }
-
-                // 转向逻辑
-                if (input.left) this.steeringAngle = BABYLON.Scalar.Lerp(this.steeringAngle, 0.5, 0.1);
-                else if (input.right) this.steeringAngle = BABYLON.Scalar.Lerp(this.steeringAngle, -0.5, 0.1);
-                else this.steeringAngle *= 0.9;
-                this.steerJoints.forEach(s => s.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, this.steeringAngle));
-
-                // 动力逻辑
-                if (input.forward) this.speed = 150;
-                else if (input.back) this.speed = -50;
-                else this.speed *= 0.95;
-                this.driveMotors.forEach(m => m.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, this.speed));
-            }
-        }
-
-        // --- 角色类 ---
-        class Player {
-            constructor(scene) {
-                this.mesh = BABYLON.MeshBuilder.CreateCapsule("Player", { height: 4, radius: 1 }, scene);
-                this.mesh.position.y = 5;
-                this.body = new BABYLON.PhysicsBody(this.mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
-                const shape = new BABYLON.PhysicsShapeCapsule(new BABYLON.Vector3(0,-1.5,0), new BABYLON.Vector3(0,1.5,0), 1, scene);
-                this.body.shape = shape;
-                this.body.setMassProperties({ mass: 80 });
-                this.body.setLinearDamping(0.5);
-                this.body.setAngularDamping(1.0); // 防止人像不倒翁一样乱滚
-                shape.filterMembershipMask = FILTERS.Player;
-            }
-
-            update(input, cameraRotation) {
-                if(!this.mesh.isEnabled()) return;
-
-                let moveVec = BABYLON.Vector3.Zero();
-                if (input.forward) moveVec.z = 1;
-                if (input.back) moveVec.z = -1;
-                if (input.left) moveVec.x = -1;
-                if (input.right) moveVec.x = 1;
-
-                if (moveVec.length() > 0) {
-                    // 根据相机方向移动
-                    const forward = BABYLON.Vector3.TransformCoordinates(BABYLON.Vector3.Forward(), BABYLON.Matrix.RotationY(cameraRotation));
-                    const right = BABYLON.Vector3.TransformCoordinates(BABYLON.Vector3.Right(), BABYLON.Matrix.RotationY(cameraRotation));
-                    const direction = forward.scale(moveVec.z).add(right.scale(moveVec.x)).normalize();
-                    
-                    this.body.applyImpulse(direction.scale(20), this.mesh.getAbsolutePosition());
-                    // 面对移动方向
-                    this.mesh.rotation.y = Math.atan2(direction.x, direction.z);
-                }
-            }
-        }
-
-        // --- 主游戏管理 ---
-        async function init() {
-            const hkWasm = await HavokPhysics();
-            const engine = new BABYLON.Engine(canvas, true);
-            const scene = new BABYLON.Scene(engine);
-            const havok = new BABYLON.HavokPlugin(false, hkWasm);
-            scene.enablePhysics(new BABYLON.Vector3(0, -9.8, 0), havok);
-
-            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-            const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI/2, Math.PI/3, 40, BABYLON.Vector3.Zero(), scene);
-            camera.attachControl(canvas, true);
-
-            // 地面
-            const ground = BABYLON.MeshBuilder.CreateGround("g", {width: 500, height: 500}, scene);
-            const groundBody = new BABYLON.PhysicsBody(ground, BABYLON.PhysicsMotionType.STATIC, false, scene);
-            const groundShape = new BABYLON.PhysicsShapeMesh(ground, scene);
-            groundBody.shape = groundShape;
-            groundShape.filterMembershipMask = FILTERS.Environment;
-
-            // 初始化玩家和车
-            const player = new Player(scene);
-            const car = new Vehicle("GTACar", new BABYLON.Vector3(20, 2, 0), scene, hkWasm);
+            // 创建轮子 (Wheel)
+            const wheel = BABYLON.MeshBuilder.CreateCylinder("wheel", { diameter: 2.5, height: 1, tessellation: 24 }, this.scene);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.bakeCurrentTransformIntoVertices();
+            wheel.position = axle.position;
             
-            let currentMode = "player"; // "player" or "car"
-            const inputs = { forward:false, back:false, left:false, right:false };
+            const wheelBody = new BABYLON.PhysicsBody(wheel, BABYLON.PhysicsMotionType.DYNAMIC, false, this.scene);
+            const wheelShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.5, 0, 0), new BABYLON.Vector3(0.5, 0, 0), 1.25, this.scene);
+            wheelShape.material = { friction: 2.0, restitution: 0.1 }; // 增加摩擦力
+            wheelBody.shape = wheelShape;
+            wheelBody.setMassProperties({ mass: 100 });
 
-            // 监听键盘
-            window.addEventListener("keydown", (e) => {
-                if(e.key == "w") inputs.forward = true;
-                if(e.key == "s") inputs.back = true;
-                if(e.key == "a") inputs.left = true;
-                if(e.key == "d") inputs.right = true;
-                
-                // 上下车逻辑 (F 键)
-                if(e.key == "f") {
-                    if(currentMode == "player") {
-                        const dist = BABYLON.Vector3.Distance(player.mesh.position, car.mesh.position);
-                        if(dist < 8) {
-                            currentMode = "car";
-                            car.isOccupied = true;
-                            player.mesh.setEnabled(false); // 隐藏玩家
-                            camera.lockedTarget = car.mesh; // 相机切到车
-                        }
-                    } else {
-                        currentMode = "player";
-                        car.isOccupied = false;
-                        player.mesh.setEnabled(true);
-                        player.mesh.position = car.mesh.position.add(new BABYLON.Vector3(8, 2, 0)); // 在车旁边生成
-                        camera.lockedTarget = player.mesh; // 相机切回人
-                    }
-                }
-            });
-            window.addEventListener("keyup", (e) => {
-                if(e.key == "w") inputs.forward = false;
-                if(e.key == "s") inputs.back = false;
-                if(e.key == "a") inputs.left = false;
-                if(e.key == "d") inputs.right = false;
-            });
+            // 6DoF 约束: 轴连到底盘 (悬挂 + 转向)
+            const axleJoint = new BABYLON.Physics6DoFConstraint({
+                pivotA: data.pos,
+                pivotB: BABYLON.Vector3.Zero(),
+            }, [
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: -0.2, maxLimit: 0.2, stiffness: 50000, damping: 2000 },
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: data.steer ? -0.5 : 0, maxLimit: data.steer ? 0.5 : 0 },
+            ], this.scene);
+            this.body.addConstraint(axleBody, axleJoint);
 
-            camera.lockedTarget = player.mesh;
+            // 6DoF 约束: 轮子连到轴 (驱动)
+            const wheelJoint = new BABYLON.Physics6DoFConstraint({
+                pivotA: BABYLON.Vector3.Zero(),
+                pivotB: BABYLON.Vector3.Zero(),
+            }, [
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: 0, maxLimit: 0 },
+            ], this.scene);
+            axleBody.addConstraint(wheelBody, wheelJoint);
 
-            scene.onBeforeRenderObservable.add(() => {
-                if(currentMode == "player") {
-                    player.update(inputs, camera.alpha);
-                } else {
-                    car.update(inputs);
-                }
-            });
+            if (data.steer) {
+                axleJoint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, BABYLON.PhysicsConstraintMotorType.POSITION);
+                axleJoint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 1000000);
+                this.steerJoints.push(axleJoint);
+            }
+            if (data.drive) {
+                wheelJoint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_X, BABYLON.PhysicsConstraintMotorType.VELOCITY);
+                wheelJoint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 500000);
+                this.motors.push(wheelJoint);
+            }
+        });
+    }
 
-            engine.runRenderLoop(() => scene.render());
+    update(input) {
+        if (!this.isOccupied) {
+            this.motors.forEach(m => m.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0));
+            return;
         }
 
-        init();
-    </script>
+        let speed = 0;
+        if (input.isPressed("w")) speed = 100;
+        if (input.isPressed("s")) speed = -50;
+        if (input.isPressed(" ")) speed = 0;
+
+        let steer = 0;
+        if (input.isPressed("a")) steer = 0.5;
+        if (input.isPressed("d")) steer = -0.5;
+
+        this.motors.forEach(m => m.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, speed));
+        this.steerJoints.forEach(s => s.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, steer));
+    }
+}
+
+/**
+ * ============================================================
+ * 模块 3: 角色实体类 (Player)
+ * ============================================================
+ */
+class Player {
+    constructor(position, scene) {
+        this.scene = scene;
+        this.mesh = BABYLON.MeshBuilder.CreateCapsule("player", { height: 4, radius: 1 }, scene);
+        this.mesh.position = position;
+        
+        const shape = new BABYLON.PhysicsShapeCapsule(new BABYLON.Vector3(0, -1, 0), new BABYLON.Vector3(0, 1, 0), 1, scene);
+        this.body = new BABYLON.PhysicsBody(this.mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+        this.body.setMassProperties({ mass: 80 });
+        this.body.shape = shape;
+        this.body.setLinearDamping(0.5);
+        this.body.setAngularDamping(1.0); // 防止人像不倒翁一样乱晃
+        
+        this.state = "walking"; // walking | driving
+    }
+
+    update(input, car) {
+        if (this.state === "walking") {
+            const force = new BABYLON.Vector3(0, 0, 0);
+            const moveSpeed = 800;
+            if (input.isPressed("w")) force.z = moveSpeed;
+            if (input.isPressed("s")) force.z = -moveSpeed;
+            if (input.isPressed("a")) force.x = -moveSpeed;
+            if (input.isPressed("d")) force.x = moveSpeed;
+            this.body.applyForce(force, this.mesh.getAbsolutePosition());
+
+            // 交互逻辑: 按 F 上车
+            if (input.isPressed("f")) {
+                const dist = BABYLON.Vector3.Distance(this.mesh.position, car.chassis.position);
+                if (dist < 8) this.enterVehicle(car);
+            }
+        } else if (this.state === "driving") {
+            // 人在车里，位置跟随
+            this.mesh.position.copyFrom(car.chassis.position);
+            
+            if (input.isPressed("f")) this.exitVehicle(car);
+        }
+    }
+
+    enterVehicle(car) {
+        this.state = "driving";
+        car.isOccupied = true;
+        this.body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED); // 关闭物理模拟
+        this.mesh.isVisible = false; // 进入车内暂时隐藏模型
+        console.log("Entered Vehicle");
+    }
+
+    exitVehicle(car) {
+        this.state = "walking";
+        car.isOccupied = false;
+        this.body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC);
+        this.mesh.isVisible = true;
+        // 弹射到车门旁边
+        this.mesh.position = car.chassis.position.add(new BABYLON.Vector3(8, 2, 0));
+        console.log("Exited Vehicle");
+    }
+}
+
+/**
+ * ============================================================
+ * 模块 4: 主程序
+ * ============================================================
+ */
+async function runGame() {
+    const hkWasm = await HavokPhysics();
+    const havokPlugin = new BABYLON.HavokPlugin(true, hkWasm);
+    
+    const engine = new BABYLON.Engine(document.getElementById("renderCanvas"), true);
+    const scene = new BABYLON.Scene(engine);
+    
+    // 物理环境优化
+    scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), havokPlugin);
+    // CCD 开启防止穿模 (对高速载具至关重要)
+    // subTimeStep 决定了计算精度
+    scene.getPhysicsEngine().setSubTimeStep(16); 
+
+    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+    const input = new InputManager(scene);
+
+    // 地面
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 1000, height: 1000 }, scene);
+    const groundBody = new BABYLON.PhysicsBody(ground, BABYLON.PhysicsMotionType.STATIC, false, scene);
+    groundBody.shape = new BABYLON.PhysicsShapeMesh(ground, scene);
+
+    // 初始化实体
+    const myCar = new Vehicle("GTACar", new BABYLON.Vector3(0, 5, 20), scene);
+    const player = new Player(new BABYLON.Vector3(0, 5, 0), scene);
+
+    // 相机跟随系统
+    const camera = new BABYLON.FollowCamera("camera", new BABYLON.Vector3(0, 10, -20), scene);
+    camera.radius = 30;
+    camera.heightOffset = 10;
+    camera.cameraAcceleration = 0.1;
+    camera.maxCameraSpeed = 50;
+    scene.activeCamera = camera;
+
+    scene.onBeforeRenderObservable.add(() => {
+        player.update(input, myCar);
+        myCar.update(input);
+
+        // 动态相机目标
+        if (player.state === "walking") {
+            camera.lockedTarget = player.mesh;
+        } else {
+            camera.lockedTarget = myCar.chassis;
+        }
+    });
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener("resize", () => engine.resize());
+}
+
+runGame();
+</script>
 </body>
 </html>
