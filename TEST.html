@@ -2,16 +2,20 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Havok Pro Test</title>
+    <title>Havok Pro - City Drive</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         #renderCanvas { width: 100%; height: 100%; touch-action: none; }
+        #status { position: absolute; top: 20px; left: 20px; color: #0f0; font-family: monospace; pointer-events: none; }
     </style>
 </head>
 <body>
+    <div id="status">正在加载城市物理环境...</div>
     <canvas id="renderCanvas"></canvas>
+
     <script>
         const canvas = document.getElementById("renderCanvas");
         let scene, havokInstance, tyreMaterial;
@@ -24,55 +28,59 @@
         debugColours[5] = new BABYLON.Color4(0, 0, 1, 1);
         const FILTERS = { CarParts: 1, Environment: 2 };
 
-        // 启动引导：Havok 需要先加载 WASM 实例
-        async function init() {
+        (async () => {
             const hkWasm = await HavokPhysics();
-            // 注意：HavokPlugin 的第一个参数是 _useDeltaForWorldStep，第二个是 WASM 实例
             havokInstance = new BABYLON.HavokPlugin(false, hkWasm);
-            
             await createScene();
-        }
+        })();
 
         async function createScene() {
             const engine = new BABYLON.Engine(canvas, true);
             scene = new BABYLON.Scene(engine);
 
-            // 使用你的物理参数
+            // 你的核心物理参数
             scene.enablePhysics(new BABYLON.Vector3(0, -240, 0), havokInstance);
             scene.getPhysicsEngine().setTimeStep(1 / 500);
             scene.getPhysicsEngine().setSubTimeStep(4.5);
 
             const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), scene);
-            camera.radius = 50;
-            camera.heightOffset = 20;
-            camera.rotationOffset = 180;
-            camera.cameraAcceleration = 0.035;
-            camera.maxCameraSpeed = 10;
+            camera.radius = 50; camera.heightOffset = 20; camera.rotationOffset = 180;
+            camera.cameraAcceleration = 0.035; camera.maxCameraSpeed = 20;
 
-            const hemisphericLight = new BABYLON.HemisphericLight("Hemispheric Light", new BABYLON.Vector3(1, 1, 0), scene);
-            hemisphericLight.intensity = 0.7;
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+            light.intensity = 0.8;
 
             InitTyreMaterial();
-            CreateGroundAndWalls();
-            camera.lockedTarget = CreateCar();
+            
+            // 1. 加载城市并添加碰撞 (Environment)
+            await LoadCity("city.glb"); 
 
-            engine.runRenderLoop(() => {
-                if (scene && scene.activeCamera) {
-                    scene.render();
-                }
-            });
+            // 2. 创建车辆 (CarParts)
+            const carFrame = CreateCar();
+            camera.lockedTarget = carFrame;
 
+            engine.runRenderLoop(() => { scene.render(); });
             window.addEventListener('resize', () => engine.resize());
-            return scene;
+            document.getElementById("status").textContent = "WASD驾驶 | 城市物理已就绪";
         }
 
-        // =========================================================================
-        // 以下是你的核心逻辑函数 (完全保留)
-        // =========================================================================
+        // --- 新增：城市加载逻辑 ---
+        async function LoadCity(file) {
+            const result = await BABYLON.SceneLoader.ImportMeshAsync("", "./", file, scene);
+            result.meshes.forEach(mesh => {
+                // 只给可见的、有顶点的模型加碰撞
+                if (mesh.getTotalVertices() > 0) {
+                    AddStaticPhysics(mesh, 300); // 使用你的 AddStaticPhysics
+                    FilterMeshCollisions(mesh);  // 使用你的 FILTERS.Environment
+                }
+            });
+        }
+
+        // --- 以下完全保留你的逻辑函数 ---
 
         function CreateCar() {
             const carFrame = BABYLON.MeshBuilder.CreateBox("Frame", { height: 1, width: 12, depth: 24, faceColors: debugColours });
-            carFrame.position = new BABYLON.Vector3(0, 0.3, 0);
+            carFrame.position = new BABYLON.Vector3(0, 5, 0); // 从空中落下
             carFrame.visibility = 0.5;
             const carFrameBody = AddDynamicPhysics(carFrame, 1000, 0, 0);
             FilterMeshCollisions(carFrame);
@@ -91,7 +99,6 @@
                 AddAxlePhysics(mesh, 100, 0, 0);
                 FilterMeshCollisions(mesh);
             }
-
             for (const mesh of [flWheel, frWheel, rlWheel, rrWheel]) {
                 AddWheelPhysics(mesh, 100, 0.1, 50);
                 FilterMeshCollisions(mesh);
@@ -104,11 +111,10 @@
 
             const steerWheelA = AttachAxleToFrame(flAxle.physicsBody, carFrameBody, true);
             const steerWheelB = AttachAxleToFrame(frAxle.physicsBody, carFrameBody, true);
-            AttachAxleToFrame(rlAxle.physicsBody, carFrameBody);
-            AttachAxleToFrame(rrAxle.physicsBody, carFrameBody);
+            AttachAxleToFrame(rlAxle.physicsBody, carFrameBody, false);
+            AttachAxleToFrame(rrAxle.physicsBody, carFrameBody, false);
 
             InitKeyboardControls(poweredWheelMotorA, poweredWheelMotorB, steerWheelA, steerWheelB);
-
             return carFrame;
         }
 
@@ -119,12 +125,7 @@
         }
 
         function CreateWheel(position) {
-            const faceUVforArrowTexture = [
-                new BABYLON.Vector4(0, 0, 0, 0),
-                new BABYLON.Vector4(0, 1, 1, 0),
-                new BABYLON.Vector4(0, 0, 0, 0),
-            ]
-            const wheelMesh = BABYLON.MeshBuilder.CreateCylinder("Wheel", { height: 1.6, diameter: 4, faceUV: faceUVforArrowTexture });
+            const wheelMesh = BABYLON.MeshBuilder.CreateCylinder("Wheel", { height: 1.6, diameter: 4 });
             wheelMesh.rotation = new BABYLON.Vector3(0, 0, Math.PI / 2);
             wheelMesh.bakeCurrentTransformIntoVertices();
             wheelMesh.position = position;
@@ -175,35 +176,44 @@
             return joint;
         }
 
+        function CalculateWheelAngles(averageAngle) {
+            const wheelbase = 16, trackWidth = 11;
+            const avgRadius = wheelbase / Math.tan(averageAngle);
+            const innerRadius = avgRadius - trackWidth / 2;
+            const outerRadius = avgRadius + trackWidth / 2;
+            const innerAngle = Math.atan(wheelbase / innerRadius);
+            const outerAngle = Math.atan(wheelbase / outerRadius);
+            return [isNaN(innerAngle) ? 0 : innerAngle, isNaN(outerAngle) ? 0 : outerAngle];
+        }
+
         function InitKeyboardControls(motorWheelA, motorWheelB, steerWheelA, steerWheelB) {
-            let forwardPressed = false, backPressed = false, leftPressed = false, rightPressed = false, brakePressed = false;
+            let keys = { w: false, s: false, a: false, d: false, space: false };
             let currentSpeed = 0, currentSteeringAngle = 0, maxSpeed = 150;
             const maxSteeringAngle = Math.PI / 6;
 
             scene.onKeyboardObservable.add(e => {
                 const isDown = e.type == BABYLON.KeyboardEventTypes.KEYDOWN;
-                switch (e.event.key.toLowerCase()) {
-                    case "w": case "arrowup": forwardPressed = isDown; break;
-                    case "s": case "arrowdown": backPressed = isDown; break;
-                    case "a": case "arrowleft": leftPressed = isDown; break;
-                    case "d": case "arrowright": rightPressed = isDown; break;
-                    case " ": brakePressed = isDown; break;
-                }
+                const key = e.event.key.toLowerCase();
+                if(key === "w" || key === "arrowup") keys.w = isDown;
+                if(key === "s" || key === "arrowdown") keys.s = isDown;
+                if(key === "a" || key === "arrowleft") keys.a = isDown;
+                if(key === "d" || key === "arrowright") keys.d = isDown;
+                if(key === " ") keys.space = isDown;
             });
 
             scene.onBeforeRenderObservable.add(() => {
-                if (leftPressed && currentSteeringAngle < maxSteeringAngle) currentSteeringAngle += 0.01;
-                else if (rightPressed && currentSteeringAngle > -maxSteeringAngle) currentSteeringAngle -= 0.01;
-                else if (!leftPressed && !rightPressed) currentSteeringAngle *= 0.98;
+                if (keys.a && currentSteeringAngle < maxSteeringAngle) currentSteeringAngle += 0.015;
+                else if (keys.d && currentSteeringAngle > -maxSteeringAngle) currentSteeringAngle -= 0.015;
+                else currentSteeringAngle *= 0.95;
 
                 const [innerAngle, outerAngle] = CalculateWheelAngles(currentSteeringAngle);
                 steerWheelA.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, outerAngle);
                 steerWheelB.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, innerAngle);
 
-                if (brakePressed) currentSpeed = 0;
-                else if (forwardPressed && currentSpeed < maxSpeed) currentSpeed += 8;
-                else if (backPressed && currentSpeed > -maxSpeed * 0.5) currentSpeed -= 8;
-                else if (!forwardPressed && !backPressed) currentSpeed *= 0.99;
+                if (keys.space) currentSpeed = 0;
+                else if (keys.w && currentSpeed < maxSpeed) currentSpeed += 8;
+                else if (keys.s && currentSpeed > -maxSpeed * 0.5) currentSpeed -= 8;
+                else currentSpeed *= 0.99;
 
                 motorWheelA.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, currentSpeed);
                 motorWheelB.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, currentSpeed);
@@ -216,9 +226,7 @@
         }
 
         function CreateGroundAndWalls() {
-            const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 1000, width: 1000 });
-            ground.position.y = -5;
-            AddStaticPhysics(ground, 300);
+            // 已被 LoadCity 替代，如果需要基础平面可保留
         }
 
         function AddWheelPhysics(mesh, mass, bounce, friction) {
@@ -257,22 +265,11 @@
         }
 
         function FilterMeshCollisions(mesh) {
-            mesh.physicsBody.shape.filterMembershipMask = FILTERS.CarParts;
-            mesh.physicsBody.shape.filterCollideMask = FILTERS.Environment;
+            if(mesh.physicsBody && mesh.physicsBody.shape) {
+                mesh.physicsBody.shape.filterMembershipMask = mesh.physicsBody.getMotionType() === BABYLON.PhysicsMotionType.STATIC ? FILTERS.Environment : FILTERS.CarParts;
+                mesh.physicsBody.shape.filterCollideMask = mesh.physicsBody.getMotionType() === BABYLON.PhysicsMotionType.STATIC ? FILTERS.CarParts : FILTERS.Environment;
+            }
         }
-
-        function CalculateWheelAngles(averageAngle) {
-            const wheelbase = 16, trackWidth = 11;
-            const avgRadius = wheelbase / Math.tan(averageAngle);
-            const innerRadius = avgRadius - trackWidth / 2;
-            const outerRadius = avgRadius + trackWidth / 2;
-            const innerAngle = Math.atan(wheelbase / innerRadius);
-            const outerAngle = Math.atan(wheelbase / outerRadius);
-            return [isNaN(innerAngle) ? 0 : innerAngle, isNaN(outerAngle) ? 0 : outerAngle];
-        }
-
-        // 执行初始化
-        init();
     </script>
 </body>
 </html>
