@@ -39,7 +39,7 @@
 
             // 使用你的物理参数
             scene.enablePhysics(new BABYLON.Vector3(0, -240, 0), havokInstance);
-            scene.getPhysicsEngine().setTimeStep(1 / 500);
+            scene.getPhysicsEngine().setTimeStep(1 / 100);
             scene.getPhysicsEngine().setSubTimeStep(4.5);
 
             const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -10), scene);
@@ -226,86 +226,83 @@
         }
 
         function CreateGroundAndWalls() {
-    // 1. 巨大地面
-    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 2000, width: 2000 });
-    ground.position.y = -5;
+    // --- 1. 环境材质准备 (为了性能，提前创建好材质) ---
     const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
     groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
     groundMat.diffuseTexture.uScale = 100;
     groundMat.diffuseTexture.vScale = 100;
+
+    const buildingMat = new BABYLON.StandardMaterial("buildingMat", scene);
+    buildingMat.diffuseColor = new BABYLON.Color3(0.3, 0.6, 0.9);
+    buildingMat.backFaceCulling = true; // 开启背面剔除提升性能
+
+    const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
+    rampMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
+
+    // --- 2. 巨大地面 ---
+    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 2000, width: 2000 });
+    ground.position.y = -5;
     ground.material = groundMat;
     AddStaticPhysics(ground, 500);
 
-    // 2. 边界墙
-    const wallH = 100;
-    const walls = [
-        {w: 2000, h: wallH, d: 10, x: 0, z: 1000},
-        {w: 2000, h: wallH, d: 10, x: 0, z: -1000},
-        {w: 10, h: wallH, d: 2000, x: 1000, z: 0},
-        {w: 10, h: wallH, d: 2000, x: -1000, z: 0}
-    ];
-    walls.forEach(config => {
-        const wall = BABYLON.MeshBuilder.CreateBox("wall", {width: config.w, height: config.h, depth: config.d}, scene);
-        wall.position.set(config.x, wallH/2 - 5, config.z);
-        AddStaticPhysics(wall, 10);
-        wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
-    });
-
-    // 3. 生成很多可破碎的大楼 (用迷你方块堆叠)
+    // --- 3. 优化版迷你方块大楼生成函数 ---
     const createVoxelBuilding = (baseX, baseZ, rows, cols, floors) => {
-        const blockSize = 3; // 方块尺寸
+        const blockSize = 3.2; // 稍微留一点缝隙，防止初始化时物理穿透导致崩飞
+        
         for (let f = 0; f < floors; f++) {
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
-                    const block = BABYLON.MeshBuilder.CreateBox("box", {size: blockSize}, scene);
+                    const block = BABYLON.MeshBuilder.CreateBox("b", { size: 3 }, scene);
                     block.position.set(
                         baseX + r * blockSize, 
-                        f * blockSize - 3, 
+                        f * blockSize - 3.5, // 贴近地面
                         baseZ + c * blockSize
                     );
-                    // 赋予物理效果，质量较轻以便撞飞
+                    
+                    block.material = buildingMat;
+
+                    // 添加动态物理
                     const body = AddDynamicPhysics(block, 2, 0.1, 0.5);
                     body.shape.filterMembershipMask = FILTERS.Environment;
-                    
-                    // 随机颜色
-                    const mat = new BABYLON.StandardMaterial("boxMat", scene);
-                    mat.diffuseColor = new BABYLON.Color3(Math.random(), Math.random(), 0.5);
-                    block.material = mat;
+
+                    // 【核心优化】设置初始状态为“不活跃”，只有车撞上去时才会激活计算
+                    body.setActivationState(BABYLON.PhysicsActivationState.ALWAYS_INACTIVE);
                 }
             }
         }
     };
 
-    // 在不同位置生成 6 栋楼
-    const buildingSpots = [
-        {x: -100, z: 100}, {x: 100, z: 100}, 
-        {x: -150, z: -100}, {x: 150, z: -100},
-        {x: 0, z: 250}, {x: 0, z: -250}
+    // --- 4. 批量布置大楼 ---
+    // 左右两排大楼，形成一个街道
+    const spots = [
+        {x: -120, z: 200}, {x: 80, z: 200},
+        {x: -120, z: 450}, {x: 80, z: 450},
+        {x: -120, z: 700}, {x: 80, z: 700}
     ];
-    buildingSpots.forEach(spot => {
-        createVoxelBuilding(spot.x, spot.z, 4, 4, 12); // 4x4列，12层楼
+
+    spots.forEach(spot => {
+        // 4x4x10 是一个在视觉冲击力和性能之间的完美平衡点
+        createVoxelBuilding(spot.x, spot.z, 4, 4, 10);
     });
 
-    // 4. 高的高起飞坡道 (High-Launch Ramp)
-    const rampWidth = 60;
-    const rampLength = 120;
-    const ramp = BABYLON.MeshBuilder.CreateBox("MegaRamp", {width: rampWidth, height: 2, depth: rampLength}, scene);
-    // 设置坡道位置和角度
-    ramp.position.set(0, 15, 450); 
-    ramp.rotation.x = -Math.PI / 6; // 30度陡坡
-    
-    const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
-    rampMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0); // 亮橘色
+    // --- 5. 极高起飞坡道 (High-Launch Ramp) ---
+    // 坡道主体
+    const ramp = BABYLON.MeshBuilder.CreateBox("MegaRamp", {width: 60, height: 2, depth: 150}, scene);
+    ramp.position.set(0, 18, 900); // 放在街道尽头
+    ramp.rotation.x = -Math.PI / 5; // 约36度角，适合高空飞跃
     ramp.material = rampMat;
-    
     const rampBody = AddStaticPhysics(ramp, 20);
     rampBody.shape.filterMembershipMask = FILTERS.Environment;
 
-    // 为坡道增加支撑柱
-    const support = BABYLON.MeshBuilder.CreateBox("Support", {width: rampWidth, height: 40, depth: 10}, scene);
-    support.position.set(0, 5, 500);
-    AddStaticPhysics(support, 10).shape.filterMembershipMask = FILTERS.Environment;
+    // 坡道支撑座 (防止车从坡道下面钻过去)
+    const rampSupport = BABYLON.MeshBuilder.CreateBox("RampSupport", {width: 60, height: 60, depth: 40}, scene);
+    rampSupport.position.set(0, 10, 960);
+    AddStaticPhysics(rampSupport, 10).shape.filterMembershipMask = FILTERS.Environment;
+    
+    // 增加一个高空目标：在坡道对面高空放一堆悬浮方块，看你能不能飞过去撞碎
+    createVoxelBuilding(-10, 1150, 6, 6, 3); 
 }
+        
         function AddWheelPhysics(mesh, mass, bounce, friction) {
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 2, scene);
             const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
