@@ -79,40 +79,50 @@
                 new BABYLON.Vector3( 1.1, -0.3, -1.3)  // 后右
             ];
 
-            wheelPositions.forEach((pos, i) => {
-                const isFront = i < 2;
-                const wheel = BABYLON.MeshBuilder.CreateCylinder("w"+i, {diameter: 0.8, height: 0.4}, scene);
-                wheel.rotation.z = Math.PI / 2;
-                wheel.position = chassis.position.add(pos);
-                
-                const wheelAgg = new BABYLON.PhysicsAggregate(wheel, BABYLON.PhysicsShapeType.CYLINDER, { mass: 50, friction: 1.5 }, scene);
+           // --- 核心修正：车轮轴向对齐 ---
 
-                // 使用 6DoF 约束模拟“真实的机械连接”
-                const constraint = new BABYLON.Physics6DoFConstraint(
-                    {
-                        pivotA: pos,
-                        pivotB: BABYLON.Vector3.Zero(),
-                        axisA: new BABYLON.Vector3(1, 0, 0), // X轴旋转（滚动）
-                        axisB: new BABYLON.Vector3(0, 1, 0), // 针对圆柱体模型的校准
-                        perpAxisA: new BABYLON.Vector3(0, 1, 0),
-                        perpAxisB: new BABYLON.Vector3(1, 0, 0),
-                    },
-                    [
-                        // 线性限制：锁死位移，仅保留微量 Y 轴缓冲（悬挂）
-                        { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
-                        { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: -0.1, maxLimit: 0.1 },
-                        { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
-                        // 旋转限制：
-                        { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X, minLimit: isFront ? -0.5 : 0, maxLimit: isFront ? 0.5 : 0 }, // 转向
-                        { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: null, maxLimit: null }, // 滚动（不限）
-                        { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: 0, maxLimit: 0 }  
-                    ],
-                    scene
-                );
+wheelPositions.forEach((pos, i) => {
+    const isFront = i < 2;
+    // 1. 创建圆柱体
+    const wheel = BABYLON.MeshBuilder.CreateCylinder("w" + i, { diameter: 0.8, height: 0.4 }, scene);
+    
+    // 2. 关键：修正视觉旋转，让圆柱体“躺下来”
+    wheel.rotation.z = Math.PI / 2; 
+    wheel.bakeCurrentTransformIntoVertices(); // 永久固定这个旋转，让它的局部坐标系回归正轨
 
-                carBody.addConstraint(wheelAgg.body, constraint);
-                joints.push({ constraint, isFront });
-            });
+    wheel.position = chassis.position.add(pos);
+    
+    // 3. 物理聚合体
+    const wheelAgg = new BABYLON.PhysicsAggregate(wheel, BABYLON.PhysicsShapeType.CYLINDER, { mass: 50, friction: 2.0 }, scene);
+
+    // 4. 六自由度约束 (6DoF)
+    const constraint = new BABYLON.Physics6DoFConstraint(
+        {
+            pivotA: pos,
+            pivotB: BABYLON.Vector3.Zero(),
+            // 重点：告诉引擎，旋转发生在这两个轴之间
+            axisA: new BABYLON.Vector3(1, 0, 0), 
+            axisB: new BABYLON.Vector3(1, 0, 0), 
+            perpAxisA: new BABYLON.Vector3(0, 1, 0),
+            perpAxisB: new BABYLON.Vector3(0, 1, 0),
+        },
+        [
+            { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
+            { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: -0.1, maxLimit: 0.1 }, // 悬挂
+            { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
+            
+            // 转向轴 (前轮控制 ANGULAR_Y)
+            { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X, minLimit: 0, maxLimit: 0 }, 
+            { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: isFront ? -0.5 : 0, maxLimit: isFront ? 0.5 : 0 },
+            // 滚动轴 (动力控制 ANGULAR_Z) - 这样轮子就是前后转了！
+            { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: null, maxLimit: null } 
+        ],
+        scene
+    );
+
+    carBody.addConstraint(wheelAgg.body, constraint);
+    joints.push({ constraint, isFront });
+});
 
             // 逻辑循环
             scene.registerBeforeRender(() => {
