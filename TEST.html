@@ -236,90 +236,61 @@
             tyreMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
         }
 
-        function CreateGroundAndWalls() {
-    // --- 1. 基础地面 ---
-    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 2000, width: 2000 });
-    ground.position.y = -5;
-    const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
-    groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
-    groundMat.diffuseTexture.uScale = 100;
-    groundMat.diffuseTexture.vScale = 100;
-    ground.material = groundMat;
-    AddStaticPhysics(ground, 200);
+         function CreateGroundAndWalls() {
 
-    // --- 2. 边界强 (防出界) ---
-    const wallH = 40;
-    const worldSize = 1000;
-    const wallConfigs = [
-        {w: worldSize*2, h: wallH, d: 10, x: 0, z: worldSize},
-        {w: worldSize*2, h: wallH, d: 10, x: 0, z: -worldSize},
-        {w: 10, h: wallH, d: worldSize*2, x: worldSize, z: 0},
-        {w: 10, h: wallH, d: worldSize*2, x: -worldSize, z: 0}
-    ];
-    wallConfigs.forEach(c => {
-        const wall = BABYLON.MeshBuilder.CreateBox("border", {width: c.w, height: c.h, depth: c.d});
-        wall.position.set(c.x, wallH/2 - 5, c.z);
-        AddStaticPhysics(wall, 10);
-        wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
-    });
+            const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 1000, width: 1000 });
 
-    // --- 3. 动态方块墙 (可撞散) ---
-    const createBrickWall = (offsetX, offsetZ) => {
-        const brickSize = 3;
-        const rows = 6;
-        const cols = 8;
-        for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-                const brick = BABYLON.MeshBuilder.CreateBox("brick", {size: brickSize});
-                brick.position.set(offsetX + x * (brickSize + 0.1), y * brickSize, offsetZ);
-                const body = AddDynamicPhysics(brick, 5, 0.1, 0.5); // 较轻的质量，方便撞飞
-                body.shape.filterMembershipMask = FILTERS.Environment;
-            }
-        }
-    };
-    // 散布几堵墙
-    [ {x: -50, z: 100}, {x: 60, z: 200}, {x: -100, z: -150}, {x: 120, z: 50} ].forEach(pos => createBrickWall(pos.x, pos.z));
+            ground.position.y = -5;
 
-    // --- 4. 起飞跳台 (多角度/散落) ---
-    const createRamp = (x, z, rotX, scaleW = 40) => {
-        const ramp = BABYLON.MeshBuilder.CreateBox("Ramp", {width: scaleW, height: 2, depth: 60});
-        ramp.position.set(x, 2, z);
-        ramp.rotation.x = rotX; 
-        const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
-        rampMat.diffuseColor = new BABYLON.Color3(0.8, 0.2, 0.2);
-        ramp.material = rampMat;
-        AddStaticPhysics(ramp, 50);
-        ramp.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
-    };
-    createRamp(0, 300, -Math.PI / 6, 60);    // 主干道大跳台
-    createRamp(-150, 450, -Math.PI / 5, 40); // 陡峭跳台
-    createRamp(200, 600, -Math.PI / 10, 80); // 宽跳台
-    createRamp(0, -300, -Math.PI / 6, 50);   // 反向跳台
+            
 
-    // --- 5. 加速带 (Speed Pads) ---
-    const createSpeedPad = (x, z) => {
-        const pad = BABYLON.MeshBuilder.CreatePlane("SpeedPad", {size: 30});
-        pad.position.set(x, -4.9, z);
-        pad.rotation.x = Math.PI / 2;
-        const padMat = new BABYLON.StandardMaterial("padMat", scene);
-        padMat.emissiveColor = new BABYLON.Color3(0, 1, 1);
-        pad.material = padMat;
-        
-        // 物理逻辑：检测车辆并给予冲力
-        scene.onBeforeRenderObservable.add(() => {
-            scene.meshes.forEach(m => {
-                if (m.name === "Frame" || m.name === "Frame2") {
-                    const dist = BABYLON.Vector3.Distance(m.position, pad.position);
-                    if (dist < 20) {
-                        const force = m.forward.scale(500000); // 强大的推力
-                        m.physicsBody.applyImpulse(force, m.absolutePosition);
-                    }
-                }
+            // 额外添加纹理增强视觉
+
+            const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+
+            groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
+
+            groundMat.diffuseTexture.uScale = 50;
+
+            groundMat.diffuseTexture.vScale = 50;
+
+            ground.material = groundMat;
+
+
+
+            AddStaticPhysics(ground, 300);
+
+            
+
+            // 添加边界墙
+
+            const wallH = 20;
+
+            const walls = [
+
+                {w: 1000, h: wallH, d: 5, x: 0, z: 500},
+
+                {w: 1000, h: wallH, d: 5, x: 0, z: -500},
+
+                {w: 5, h: wallH, d: 1000, x: 500, z: 0},
+
+                {w: 5, h: wallH, d: 1000, x: -500, z: 0}
+
+            ];
+
+            walls.forEach(config => {
+
+                const wall = BABYLON.MeshBuilder.CreateBox("wall", {width: config.w, height: config.h, depth: config.d}, scene);
+
+                wall.position.set(config.x, wallH/2 - 5, config.z);
+
+                AddStaticPhysics(wall, 10);
+
+                wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+
             });
-        });
-    };
-    [ {x: 0, z: 200}, {x: 0, z: -100}, {x: -150, z: 350}, {x: 200, z: 500} ].forEach(pos => createSpeedPad(pos.x, pos.z));
-}
+
+        }
 
         function AddWheelPhysics(mesh, mass, bounce, friction) {
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 2, scene);
