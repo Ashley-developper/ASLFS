@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -117,253 +118,479 @@
     </div>
 
     <script>
-const canvas = document.getElementById("renderCanvas");
+        const canvas = document.getElementById("renderCanvas");
+        
+        // 全局变量
+        let engine, scene, havokInstance;
+        let carBody, carMesh; // 玩家车辆
+        let camera;
+        let tyreMaterial;
+        
+        // 存储所有车轮组件用于位置修正
+        let allWheels = [];
+        let allAxles = [];
+        
+        // UI 变量
+        let uiTime = document.getElementById('ui-time');
+        let uiSpeed = document.getElementById('ui-speed');
+        let uiDestruction = document.getElementById('destruction-fill');
+        let uiDestructionText = document.getElementById('destruction-text');
 
-/* ===================== 全局 ===================== */
-let engine, scene, havokInstance;
-let carBody, carMesh, camera;
-let tyreMaterial;
-let allWheels = [], allAxles = [];
+        // 游戏状态
+        let isGameActive = false;
+        let startTime = 0;
+        let totalBricksCount = 0;
+        let bricksArray = []; // 存储所有砖块的物理Body
+        let destroyedCount = 0;
+        
+        // 车辆控制变量
+        const inputMap = {};
+        let currentSpeed = 0;
+        let currentSteeringAngle = 0;
+        const maxSpeed = 180;
+        const maxSteeringAngle = Math.PI / 6;
+        
+        // 摄像机模式
+        let cameraMode = 0; // 0=跟随, 1=电影视角
+        const CAMERA_MODES = {
+            FOLLOW: 0,
+            CINEMATIC: 1
+        };
 
-let isGameActive = false;
-let startTime = 0;
-let totalBricksCount = 0;
-let destroyedCount = 0;
-let bricksArray = [];
+        // 关键常量
+        const FILTERS = { CarParts: 1, Environment: 2 };
+        const COLOR_NEON_BLUE = new BABYLON.Color3(0, 1, 1);
+        const COLOR_NEON_PINK = new BABYLON.Color3(1, 0, 0.5);
 
-const inputMap = {};
-let currentSpeed = 0;
-let currentSteeringAngle = 0;
-const maxSpeed = 180;
-const maxSteeringAngle = Math.PI / 6;
+        // ====================================================================
+        // 1. 初始化引擎与物理 (Havok)
+        // ====================================================================
+        async function init() {
+            const hkWasm = await HavokPhysics();
+            havokInstance = new BABYLON.HavokPlugin(false, hkWasm);
+            
+            engine = new BABYLON.Engine(canvas, true);
+            scene = createScene();
 
-const FILTERS = { CarParts: 1, Environment: 2 };
-
-/* ===================== UI ===================== */
-const uiTime = document.getElementById('ui-time');
-const uiSpeed = document.getElementById('ui-speed');
-const uiDestruction = document.getElementById('destruction-fill');
-const uiDestructionText = document.getElementById('destruction-text');
-
-/* ===================== 物理 & 引擎 ===================== */
-async function init() {
-    const hk = await HavokPhysics();
-    havokInstance = new BABYLON.HavokPlugin(false, hk);
-
-    engine = new BABYLON.Engine(canvas, true);
-    scene = createScene();
-
-    engine.runRenderLoop(() => {
-        scene.render();
-        if (isGameActive) updateGameLogic();
-    });
-
-    window.addEventListener("resize", () => engine.resize());
-
-    scene.onKeyboardObservable.add(kb => {
-        const k = kb.event.key.toLowerCase();
-        inputMap[k] = kb.type === BABYLON.KeyboardEventTypes.KEYDOWN;
-        if (k === 'r' && carBody) resetCar();
-    });
-}
-
-/* ===================== Instancing 核心 ===================== */
-let brickRoot;
-function initInstancing(scene) {
-    const mat = new BABYLON.StandardMaterial("brickMat", scene);
-    mat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.9);
-    mat.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.15);
-
-    brickRoot = BABYLON.MeshBuilder.CreateBox("brickRoot", { size: 1.98 }, scene);
-    brickRoot.material = mat;
-    brickRoot.isVisible = false;
-}
-
-function createPhysicsBrick(pos, scene) {
-    const inst = brickRoot.createInstance("b_" + bricksArray.length);
-    inst.position.copyFrom(pos);
-
-    const agg = new BABYLON.PhysicsAggregate(
-        inst,
-        BABYLON.PhysicsShapeType.BOX,
-        { mass: 5, restitution: 0.1, friction: 0.8 },
-        scene
-    );
-    agg.body.shape.filterMembershipMask = FILTERS.Environment;
-
-    inst.metadata = { originalY: pos.y, isDestroyed: false };
-    bricksArray.push({ mesh: inst });
-    totalBricksCount++;
-}
-
-/* ===================== 建筑体系（你的） ===================== */
-function createSkyscraper(pos, w, h, d, scene) {
-    const s = 2;
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            for (let z = 0; z < d; z++) {
-                const wall = x === 0 || x === w - 1 || z === 0 || z === d - 1;
-                const floor = y % 5 === 0;
-                if (wall || (floor && x % 2 === 0 && z % 2 === 0)) {
-                    createPhysicsBrick(
-                        new BABYLON.Vector3(
-                            pos.x + x * s - (w * s) / 2,
-                            pos.y + y * s + 1,
-                            pos.z + z * s - (d * s) / 2
-                        ),
-                        scene
-                    );
+            engine.runRenderLoop(() => {
+                if (scene) {
+                    scene.render();
+                    if(isGameActive) updateGameLogic();
                 }
+            });
+            window.addEventListener("resize", () => engine.resize());
+
+            // 键盘监听
+            scene.onKeyboardObservable.add((kbInfo) => {
+                const type = kbInfo.type;
+                const key = kbInfo.event.key.toLowerCase();
+                if (type === BABYLON.KeyboardEventTypes.KEYDOWN) inputMap[key] = true;
+                if (type === BABYLON.KeyboardEventTypes.KEYUP) inputMap[key] = false;
+                
+                if (type === BABYLON.KeyboardEventTypes.KEYDOWN && key === 'r' && carBody) {
+                    resetCar();
+                }
+                
+                // V键切换摄像机
+                if (type === BABYLON.KeyboardEventTypes.KEYDOWN && key === 'v') {
+                    toggleCamera();
+                }
+            });
+        }
+
+        // ====================================================================
+        // 2. 场景搭建
+        // ====================================================================
+        function createScene() {
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.05, 1);
+            
+            // 物理引擎配置 - 使用参考代码的参数
+            scene.enablePhysics(new BABYLON.Vector3(0, -240, 0), havokInstance);
+            scene.getPhysicsEngine().setTimeStep(1 / 500);
+            scene.getPhysicsEngine().setSubTimeStep(4.5);
+
+            // 灯光
+            const hemiLight = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
+            hemiLight.intensity = 0.6;
+            const dirLight = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(1, -2, 1), scene);
+            dirLight.position = new BABYLON.Vector3(-50, 100, -50);
+            dirLight.intensity = 1.2;
+            dirLight.shadowEnabled = true;
+
+            // 地面
+            const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 500, height: 500}, scene);
+            const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.15);
+            const gridTexture = new BABYLON.Texture("https://assets.babylonjs.com/textures/checkerboard_base.png", scene);
+            gridTexture.uScale = 50; gridTexture.vScale = 50;
+            groundMat.emissiveTexture = gridTexture;
+            groundMat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.4);
+            ground.material = groundMat;
+            
+            // 地面物理 (Static, Environment 组)
+            const groundAgg = new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX, { mass: 0, restitution: 0, friction: 200 }, scene);
+            groundAgg.body.shape.filterMembershipMask = FILTERS.Environment;
+
+            // 材质初始化
+            InitTyreMaterial();
+
+            // 摄像机
+            camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -20), scene);
+            camera.radius = 25; camera.heightOffset = 10; camera.rotationOffset = 180;
+            camera.cameraAcceleration = 0.05; camera.maxCameraSpeed = 20;
+            camera.lockedTarget = null; // 初始化时先不锁定
+            scene.activeCamera = camera;
+
+            // 后处理
+            const pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [camera]);
+            pipeline.glowLayerEnabled = true; pipeline.glowLayer.intensity = 0.6;
+
+            // 创建玩家车辆
+            createPlayerCar(new BABYLON.Vector3(0, 5, -60));
+
+            // 创建可破坏建筑群
+      // --- 核心商务区 ---
+// 地标中心塔：极高且细长
+createDestructibleBuilding(new BABYLON.Vector3(0, 0, 0), 5, 25, 5); 
+
+// --- 居住区 ---
+// 双子公寓：中等高度，对称分布
+createDestructibleBuilding(new BABYLON.Vector3(-15, 0, -15), 6, 12, 6);
+createDestructibleBuilding(new BABYLON.Vector3(15, 0, -15), 6, 12, 6);
+
+// --- 工业/商业区 ---
+// 综合大楼：矮胖、占地面积大
+createDestructibleBuilding(new BABYLON.Vector3(30, 0, 20), 12, 4, 12);
+
+// --- 阵列景观 ---
+// 密集的低矮建筑群（模拟仓库或排屋）
+createDestructibleBuilding(new BABYLON.Vector3(-30, 0, 25), 4, 6, 4);
+createDestructibleBuilding(new BABYLON.Vector3(-40, 0, 25), 4, 5, 4);
+createDestructibleBuilding(new BABYLON.Vector3(-50, 0, 25), 4, 4, 4);
+            return scene;
+        }
+
+        // ====================================================================
+        // 3. 车辆核心系统
+        // ====================================================================
+        let poweredWheelMotorA, poweredWheelMotorB;
+        let steerWheelA, steerWheelB;
+
+        function InitTyreMaterial() {
+            tyreMaterial = new BABYLON.StandardMaterial("Tyre", scene);
+            tyreMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        }
+
+        function createPlayerCar(position) {
+            // 重置轮胎数组
+            allWheels = [];
+            allAxles = [];
+            
+            // 车身 (Frame) - 使用参考代码的尺寸
+            const carFrame = BABYLON.MeshBuilder.CreateBox("CarChassis", { height: 1, width: 12, depth: 24 }, scene);
+            carFrame.position = position;
+            carFrame.visibility = 0.5;
+            const carMat = new BABYLON.StandardMaterial("carMat", scene);
+            carMat.emissiveColor = COLOR_NEON_PINK;
+            carFrame.material = carMat;
+
+            // 物理身体 - 使用参考代码的简单配置
+            const carFrameAgg = new BABYLON.PhysicsAggregate(carFrame, BABYLON.PhysicsShapeType.MESH, { mass: 1000, restitution: 0, friction: 0 }, scene);
+            carBody = carFrameAgg.body;
+
+            carMesh = carFrame;
+            camera.lockedTarget = carFrame;
+            
+            FilterMeshCollisions(carFrame);
+
+            // 使用参考代码的轮距配置
+            const wheelX = 5; 
+            const wheelZ = 8;
+
+            const flWheel = CreateWheel(position.add(new BABYLON.Vector3(wheelX, 0, wheelZ)));
+            const flAxle = CreateAxle(position.add(new BABYLON.Vector3(wheelX, 0, wheelZ)));
+            
+            const frWheel = CreateWheel(position.add(new BABYLON.Vector3(-wheelX, 0, wheelZ)));
+            const frAxle = CreateAxle(position.add(new BABYLON.Vector3(-wheelX, 0, wheelZ)));
+            
+            const rlWheel = CreateWheel(position.add(new BABYLON.Vector3(wheelX, 0, -wheelZ)));
+            const rlAxle = CreateAxle(position.add(new BABYLON.Vector3(wheelX, 0, -wheelZ)));
+            
+            const rrWheel = CreateWheel(position.add(new BABYLON.Vector3(-wheelX, 0, -wheelZ)));
+            const rrAxle = CreateAxle(position.add(new BABYLON.Vector3(-wheelX, 0, -wheelZ)));
+
+            // 存储轮胎和轴
+            allWheels = [flWheel, frWheel, rlWheel, rrWheel];
+            allAxles = [flAxle, frAxle, rlAxle, rrAxle];
+            
+            // 车轴作为车身子节点
+            [flAxle, frAxle, rlAxle, rrAxle].forEach(m => {
+                carFrame.addChild(m);
+                AddAxlePhysics(m, 100, 0, 0);
+                FilterMeshCollisions(m);
+            });
+
+            // 添加轮胎物理
+            [flWheel, frWheel, rlWheel, rrWheel].forEach(m => { 
+                AddWheelPhysics(m, 100, 0.1, 50); 
+                FilterMeshCollisions(m); 
+            });
+
+            // 建立约束
+            poweredWheelMotorA = CreatePoweredWheelJoint(flAxle, flWheel);
+            poweredWheelMotorB = CreatePoweredWheelJoint(frAxle, frWheel);
+            CreateWheelJoint(rlAxle, rlWheel);
+            CreateWheelJoint(rrAxle, rrWheel);
+
+            steerWheelA = AttachAxleToFrame(flAxle.physicsBody, carFrameAgg.body, true);
+            steerWheelB = AttachAxleToFrame(frAxle.physicsBody, carFrameAgg.body, true);
+            AttachAxleToFrame(rlAxle.physicsBody, carFrameAgg.body, false);
+            AttachAxleToFrame(rrAxle.physicsBody, carFrameAgg.body, false);
+
+            scene.onBeforeRenderObservable.add(() => {
+                if(!isGameActive) return;
+                updateCarControls();
+            });
+        }
+
+        // --- 物理辅助函数 ---
+
+        function CreateAxle(position) {
+            const axleMesh = BABYLON.MeshBuilder.CreateBox("Axle", { height: 1, width: 2.5, depth: 1 }, scene);
+            axleMesh.position = position;
+            axleMesh.visibility = 0.3;
+            return axleMesh;
+        }
+
+        function CreateWheel(position) {
+            const wheelMesh = BABYLON.MeshBuilder.CreateCylinder("Wheel", { height: 1.6, diameter: 4 }, scene);
+            wheelMesh.rotation = new BABYLON.Vector3(0, 0, Math.PI / 2);
+            wheelMesh.bakeCurrentTransformIntoVertices();
+            wheelMesh.position = position;
+            wheelMesh.material = tyreMaterial;
+            return wheelMesh;
+        }
+
+        function AddAxlePhysics(mesh, mass, bounce, friction) {
+            const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 1.8, scene);
+            const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            physicsBody.setMassProperties({ mass: mass });
+            physicsShape.material = { restitution: bounce, friction: friction };
+            physicsBody.shape = physicsShape;
+            return physicsBody;
+        }
+
+        function AddWheelPhysics(mesh, mass, bounce, friction) {
+            const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 2, scene);
+            const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            physicsBody.setMassProperties({ mass: mass });
+            physicsShape.material = { restitution: bounce, friction: friction };
+            physicsBody.shape = physicsShape;
+            return physicsBody;
+        }
+
+        function FilterMeshCollisions(mesh) {
+            mesh.physicsBody.shape.filterMembershipMask = FILTERS.CarParts;
+            mesh.physicsBody.shape.filterCollideMask = FILTERS.Environment;
+        }
+
+        // --- 约束逻辑 (核心) ---
+
+        function AttachAxleToFrame(axleBody, frameBody, hasSteering) {
+            const aPos = axleBody.transformNode.position;
+            const joint = new BABYLON.Physics6DoFConstraint({
+                pivotA: new BABYLON.Vector3(0, 0, 0),
+                pivotB: new BABYLON.Vector3(aPos.x, aPos.y, aPos.z),
+            }, [
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: -0.15, maxLimit: 0.15, stiffness: 100000, damping: 5000 },
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X, minLimit: -0.25, maxLimit: 0.25 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: hasSteering ? null : 0, maxLimit: hasSteering ? null : 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: -0.05, maxLimit: 0.05 },
+            ], scene);
+            
+            axleBody.addConstraint(frameBody, joint);
+            if (hasSteering) AttachSteering(joint);
+            return joint;
+        }
+
+        function CreateWheelJoint(axleMesh, wheelMesh) {
+            const motorJoint = new BABYLON.Physics6DoFConstraint({}, [
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: 0, maxLimit: 0 },
+            ], scene);
+            axleMesh.physicsBody.addConstraint(wheelMesh.physicsBody, motorJoint);
+            return motorJoint;
+        }
+
+        function CreatePoweredWheelJoint(axleMesh, wheelMesh) {
+            const motorJoint = CreateWheelJoint(axleMesh, wheelMesh);
+            motorJoint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_X, BABYLON.PhysicsConstraintMotorType.VELOCITY);
+            motorJoint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 180000);
+            motorJoint.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
+            return motorJoint;
+        }
+
+        function AttachSteering(joint) {
+            joint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, BABYLON.PhysicsConstraintMotorType.POSITION);
+            joint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 30000000);
+            joint.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
+        }
+
+        function CalculateWheelAngles(averageAngle) {
+            const wheelbase = 16;
+            const trackWidth = 11;
+            
+            if (Math.abs(averageAngle) < 0.01) return [0, 0];
+
+            const avgRadius = wheelbase / Math.tan(averageAngle);
+            const innerRadius = avgRadius - trackWidth / 2;
+            const outerRadius = avgRadius + trackWidth / 2;
+            const innerAngle = Math.atan(wheelbase / innerRadius);
+            const outerAngle = Math.atan(wheelbase / outerRadius);
+            return [isNaN(innerAngle) ? 0 : innerAngle, isNaN(outerAngle) ? 0 : outerAngle];
+        }
+
+        // --- 车辆控制循环 ---
+
+        function updateCarControls() {
+            let forwardPressed = inputMap["w"] || inputMap["arrowup"];
+            let backPressed = inputMap["s"] || inputMap["arrowdown"];
+            let leftPressed = inputMap["a"] || inputMap["arrowleft"];
+            let rightPressed = inputMap["d"] || inputMap["arrowright"];
+            let brakePressed = inputMap[" "];
+            let shiftPressed = inputMap["shift"]; 
+
+            // 转向逻辑 - 使用参考代码的参数
+            if (leftPressed && currentSteeringAngle < maxSteeringAngle) currentSteeringAngle += 0.01;
+            else if (rightPressed && currentSteeringAngle > -maxSteeringAngle) currentSteeringAngle -= 0.01;
+            else if (!leftPressed && !rightPressed) currentSteeringAngle *= 0.98; 
+
+            const [innerAngle, outerAngle] = CalculateWheelAngles(currentSteeringAngle);
+            if (steerWheelA) steerWheelA.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, outerAngle);
+            if (steerWheelB) steerWheelB.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, innerAngle);
+
+            // 动力逻辑
+            let targetMaxSpeed = shiftPressed ? 220 : maxSpeed;
+            
+            if (brakePressed) {
+                currentSpeed = 0;
+            } else if (forwardPressed && currentSpeed < targetMaxSpeed) {
+                currentSpeed += 8; // 使用参考代码的加速度
+            } else if (backPressed && currentSpeed > -targetMaxSpeed * 0.5) {
+                currentSpeed -= 8;
+            } else if (!forwardPressed && !backPressed) {
+                currentSpeed *= 0.99; // 使用参考代码的减速系数
+            }
+
+            if (poweredWheelMotorA) poweredWheelMotorA.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, currentSpeed);
+            if (poweredWheelMotorB) poweredWheelMotorB.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, currentSpeed);
+
+            // UI 更新
+            uiSpeed.innerText = Math.abs(Math.floor(currentSpeed));
+        }
+
+        function resetCar() {
+            if(!carBody) return;
+            carBody.setTargetTransform(new BABYLON.Vector3(0, 3, -60), BABYLON.Quaternion.Identity());
+            carBody.setLinearVelocity(BABYLON.Vector3.Zero());
+            carBody.setAngularVelocity(BABYLON.Vector3.Zero());
+            currentSpeed = 0;
+        }
+        
+        // 摄像机切换函数
+        function toggleCamera() {
+            cameraMode = (cameraMode + 1) % 2;
+            
+            if (cameraMode === CAMERA_MODES.CINEMATIC) {
+                // 电影视角: 高空俯瞰
+                camera.radius = 80;
+                camera.heightOffset = 50;
+                camera.rotationOffset = 180;
+                camera.cameraAcceleration = 0.02; // 更慢的加速,更平滑
+                camera.maxCameraSpeed = 10;
+            } else {
+                // 跟随视角: 近距离
+                camera.radius = 25;
+                camera.heightOffset = 10;
+                camera.rotationOffset = 180;
+                camera.cameraAcceleration = 0.05;
+                camera.maxCameraSpeed = 20;
             }
         }
-    }
-}
 
-function createTwistTower(pos, size, h, scene) {
-    const s = 2;
-    for (let y = 0; y < h; y++) {
-        const a = y * 0.08;
-        for (let x = 0; x < size; x++) {
-            for (let z = 0; z < size; z++) {
-                if (x === 0 || z === 0 || x === size - 1 || z === size - 1) {
-                    const rx = (x - size / 2) * Math.cos(a) - (z - size / 2) * Math.sin(a);
-                    const rz = (x - size / 2) * Math.sin(a) + (z - size / 2) * Math.cos(a);
-                    createPhysicsBrick(
-                        new BABYLON.Vector3(pos.x + rx * s, pos.y + y * s + 1, pos.z + rz * s),
-                        scene
-                    );
-                }
-            }
-        }
-    }
-}
+        // ====================================================================
+        // 4. 破坏系统 (Destruction)
+        // ====================================================================
+        function createDestructibleBuilding(position, width, height, depth) {
+            const brickSize = 2;
+            const brickMat = new BABYLON.StandardMaterial("brickMat", scene);
+            brickMat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.9);
+            brickMat.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
-function createMegaGate(pos, w, h, t, scene) {
-    const s = 2;
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            for (let z = 0; z < t; z++) {
-                const pillar = x < 4 || x > w - 5;
-                const top = y > h - 6;
-                if (pillar || top) {
-                    if (x === 0 || x === w - 1 || z === 0 || z === t - 1 || top) {
-                        createPhysicsBrick(
-                            new BABYLON.Vector3(
-                                pos.x + x * s - (w * s) / 2,
-                                pos.y + y * s + 1,
-                                pos.z + z * s
-                            ),
-                            scene
-                        );
+            for (let y = 0; y < height; y++) {
+                for (let x = -width/2; x < width/2; x++) {
+                    for (let z = -depth/2; z < depth/2; z++) {
+                        const brick = BABYLON.MeshBuilder.CreateBox("b", {size: brickSize * 0.95}, scene);
+                        brick.position.set(position.x + x * brickSize, position.y + y * brickSize + (brickSize/2), position.z + z * brickSize);
+                        brick.material = brickMat;
+                        // 砖块质量稍微增加,撞击感更实
+                        const agg = new BABYLON.PhysicsAggregate(brick, BABYLON.PhysicsShapeType.BOX, { mass: 20, restitution: 0.05 }, scene);
+                        agg.body.shape.filterMembershipMask = FILTERS.Environment; 
+                        brick.metadata = { originalY: brick.position.y, isDestroyed: false };
+                        bricksArray.push({ mesh: brick, body: agg.body });
                     }
                 }
             }
+            totalBricksCount = bricksArray.length;
         }
-    }
-}
 
-function createStepPyramid(pos, base, h, scene) {
-    const s = 2;
-    for (let y = 0; y < h; y++) {
-        const size = base - Math.floor(y / 2);
-        if (size <= 2) break;
-        for (let x = 0; x < size; x++) {
-            for (let z = 0; z < size; z++) {
-                if (x === 0 || z === 0 || x === size - 1 || z === size - 1 || y % 4 === 0) {
-                    createPhysicsBrick(
-                        new BABYLON.Vector3(
-                            pos.x + x * s - (size * s) / 2,
-                            pos.y + y * s + 1,
-                            pos.z + z * s - (size * s) / 2
-                        ),
-                        scene
-                    );
+        // ====================================================================
+        // 5. 游戏逻辑
+        // ====================================================================
+        function startGame() {
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            startTime = Date.now();
+            isGameActive = true;
+        }
+
+        function endGame() {
+            isGameActive = false;
+            const endTime = ((Date.now() - startTime) / 1000).toFixed(2);
+            document.getElementById('title-text').innerText = "MISSION COMPLETE";
+            document.getElementById('subtitle-text').innerHTML = `FINAL TIME: <span style="color:#fff; font-size:30px">${endTime}s</span><br>DESTRUCTION: ${Math.floor((destroyedCount/totalBricksCount)*100)}%`;
+            document.getElementById('overlay').classList.remove('hidden');
+            document.querySelector('.btn').innerText = "PLAY AGAIN";
+            document.querySelector('.btn').onclick = () => location.reload();
+        }
+
+        function updateGameLogic() {
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            uiTime.innerText = timeElapsed.toFixed(2);
+            let currentDestroyed = 0;
+            bricksArray.forEach(item => {
+                const diff = Math.abs(item.mesh.position.y - item.mesh.metadata.originalY);
+                if (diff > 2.0) {
+                    if (!item.mesh.metadata.isDestroyed) {
+                        item.mesh.metadata.isDestroyed = true;
+                        item.mesh.material = new BABYLON.StandardMaterial("d", scene);
+                        item.mesh.material.emissiveColor = new BABYLON.Color3(1, 0.2, 0);
+                    }
+                    currentDestroyed++;
                 }
-            }
+            });
+            destroyedCount = currentDestroyed;
+            const percent = Math.min(100, (destroyedCount / totalBricksCount) * 100);
+            uiDestruction.style.width = percent + "%";
+            uiDestructionText.innerText = `DESTRUCTION: ${Math.floor(percent)}%`;
+            if (percent >= 90) endGame();
         }
-    }
-}
 
-function createArena(pos, r, h, scene) {
-    const s = 2;
-    const seg = r * 4;
-    for (let y = 0; y < h; y++) {
-        const rr = r + y * 0.2;
-        for (let i = 0; i < seg; i++) {
-            const a = (i / seg) * Math.PI * 2;
-            createPhysicsBrick(
-                new BABYLON.Vector3(
-                    pos.x + Math.cos(a) * rr * s,
-                    pos.y + y * s + 1,
-                    pos.z + Math.sin(a) * rr * s
-                ),
-                scene
-            );
-        }
-    }
-}
-
-function spawnMegaCity(scene) {
-    createMegaGate(new BABYLON.Vector3(0, 0, 80), 30, 25, 6, scene);
-
-    createSkyscraper(new BABYLON.Vector3(60, 0, 40), 8, 40, 8, scene);
-    createSkyscraper(new BABYLON.Vector3(-60, 0, 40), 8, 40, 8, scene);
-
-    createTwistTower(new BABYLON.Vector3(120, 0, 80), 6, 35, scene);
-    createTwistTower(new BABYLON.Vector3(-120, 0, 80), 6, 35, scene);
-
-    createStepPyramid(new BABYLON.Vector3(0, 0, 200), 20, 30, scene);
-    createArena(new BABYLON.Vector3(0, 0, -120), 15, 10, scene);
-}
-
-/* ===================== Scene ===================== */
-function createScene() {
-    const scene = new BABYLON.Scene(engine);
-    scene.enablePhysics(new BABYLON.Vector3(0, -240, 0), havokInstance);
-
-    const light = new BABYLON.HemisphericLight("h", new BABYLON.Vector3(0, 1, 0), scene);
-    light.intensity = 0.8;
-
-    const ground = BABYLON.MeshBuilder.CreateGround("g", { width: 600, height: 600 }, scene);
-    new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
-
-    initInstancing(scene);
-    spawnMegaCity(scene);
-
-    camera = new BABYLON.FollowCamera("cam", new BABYLON.Vector3(0, 15, -30), scene);
-    scene.activeCamera = camera;
-
-    createPlayerCar(new BABYLON.Vector3(0, 5, -60));
-    return scene;
-}
-
-/* ===================== 破坏统计 ===================== */
-function updateGameLogic() {
-    uiTime.innerText = ((Date.now() - startTime) / 1000).toFixed(2);
-    destroyedCount = 0;
-
-    bricksArray.forEach(b => {
-        if (Math.abs(b.mesh.position.y - b.mesh.metadata.originalY) > 2) {
-            b.mesh.metadata.isDestroyed = true;
-            destroyedCount++;
-        }
-    });
-
-    const p = Math.min(100, destroyedCount / totalBricksCount * 100);
-    uiDestruction.style.width = p + "%";
-    uiDestructionText.innerText = `DESTRUCTION: ${Math.floor(p)}%`;
-}
-
-/* ===================== 启动 ===================== */
-function startGame() {
-    document.getElementById('overlay').classList.add('hidden');
-    document.getElementById('hud').classList.remove('hidden');
-    startTime = Date.now();
-    isGameActive = true;
-}
-
-init();
-</script>
-
+        init();
+    </script>
 </body>
 </html>
