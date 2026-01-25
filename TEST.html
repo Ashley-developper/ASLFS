@@ -250,40 +250,19 @@
             createPlayerCar(new BABYLON.Vector3(0, 5, -60));
 
             // 1. 定义镂空建筑生成器 (建议放在 createScene 外部或内部开头)
-const createHollowBuilding = (pos, w, h, d, t = 0.5) => {
-    // 墙体中心点调整：Havok 的 BOX 形状通常从中心计算
-    // 我们创建 4 面墙和 1 个楼顶
-    
-    // 前墙与后墙
-    createDestructibleBuilding(new BABYLON.Vector3(pos.x, pos.y, pos.z + d/2), w, h, t);
-    createDestructibleBuilding(new BABYLON.Vector3(pos.x, pos.y, pos.z - d/2), w, h, t);
-    
-    // 左墙与右墙
-    createDestructibleBuilding(new BABYLON.Vector3(pos.x + w/2, pos.y, pos.z), t, h, d);
-    createDestructibleBuilding(new BABYLON.Vector3(pos.x - w/2, pos.y, pos.z), t, h, d);
-    
-    // 楼顶
-    createDestructibleBuilding(new BABYLON.Vector3(pos.x, pos.y + h/2, pos.z), w, t, d);
-};
+// --- 极简建筑布局 ---
 
-// 2. 替换后的建筑群布局
-// --- 核心商务区 ---
-// 中心的“镂空”地标塔
-createHollowBuilding(new BABYLON.Vector3(0, 0, 0), 8, 30, 8); 
+// 1. 摩天大楼：由三个垂直堆叠的大方块组成（只有3个物理体）
+createDestructibleBuilding(new BABYLON.Vector3(0, 5, 0), 6, 10, 6);   // 底部
+createDestructibleBuilding(new BABYLON.Vector3(0, 15, 0), 5, 10, 5);  // 中部
+createDestructibleBuilding(new BABYLON.Vector3(0, 25, 0), 4, 10, 4);  // 顶部
 
-// --- 居住区 ---
-// 双子公寓 (使用镂空结构，高度增加)
-createHollowBuilding(new BABYLON.Vector3(-20, 0, -20), 6, 15, 6);
-createHollowBuilding(new BABYLON.Vector3(20, 0, -20), 6, 15, 6);
+// 2. 长条形厂房：横向的一体化长方体（只有1个物理体）
+createDestructibleBuilding(new BABYLON.Vector3(30, 2, 20), 20, 4, 10);
 
-// --- 工业/商业区 ---
-// 大型空心仓库 (占地大但方块极少)
-createHollowBuilding(new BABYLON.Vector3(40, 0, 30), 15, 6, 15);
-
-// --- 装饰性围墙或小件 ---
-// 这些比较小，可以直接用原函数
-createDestructibleBuilding(new BABYLON.Vector3(-35, 0, 40), 4, 8, 4);
-createDestructibleBuilding(new BABYLON.Vector3(-45, 0, 40), 4, 6, 4);
+// 3. 极简双子塔：每栋楼就是一个拉长的立方体
+createDestructibleBuilding(new BABYLON.Vector3(-25, 10, -15), 5, 20, 5);
+createDestructibleBuilding(new BABYLON.Vector3(25, 10, -15), 5, 20, 5);
             return scene;
         }
 
