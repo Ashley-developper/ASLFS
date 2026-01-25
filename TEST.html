@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
-    <title>SMASH CITY: HAVOK DESTRUCTION</title>
+    <title>SMASH CITY: TUNED PHYSICS</title>
     <!-- 引入 Babylon.js 和 Havok -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
@@ -137,14 +137,14 @@
         let bricksArray = []; // 存储所有砖块的物理Body
         let destroyedCount = 0;
         
-        // 车辆控制变量 (移植自 Havok Pro Test)
+        // 车辆控制变量
         const inputMap = {};
         let currentSpeed = 0;
         let currentSteeringAngle = 0;
-        const maxSpeed = 150;
+        const maxSpeed = 180; // 降低最大速度以配合高手感
         const maxSteeringAngle = Math.PI / 6;
 
-        // 关键常量 (移植自 Havok Pro Test)
+        // 关键常量
         const FILTERS = { CarParts: 1, Environment: 2 };
         const COLOR_NEON_BLUE = new BABYLON.Color3(0, 1, 1);
         const COLOR_NEON_PINK = new BABYLON.Color3(1, 0, 0.5);
@@ -187,10 +187,9 @@
             scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.05, 1);
             
-            // 物理配置 (移植自 Havok Pro Test)
-            scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), havokInstance);
-            scene.getPhysicsEngine().setTimeStep(1 / 500); // 高精度
-            scene.getPhysicsEngine().setSubTimeStep(4.5);
+            // [PHYSICS FIX]: 增加重力到 -25，解决"没有重力/漂浮"的手感
+            scene.enablePhysics(new BABYLON.Vector3(0, -25, 0), havokInstance);
+            scene.getPhysicsEngine().setTimeStep(1 / 60); 
 
             // 灯光
             const hemiLight = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
@@ -211,7 +210,7 @@
             ground.material = groundMat;
             
             // 地面物理 (Static, Environment 组)
-            const groundAgg = new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX, { mass: 0, restitution: 0.5, friction: 0.8 }, scene);
+            const groundAgg = new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX, { mass: 0, restitution: 0.5, friction: 1.0 }, scene);
             groundAgg.body.shape.filterMembershipMask = FILTERS.Environment;
 
             // 材质初始化
@@ -227,7 +226,7 @@
             const pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [camera]);
             pipeline.glowLayerEnabled = true; pipeline.glowLayer.intensity = 0.6;
 
-            // 创建玩家车辆 (使用新逻辑)
+            // 创建玩家车辆
             createPlayerCar(new BABYLON.Vector3(0, 5, -60));
 
             // 创建可破坏建筑群
@@ -239,7 +238,7 @@
         }
 
         // ====================================================================
-        // 3. 车辆核心系统 (移植并适配自 Havok Pro Test)
+        // 3. 车辆核心系统 (物理调校版)
         // ====================================================================
         let poweredWheelMotorA, poweredWheelMotorB;
         let steerWheelA, steerWheelB;
@@ -257,49 +256,53 @@
             carMat.emissiveColor = COLOR_NEON_PINK;
             carFrame.material = carMat;
 
-            // 物理身体 (注意：原代码使用 MeshShape，这里为了破坏稳定性我们用 BoxShape，但质量沿用 1000)
-            const carFrameAgg = new BABYLON.PhysicsAggregate(carFrame, BABYLON.PhysicsShapeType.BOX, { mass: 1000, restitution: 0, friction: 0 }, scene);
+            // 物理身体
+            // [PHYSICS FIX]: 增加质量到 2500，并极大增加 LinearDamping 和 AngularDamping 防止乱滚
+            const carFrameAgg = new BABYLON.PhysicsAggregate(carFrame, BABYLON.PhysicsShapeType.BOX, { mass: 2500, restitution: 0.1, friction: 0.5 }, scene);
             carBody = carFrameAgg.body;
+            carBody.setLinearDamping(0.05); // 增加空气阻力
+            carBody.setAngularDamping(2.0); // [关键] 极高的角阻尼，防止车身在空中或撞击后不停旋转
+            
+            // [PHYSICS FIX]: 强制降低重心 (Center of Mass) 到车轮轴线以下
+            // 原点是 (0,0,0)，我们将重心移到 (0, -1.5, 0)，这就像不倒翁的配重，彻底解决翘头翻车
+            carBody.setMassProperties({
+                centerOfMass: new BABYLON.Vector3(0, -1.5, 0),
+                mass: 2500
+            });
+
             carMesh = carFrame;
             camera.lockedTarget = carFrame;
             
-            FilterMeshCollisions(carFrame); // 设置碰撞组
+            FilterMeshCollisions(carFrame);
 
-            // 车轮与轴的创建 (使用新函数的尺寸参数调整)
-            // 原代码 width: 12, depth: 24 (巨大), 这里我们按 smash city 比例缩小一点，或者按原比例
-            // 为了匹配 destruction 场景，我们将尺寸缩小为 Smash City 的比例：
-            // 车宽 4, 车长 8. 轮距调整为: X: 2.2, Z: 2.8
-            
-            // 修正：为了保证物理稳定，使用 Havok Pro Test 的组件逻辑
-            const flWheel = CreateWheel(position.add(new BABYLON.Vector3(2.2, -0.5, 2.8)));
-            const flAxle = CreateAxle(position.add(new BABYLON.Vector3(2.2, -0.5, 2.8)));
-            
-            const frWheel = CreateWheel(position.add(new BABYLON.Vector3(-2.2, -0.5, 2.8)));
-            const frAxle = CreateAxle(position.add(new BABYLON.Vector3(-2.2, -0.5, 2.8)));
-            
-            const rlWheel = CreateWheel(position.add(new BABYLON.Vector3(2.2, -0.5, -2.8)));
-            const rlAxle = CreateAxle(position.add(new BABYLON.Vector3(2.2, -0.5, -2.8)));
-            
-            const rrWheel = CreateWheel(position.add(new BABYLON.Vector3(-2.2, -0.5, -2.8)));
-            const rrAxle = CreateAxle(position.add(new BABYLON.Vector3(-2.2, -0.5, -2.8)));
+            // 稍微加宽轮距以增加横向稳定性 (X: 2.2 -> 2.4)
+            const wheelX = 2.4; 
+            const wheelZ = 2.8;
 
-            // 设置层级 (Visual only)
-            [flAxle, frAxle, rlAxle, rrAxle].forEach(m => { 
-                // 注意：在 Havok 中物理约束决定连接，addChild 主要是视觉跟随
-                // 这里我们不 addChild 到 frame，因为物理引擎会处理位置
-            });
+            const flWheel = CreateWheel(position.add(new BABYLON.Vector3(wheelX, -0.5, wheelZ)));
+            const flAxle = CreateAxle(position.add(new BABYLON.Vector3(wheelX, -0.5, wheelZ)));
+            
+            const frWheel = CreateWheel(position.add(new BABYLON.Vector3(-wheelX, -0.5, wheelZ)));
+            const frAxle = CreateAxle(position.add(new BABYLON.Vector3(-wheelX, -0.5, wheelZ)));
+            
+            const rlWheel = CreateWheel(position.add(new BABYLON.Vector3(wheelX, -0.5, -wheelZ)));
+            const rlAxle = CreateAxle(position.add(new BABYLON.Vector3(wheelX, -0.5, -wheelZ)));
+            
+            const rrWheel = CreateWheel(position.add(new BABYLON.Vector3(-wheelX, -0.5, -wheelZ)));
+            const rrAxle = CreateAxle(position.add(new BABYLON.Vector3(-wheelX, -0.5, -wheelZ)));
 
             // 添加物理并设置过滤器
             [flAxle, frAxle, rlAxle, rrAxle].forEach(m => { 
-                AddAxlePhysics(m, 100, 0, 0); 
+                AddAxlePhysics(m, 50, 0, 0); 
                 FilterMeshCollisions(m); 
             });
             [flWheel, frWheel, rlWheel, rrWheel].forEach(m => { 
-                AddWheelPhysics(m, 100, 0.1, 50); 
+                // [PHYSICS FIX]: 增加轮胎摩擦力到 3.0，防止像在冰面上滑
+                AddWheelPhysics(m, 100, 0.1, 3.0); 
                 FilterMeshCollisions(m); 
             });
 
-            // 建立约束 (Constraints)
+            // 建立约束
             poweredWheelMotorA = CreatePoweredWheelJoint(flAxle, flWheel);
             poweredWheelMotorB = CreatePoweredWheelJoint(frAxle, frWheel);
             CreateWheelJoint(rlAxle, rlWheel);
@@ -310,24 +313,22 @@
             AttachAxleToFrame(rlAxle.physicsBody, carFrameAgg.body, false);
             AttachAxleToFrame(rrAxle.physicsBody, carFrameAgg.body, false);
 
-            // 注册车辆逻辑到渲染前事件
             scene.onBeforeRenderObservable.add(() => {
                 if(!isGameActive) return;
                 updateCarControls();
             });
         }
 
-        // --- 物理辅助函数 (完全保留原逻辑) ---
+        // --- 物理辅助函数 ---
 
         function CreateAxle(position) {
             const axleMesh = BABYLON.MeshBuilder.CreateBox("Axle", { height: 0.5, width: 0.5, depth: 0.5 }, scene);
             axleMesh.position = position;
-            axleMesh.visibility = 0; // 隐藏轴
+            axleMesh.visibility = 0; 
             return axleMesh;
         }
 
         function CreateWheel(position) {
-            // 调整尺寸适配 Smash City 比例
             const wheelMesh = BABYLON.MeshBuilder.CreateCylinder("Wheel", { height: 0.8, diameter: 2 }, scene);
             wheelMesh.rotation = new BABYLON.Vector3(0, 0, Math.PI / 2);
             wheelMesh.bakeCurrentTransformIntoVertices();
@@ -337,7 +338,6 @@
         }
 
         function AddAxlePhysics(mesh, mass, bounce, friction) {
-            // 轴用圆柱体碰撞
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.25, 0, 0), new BABYLON.Vector3(0.25, 0, 0), 0.25, scene);
             const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             physicsBody.setMassProperties({ mass: mass });
@@ -347,7 +347,6 @@
         }
 
         function AddWheelPhysics(mesh, mass, bounce, friction) {
-            // 轮子用圆柱体碰撞
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.4, 0, 0), new BABYLON.Vector3(0.4, 0, 0), 1, scene);
             const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             physicsBody.setMassProperties({ mass: mass });
@@ -364,20 +363,20 @@
         // --- 约束逻辑 (核心) ---
 
         function AttachAxleToFrame(axleBody, frameBody, hasSteering) {
-            // 计算相对位置
             const aPos = axleBody.transformNode.position;
             const fPos = frameBody.transformNode.position;
-            const offset = aPos.subtract(fPos); // 简化的 offset 计算
+            const offset = aPos.subtract(fPos); 
 
             const joint = new BABYLON.Physics6DoFConstraint({
                 pivotA: new BABYLON.Vector3(0, 0, 0),
-                pivotB: offset, // 使用计算出的偏移量
-                // 注意：这里需要确保轴向正确，原代码使用默认轴向可能需要调整
-                // 我们假设车架未旋转
+                pivotB: offset, 
             }, [
                 { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
-                // 悬挂：Stiffness 100000 (硬)
-                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: -0.15, maxLimit: 0.15, stiffness: 100000, damping: 5000 },
+                // [PHYSICS FIX]: 悬挂调校
+                // min/maxLimit: 增加行程到 0.25，让轮子更贴地
+                // stiffness: 降低到 60000 (原100000)，更软一点
+                // damping: 增加到 8000 (原5000)，减少回弹震荡
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: -0.25, maxLimit: 0.25, stiffness: 60000, damping: 8000 },
                 { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
                 { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X, minLimit: -0.25, maxLimit: 0.25 },
                 { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: hasSteering ? null : 0, maxLimit: hasSteering ? null : 0 },
@@ -402,21 +401,21 @@
         function CreatePoweredWheelJoint(axleMesh, wheelMesh) {
             const motorJoint = CreateWheelJoint(axleMesh, wheelMesh);
             motorJoint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_X, BABYLON.PhysicsConstraintMotorType.VELOCITY);
-            motorJoint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 180000); // 强劲马力
+            // [PHYSICS FIX]: 降低扭矩。原值 180000 太大导致翘头，现改为 40000，加速更平稳
+            motorJoint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 40000); 
             motorJoint.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
             return motorJoint;
         }
 
         function AttachSteering(joint) {
             joint.setAxisMotorType(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, BABYLON.PhysicsConstraintMotorType.POSITION);
-            joint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 30000000); // 强劲转向
+            joint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 30000000); 
             joint.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
         }
 
         function CalculateWheelAngles(averageAngle) {
-            // 调整 wheelbase 和 trackwidth 以匹配我们的小车尺寸
-            const wheelbase = 5.6; // 前后轮距 2.8 * 2
-            const trackWidth = 4.4; // 左右轮距 2.2 * 2
+            const wheelbase = 5.6; 
+            const trackWidth = 4.8; // 配合加宽的轮距
             
             if (Math.abs(averageAngle) < 0.01) return [0, 0];
 
@@ -436,28 +435,28 @@
             let leftPressed = inputMap["a"] || inputMap["arrowleft"];
             let rightPressed = inputMap["d"] || inputMap["arrowright"];
             let brakePressed = inputMap[" "];
-            let shiftPressed = inputMap["shift"]; // 氮气
+            let shiftPressed = inputMap["shift"]; 
 
             // 转向逻辑
             if (leftPressed && currentSteeringAngle < maxSteeringAngle) currentSteeringAngle += 0.02;
             else if (rightPressed && currentSteeringAngle > -maxSteeringAngle) currentSteeringAngle -= 0.02;
-            else if (!leftPressed && !rightPressed) currentSteeringAngle *= 0.9; // 自动回正
+            else if (!leftPressed && !rightPressed) currentSteeringAngle *= 0.9; 
 
             const [innerAngle, outerAngle] = CalculateWheelAngles(currentSteeringAngle);
             if (steerWheelA) steerWheelA.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, outerAngle);
             if (steerWheelB) steerWheelB.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, innerAngle);
 
             // 动力逻辑
-            let targetMaxSpeed = shiftPressed ? 250 : maxSpeed;
+            let targetMaxSpeed = shiftPressed ? 220 : maxSpeed;
             
             if (brakePressed) {
                 currentSpeed = 0;
             } else if (forwardPressed && currentSpeed < targetMaxSpeed) {
-                currentSpeed += 5;
+                currentSpeed += 5; // 加速稍微缓和一点
             } else if (backPressed && currentSpeed > -targetMaxSpeed * 0.5) {
                 currentSpeed -= 5;
             } else if (!forwardPressed && !backPressed) {
-                currentSpeed *= 0.98; // 阻力
+                currentSpeed *= 0.95; // 增加自然减速阻力
             }
 
             if (poweredWheelMotorA) poweredWheelMotorA.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, currentSpeed);
@@ -476,7 +475,7 @@
         }
 
         // ====================================================================
-        // 4. 破坏系统 (Destruction) - 保持不变
+        // 4. 破坏系统 (Destruction)
         // ====================================================================
         function createDestructibleBuilding(position, width, height, depth) {
             const brickSize = 2;
@@ -490,8 +489,9 @@
                         const brick = BABYLON.MeshBuilder.CreateBox("b", {size: brickSize * 0.95}, scene);
                         brick.position.set(position.x + x * brickSize, position.y + y * brickSize + (brickSize/2), position.z + z * brickSize);
                         brick.material = brickMat;
-                        const agg = new BABYLON.PhysicsAggregate(brick, BABYLON.PhysicsShapeType.BOX, { mass: 10, restitution: 0.1 }, scene);
-                        agg.body.shape.filterMembershipMask = FILTERS.Environment; // 设为环境组
+                        // 砖块质量稍微增加，撞击感更实
+                        const agg = new BABYLON.PhysicsAggregate(brick, BABYLON.PhysicsShapeType.BOX, { mass: 20, restitution: 0.05 }, scene);
+                        agg.body.shape.filterMembershipMask = FILTERS.Environment; 
                         brick.metadata = { originalY: brick.position.y, isDestroyed: false };
                         bricksArray.push({ mesh: brick, body: agg.body });
                     }
