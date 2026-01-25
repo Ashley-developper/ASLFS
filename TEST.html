@@ -237,72 +237,88 @@
         }
 
         function CreateGroundAndWalls() {
-    // 1. 地面设置
+    // --- 1. 基础地面 ---
     const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 2000, width: 2000 });
     ground.position.y = -5;
-    
     const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
     groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
     groundMat.diffuseTexture.uScale = 100;
     groundMat.diffuseTexture.vScale = 100;
     ground.material = groundMat;
+    AddStaticPhysics(ground, 200);
 
-    AddStaticPhysics(ground, 500); // 增加地面摩擦力防止打滑
-
-    // 2. 边界墙 (静态)
+    // --- 2. 边界强 (防出界) ---
     const wallH = 40;
-    const walls = [
-        {w: 2000, h: wallH, d: 10, x: 0, z: 1000},
-        {w: 2000, h: wallH, d: 10, x: 0, z: -1000},
-        {w: 10, h: wallH, d: 2000, x: 1000, z: 0},
-        {w: 10, h: wallH, d: 2000, x: -1000, z: 0}
+    const worldSize = 1000;
+    const wallConfigs = [
+        {w: worldSize*2, h: wallH, d: 10, x: 0, z: worldSize},
+        {w: worldSize*2, h: wallH, d: 10, x: 0, z: -worldSize},
+        {w: 10, h: wallH, d: worldSize*2, x: worldSize, z: 0},
+        {w: 10, h: wallH, d: worldSize*2, x: -worldSize, z: 0}
     ];
-    walls.forEach(config => {
-        const wall = BABYLON.MeshBuilder.CreateBox("border", {width: config.w, height: config.h, depth: config.d}, scene);
-        wall.position.set(config.x, wallH/2 - 5, config.z);
+    wallConfigs.forEach(c => {
+        const wall = BABYLON.MeshBuilder.CreateBox("border", {width: c.w, height: c.h, depth: c.d});
+        wall.position.set(c.x, wallH/2 - 5, c.z);
         AddStaticPhysics(wall, 10);
         wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
     });
 
-    // 3. 动态方块墙 (可以撞飞)
-    const createBrickWall = (posZ) => {
-        const brickSize = 4;
-        for (let y = 0; y < 5; y++) { // 5层高
-            for (let x = -4; x < 4; x++) { // 8块宽
-                const brick = BABYLON.MeshBuilder.CreateBox("brick", {size: brickSize}, scene);
-                brick.position.set(x * brickSize, y * brickSize - 2, posZ);
-                // 给方块添加动态物理
-                const body = new BABYLON.PhysicsBody(brick, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
-                const shape = new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(brickSize, brickSize, brickSize), scene);
-                body.shape = shape;
-                body.setMassProperties({mass: 10});
-                shape.filterMembershipMask = FILTERS.Environment; // 让车能撞到它
+    // --- 3. 动态方块墙 (可撞散) ---
+    const createBrickWall = (offsetX, offsetZ) => {
+        const brickSize = 3;
+        const rows = 6;
+        const cols = 8;
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                const brick = BABYLON.MeshBuilder.CreateBox("brick", {size: brickSize});
+                brick.position.set(offsetX + x * (brickSize + 0.1), y * brickSize, offsetZ);
+                const body = AddDynamicPhysics(brick, 5, 0.1, 0.5); // 较轻的质量，方便撞飞
+                body.shape.filterMembershipMask = FILTERS.Environment;
             }
         }
     };
-    createBrickWall(80);  // 第一堵墙
-    createBrickWall(120); // 第二堵墙
+    // 散布几堵墙
+    [ {x: -50, z: 100}, {x: 60, z: 200}, {x: -100, z: -150}, {x: 120, z: 50} ].forEach(pos => createBrickWall(pos.x, pos.z));
 
-    // 4. 起飞坡 (RC Ramp)
-    const rampWidth = 40;
-    const ramp = BABYLON.MeshBuilder.CreateBox("LaunchPad", {width: rampWidth, height: 2, depth: 60}, scene);
-    ramp.position.set(0, 5, 250); // 放在 Z=250 处
-    ramp.rotation.x = -Math.PI / 6; // 30度斜坡，更陡峭
-    
-    const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
-    rampMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
-    ramp.material = rampMat;
-    
-    AddStaticPhysics(ramp, 20);
-    ramp.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+    // --- 4. 起飞跳台 (多角度/散落) ---
+    const createRamp = (x, z, rotX, scaleW = 40) => {
+        const ramp = BABYLON.MeshBuilder.CreateBox("Ramp", {width: scaleW, height: 2, depth: 60});
+        ramp.position.set(x, 2, z);
+        ramp.rotation.x = rotX; 
+        const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
+        rampMat.diffuseColor = new BABYLON.Color3(0.8, 0.2, 0.2);
+        ramp.material = rampMat;
+        AddStaticPhysics(ramp, 50);
+        ramp.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+    };
+    createRamp(0, 300, -Math.PI / 6, 60);    // 主干道大跳台
+    createRamp(-150, 450, -Math.PI / 5, 40); // 陡峭跳台
+    createRamp(200, 600, -Math.PI / 10, 80); // 宽跳台
+    createRamp(0, -300, -Math.PI / 6, 50);   // 反向跳台
 
-    // 5. 加速设置：直接在这里注入更高的性能参数 (会覆盖 InitKeyboardControls 里的默认值)
-    // 注意：这里的修改需要配合 InitKeyboardControls 里的变量名
-    scene.onBeforeRenderObservable.addOnce(() => {
-        // 如果你的控制逻辑是在闭包里，可以直接修改全局或车体受力
-        // 这里提供一个简单粗暴的方案：直接让物理引擎整体提速
-        console.log("Environment ready: Max speed boosted!");
-    });
+    // --- 5. 加速带 (Speed Pads) ---
+    const createSpeedPad = (x, z) => {
+        const pad = BABYLON.MeshBuilder.CreatePlane("SpeedPad", {size: 30});
+        pad.position.set(x, -4.9, z);
+        pad.rotation.x = Math.PI / 2;
+        const padMat = new BABYLON.StandardMaterial("padMat", scene);
+        padMat.emissiveColor = new BABYLON.Color3(0, 1, 1);
+        pad.material = padMat;
+        
+        // 物理逻辑：检测车辆并给予冲力
+        scene.onBeforeRenderObservable.add(() => {
+            scene.meshes.forEach(m => {
+                if (m.name === "Frame" || m.name === "Frame2") {
+                    const dist = BABYLON.Vector3.Distance(m.position, pad.position);
+                    if (dist < 20) {
+                        const force = m.forward.scale(500000); // 强大的推力
+                        m.physicsBody.applyImpulse(force, m.absolutePosition);
+                    }
+                }
+            });
+        });
+    };
+    [ {x: 0, z: 200}, {x: 0, z: -100}, {x: -150, z: 350}, {x: 200, z: 500} ].forEach(pos => createSpeedPad(pos.x, pos.z));
 }
 
         function AddWheelPhysics(mesh, mass, bounce, friction) {
