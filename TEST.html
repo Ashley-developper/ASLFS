@@ -184,7 +184,9 @@
         // 2. 场景搭建
         // ====================================================================
         function createScene() {
-            const scene = new BABYLON.Scene(engine);
+            // FIX: Removed 'const' so we assign to the global 'scene' variable
+            // This ensures 'createPlayerCar' and other functions can access 'scene'
+            scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.05, 1); // 深空背景
             
             // 启用物理
@@ -204,8 +206,9 @@
             const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
             groundMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.15);
             groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-            // 创建网格纹理
-            const gridTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
+            
+            // FIX: Updated texture URL to a reliable Babylon.js asset
+            const gridTexture = new BABYLON.Texture("https://assets.babylonjs.com/textures/checkerboard_base.png", scene);
             gridTexture.uScale = 50; gridTexture.vScale = 50;
             groundMat.emissiveTexture = gridTexture;
             groundMat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.4);
@@ -465,7 +468,7 @@
             document.getElementById('hud').classList.remove('hidden');
             startTime = Date.now();
             isGameActive = true;
-            engine.resumeAudio();
+            // FIX: Removed engine.resumeAudio() as no audio is loaded and it caused a crash
         }
 
         function endGame() {
