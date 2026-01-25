@@ -207,7 +207,7 @@
             
             // 物理引擎配置 - 使用参考代码的参数
             scene.enablePhysics(new BABYLON.Vector3(0, -240, 0), havokInstance);
-            scene.getPhysicsEngine().setTimeStep(1 / 500);
+            scene.getPhysicsEngine().setTimeStep(1 / 120);
             scene.getPhysicsEngine().setSubTimeStep(4.5);
 
             // 灯光
@@ -249,25 +249,41 @@
             // 创建玩家车辆
             createPlayerCar(new BABYLON.Vector3(0, 5, -60));
 
-            // 创建可破坏建筑群
-      // --- 核心商务区 ---
-// 地标中心塔：极高且细长
-createDestructibleBuilding(new BABYLON.Vector3(0, 0, 0), 5, 25, 5); 
+            // 1. 定义镂空建筑生成器 (建议放在 createScene 外部或内部开头)
+const createHollowBuilding = (pos, w, h, d, t = 0.5) => {
+    // 墙体中心点调整：Havok 的 BOX 形状通常从中心计算
+    // 我们创建 4 面墙和 1 个楼顶
+    
+    // 前墙与后墙
+    createDestructibleBuilding(new BABYLON.Vector3(pos.x, pos.y, pos.z + d/2), w, h, t);
+    createDestructibleBuilding(new BABYLON.Vector3(pos.x, pos.y, pos.z - d/2), w, h, t);
+    
+    // 左墙与右墙
+    createDestructibleBuilding(new BABYLON.Vector3(pos.x + w/2, pos.y, pos.z), t, h, d);
+    createDestructibleBuilding(new BABYLON.Vector3(pos.x - w/2, pos.y, pos.z), t, h, d);
+    
+    // 楼顶
+    createDestructibleBuilding(new BABYLON.Vector3(pos.x, pos.y + h/2, pos.z), w, t, d);
+};
+
+// 2. 替换后的建筑群布局
+// --- 核心商务区 ---
+// 中心的“镂空”地标塔
+createHollowBuilding(new BABYLON.Vector3(0, 0, 0), 8, 30, 8); 
 
 // --- 居住区 ---
-// 双子公寓：中等高度，对称分布
-createDestructibleBuilding(new BABYLON.Vector3(-15, 0, -15), 6, 12, 6);
-createDestructibleBuilding(new BABYLON.Vector3(15, 0, -15), 6, 12, 6);
+// 双子公寓 (使用镂空结构，高度增加)
+createHollowBuilding(new BABYLON.Vector3(-20, 0, -20), 6, 15, 6);
+createHollowBuilding(new BABYLON.Vector3(20, 0, -20), 6, 15, 6);
 
 // --- 工业/商业区 ---
-// 综合大楼：矮胖、占地面积大
-createDestructibleBuilding(new BABYLON.Vector3(30, 0, 20), 12, 4, 12);
+// 大型空心仓库 (占地大但方块极少)
+createHollowBuilding(new BABYLON.Vector3(40, 0, 30), 15, 6, 15);
 
-// --- 阵列景观 ---
-// 密集的低矮建筑群（模拟仓库或排屋）
-createDestructibleBuilding(new BABYLON.Vector3(-30, 0, 25), 4, 6, 4);
-createDestructibleBuilding(new BABYLON.Vector3(-40, 0, 25), 4, 5, 4);
-createDestructibleBuilding(new BABYLON.Vector3(-50, 0, 25), 4, 4, 4);
+// --- 装饰性围墙或小件 ---
+// 这些比较小，可以直接用原函数
+createDestructibleBuilding(new BABYLON.Vector3(-35, 0, 40), 4, 8, 4);
+createDestructibleBuilding(new BABYLON.Vector3(-45, 0, 40), 4, 6, 4);
             return scene;
         }
 
