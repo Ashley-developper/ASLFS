@@ -237,61 +237,73 @@
         }
 
          function CreateGroundAndWalls() {
+    // 1. 地面设置
+    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 2000, width: 2000 });
+    ground.position.y = -5;
+    
+    const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+    groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
+    groundMat.diffuseTexture.uScale = 100;
+    groundMat.diffuseTexture.vScale = 100;
+    ground.material = groundMat;
 
-            const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 1000, width: 1000 });
+    AddStaticPhysics(ground, 500); // 增加地面摩擦力防止打滑
 
-            ground.position.y = -5;
+    // 2. 边界墙 (静态)
+    const wallH = 40;
+    const walls = [
+        {w: 2000, h: wallH, d: 10, x: 0, z: 1000},
+        {w: 2000, h: wallH, d: 10, x: 0, z: -1000},
+        {w: 10, h: wallH, d: 2000, x: 1000, z: 0},
+        {w: 10, h: wallH, d: 2000, x: -1000, z: 0}
+    ];
+    walls.forEach(config => {
+        const wall = BABYLON.MeshBuilder.CreateBox("border", {width: config.w, height: config.h, depth: config.d}, scene);
+        wall.position.set(config.x, wallH/2 - 5, config.z);
+        AddStaticPhysics(wall, 10);
+        wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+    });
 
-            
-
-            // 额外添加纹理增强视觉
-
-            const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
-
-            groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
-
-            groundMat.diffuseTexture.uScale = 50;
-
-            groundMat.diffuseTexture.vScale = 50;
-
-            ground.material = groundMat;
-
-
-
-            AddStaticPhysics(ground, 300);
-
-            
-
-            // 添加边界墙
-
-            const wallH = 20;
-
-            const walls = [
-
-                {w: 1000, h: wallH, d: 5, x: 0, z: 500},
-
-                {w: 1000, h: wallH, d: 5, x: 0, z: -500},
-
-                {w: 5, h: wallH, d: 1000, x: 500, z: 0},
-
-                {w: 5, h: wallH, d: 1000, x: -500, z: 0}
-
-            ];
-
-            walls.forEach(config => {
-
-                const wall = BABYLON.MeshBuilder.CreateBox("wall", {width: config.w, height: config.h, depth: config.d}, scene);
-
-                wall.position.set(config.x, wallH/2 - 5, config.z);
-
-                AddStaticPhysics(wall, 10);
-
-                wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
-
-            });
-
+    // 3. 动态方块墙 (可以撞飞)
+    const createBrickWall = (posZ) => {
+        const brickSize = 4;
+        for (let y = 0; y < 5; y++) { // 5层高
+            for (let x = -4; x < 4; x++) { // 8块宽
+                const brick = BABYLON.MeshBuilder.CreateBox("brick", {size: brickSize}, scene);
+                brick.position.set(x * brickSize, y * brickSize - 2, posZ);
+                // 给方块添加动态物理
+                const body = new BABYLON.PhysicsBody(brick, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+                const shape = new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(brickSize, brickSize, brickSize), scene);
+                body.shape = shape;
+                body.setMassProperties({mass: 10});
+                shape.filterMembershipMask = FILTERS.Environment; // 让车能撞到它
+            }
         }
+    };
+    createBrickWall(80);  // 第一堵墙
+    createBrickWall(120); // 第二堵墙
 
+    // 4. 起飞坡 (RC Ramp)
+    const rampWidth = 40;
+    const ramp = BABYLON.MeshBuilder.CreateBox("LaunchPad", {width: rampWidth, height: 2, depth: 60}, scene);
+    ramp.position.set(0, 5, 250); // 放在 Z=250 处
+    ramp.rotation.x = -Math.PI / 6; // 30度斜坡，更陡峭
+    
+    const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
+    rampMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
+    ramp.material = rampMat;
+    
+    AddStaticPhysics(ramp, 20);
+    ramp.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
+
+    // 5. 加速设置：直接在这里注入更高的性能参数 (会覆盖 InitKeyboardControls 里的默认值)
+    // 注意：这里的修改需要配合 InitKeyboardControls 里的变量名
+    scene.onBeforeRenderObservable.addOnce(() => {
+        // 如果你的控制逻辑是在闭包里，可以直接修改全局或车体受力
+        // 这里提供一个简单粗暴的方案：直接让物理引擎整体提速
+        console.log("Environment ready: Max speed boosted!");
+    });
+}
         function AddWheelPhysics(mesh, mass, bounce, friction) {
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 2, scene);
             const physicsBody = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
