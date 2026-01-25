@@ -255,10 +255,6 @@
 
             return scene;
         }
-
-        // ====================================================================
-        // 3. 车辆核心系统
-        // ====================================================================
         let poweredWheelMotorA, poweredWheelMotorB;
         let steerWheelA, steerWheelB;
 
@@ -339,7 +335,26 @@
             });
         }
 
-        // --- 物理辅助函数 ---
+       let brickRoot;
+function initInstancing(scene, material) {
+    brickRoot = BABYLON.MeshBuilder.CreateBox("brickRoot", { size: 1.98 }, scene);
+    brickRoot.material = material;
+    brickRoot.isVisible = false; // 隐藏模板
+}
+
+// 辅助函数：快速创建一个带物理效果的砖块副本
+function createPhysicsBrick(pos, scene) {
+    const instance = brickRoot.createInstance("b_" + bricksArray.length);
+    instance.position.copyFrom(pos);
+    
+    // 物理聚合体（每个实例仍需独立物理，但渲染已优化）
+    const agg = new BABYLON.PhysicsAggregate(instance, BABYLON.PhysicsShapeType.BOX, { mass: 5, restitution: 0.1, friction: 0.8 }, scene);
+    agg.body.shape.filterMembershipMask = FILTERS.Environment;
+    
+    instance.metadata = { originalY: pos.y, isDestroyed: false };
+    bricksArray.push({ mesh: instance });
+    totalBricksCount++;
+}
 
         function CreateAxle(position) {
             const axleMesh = BABYLON.MeshBuilder.CreateBox("Axle", { height: 1, width: 2.5, depth: 1 }, scene);
@@ -532,7 +547,124 @@
             }
             totalBricksCount = bricksArray.length;
         }
+function createSkyscraper(pos, width, height, depth, scene) {
+    const step = 2;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            for (let z = 0; z < depth; z++) {
+                // 只在外壳和中心支柱生成方块，节省50%以上的方块数，提高性能
+                const isShell = (x === 0 || x === width - 1 || z === 0 || z === depth - 1);
+                const isCore = (x === Math.floor(width/2) && z === Math.floor(depth/2));
+                
+                if (isShell || isCore) {
+                    const brickPos = new BABYLON.Vector3(
+                        pos.x + x * step - (width * step) / 2,
+                        pos.y + y * step + 1,
+                        pos.z + z * step - (depth * step) / 2
+                    );
+                    createPhysicsBrick(brickPos, scene);
+                }
+            }
+        }
+    }
+}
 
+/**
+ * 2. 迪拜塔式 (Tapered Tower)
+ * 特点：随高度增加而缩减宽度，非常稳固且视觉效果好
+ */
+function createTaperedTower(pos, baseSize, height, scene) {
+    const step = 2;
+    for (let y = 0; y < height; y++) {
+        // 缩减算法：每10层缩小一圈
+        const currentSize = baseSize - Math.floor(y / 10);
+        if (currentSize <= 1) break;
+        
+        for (let x = 0; x < currentSize; x++) {
+            for (let z = 0; z < currentSize; z++) {
+                if (x === 0 || x === currentSize - 1 || z === 0 || z === currentSize - 1) {
+                    const brickPos = new BABYLON.Vector3(
+                        pos.x + x * step - (currentSize * step) / 2,
+                        pos.y + y * step + 1,
+                        pos.z + z * step - (currentSize * step) / 2
+                    );
+                    createPhysicsBrick(brickPos, scene);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 3. 螺旋双塔 (Spiral Twin Towers)
+ * 特点：方块随高度旋转，极具现代感
+ */
+function createSpiralTower(pos, size, height, scene) {
+    const step = 2;
+    for (let y = 0; y < height; y++) {
+        const angle = y * 0.1; // 旋转角度
+        for (let x = 0; x < size; x++) {
+            for (let z = 0; z < size; z++) {
+                if (x === 0 || x === size - 1 || z === 0 || z === size - 1) {
+                    // 旋转矩阵坐标计算
+                    const rx = (x - size/2) * Math.cos(angle) - (z - size/2) * Math.sin(angle);
+                    const rz = (x - size/2) * Math.sin(angle) + (z - size/2) * Math.cos(angle);
+                    
+                    const brickPos = new BABYLON.Vector3(
+                        pos.x + rx * step,
+                        pos.y + y * step + 1,
+                        pos.z + rz * step
+                    );
+                    createPhysicsBrick(brickPos, scene);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 4. 巨型方框楼 (Hollow Block)
+ * 特点：中间镂空的巨型结构，适合开车穿过去
+ */
+function createHollowFrame(pos, size, scene) {
+    const step = 2;
+    const thickness = 3; // 边框厚度
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            for (let z = 0; z < thickness; z++) {
+                // 只在正方形的框上生成
+                const isFrame = (x < thickness || x > size - thickness || y < thickness || y > size - thickness);
+                if (isFrame) {
+                    const brickPos = new BABYLON.Vector3(
+                        pos.x + x * step - (size * step) / 2,
+                        pos.y + y * step + 1,
+                        pos.z + z * step
+                    );
+                    createPhysicsBrick(brickPos, scene);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 5. 快速随机城市生成器
+ * 一键布置大量建筑
+ */
+function spawnRandomCity(scene) {
+    // 密集办公区
+    createSkyscraper(new BABYLON.Vector3(40, 0, 40), 6, 30, 6, scene);
+    createSkyscraper(new BABYLON.Vector3(-40, 0, 40), 8, 25, 8, scene);
+    
+    // 地标塔
+    createTaperedTower(new BABYLON.Vector3(0, 0, 150), 12, 60, scene);
+    
+    // 螺旋艺术建筑
+    createSpiralTower(new BABYLON.Vector3(100, 0, 80), 6, 40, scene);
+    createSpiralTower(new BABYLON.Vector3(-100, 0, 80), 6, 40, scene);
+    
+    // 跨街拱门
+    createHollowFrame(new BABYLON.Vector3(0, 0, 60), 15, scene);
         // ====================================================================
         // 5. 游戏逻辑
         // ====================================================================
