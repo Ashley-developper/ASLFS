@@ -237,72 +237,93 @@
         }
 
          function CreateGroundAndWalls() {
-    // 1. 地面设置
-    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: 2000, width: 2000 });
-    ground.position.y = -5;
+    // 1. 设置窄长赛道 (60宽, 5000长)
+    const trackWidth = 60;
+    const trackLength = 5000;
+    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { height: trackLength, width: trackWidth });
+    ground.position.y = -2; // 稍微下沉，让车轮中心更接近物理平面
     
     const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
     groundMat.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-dtp.com/assets/grid.png", scene);
-    groundMat.diffuseTexture.uScale = 100;
-    groundMat.diffuseTexture.vScale = 100;
+    // 让网格纹理随赛道拉伸，方便观察速度
+    groundMat.diffuseTexture.uScale = 5; 
+    groundMat.diffuseTexture.vScale = 200;
     ground.material = groundMat;
 
-    AddStaticPhysics(ground, 500); // 增加地面摩擦力防止打滑
+    AddStaticPhysics(ground, 200); // 高摩擦力防止打滑
 
-    // 2. 边界墙 (静态)
-    const wallH = 40;
-    const walls = [
-        {w: 2000, h: wallH, d: 10, x: 0, z: 1000},
-        {w: 2000, h: wallH, d: 10, x: 0, z: -1000},
-        {w: 10, h: wallH, d: 2000, x: 1000, z: 0},
-        {w: 10, h: wallH, d: 2000, x: -1000, z: 0}
+    // 2. 赛道两侧的长墙 (防止掉下去)
+    const wallH = 10;
+    const sideWalls = [
+        { x: trackWidth / 2 + 5, z: 0, w: 10, d: trackLength },
+        { x: -trackWidth / 2 - 5, z: 0, w: 10, d: trackLength }
     ];
-    walls.forEach(config => {
-        const wall = BABYLON.MeshBuilder.CreateBox("border", {width: config.w, height: config.h, depth: config.d}, scene);
-        wall.position.set(config.x, wallH/2 - 5, config.z);
+    sideWalls.forEach((config, index) => {
+        const wall = BABYLON.MeshBuilder.CreateBox("sideWall" + index, { width: config.w, height: wallH, depth: config.d }, scene);
+        wall.position.set(config.x, wallH / 2 - 2, config.z);
         AddStaticPhysics(wall, 10);
         wall.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
     });
 
-    // 3. 动态方块墙 (可以撞飞)
+    // 3. 自动生成障碍物逻辑
     const createBrickWall = (posZ) => {
         const brickSize = 4;
-        for (let y = 0; y < 5; y++) { // 5层高
-            for (let x = -4; x < 4; x++) { // 8块宽
-                const brick = BABYLON.MeshBuilder.CreateBox("brick", {size: brickSize}, scene);
-                brick.position.set(x * brickSize, y * brickSize - 2, posZ);
-                // 给方块添加动态物理
+        const rows = 5;    // 5层高
+        const columns = 10; // 宽
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < columns; x++) {
+                const brick = BABYLON.MeshBuilder.CreateBox("brick", { size: brickSize }, scene);
+                // 居中放置墙
+                brick.position.set((x - columns / 2) * brickSize + 2, y * brickSize, posZ);
+                
                 const body = new BABYLON.PhysicsBody(brick, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
                 const shape = new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(brickSize, brickSize, brickSize), scene);
                 body.shape = shape;
-                body.setMassProperties({mass: 10});
-                shape.filterMembershipMask = FILTERS.Environment; // 让车能撞到它
+                body.setMassProperties({ mass: 15 }); // 适中的重量，车撞上去有冲击感
+                shape.filterMembershipMask = FILTERS.Environment;
+                
+                // 给方块一点颜色
+                const brickMat = new BABYLON.StandardMaterial("brickMat", scene);
+                brickMat.diffuseColor = new BABYLON.Color3(0.8, 0.2, 0.2);
+                brick.material = brickMat;
             }
         }
     };
-    createBrickWall(80);  // 第一堵墙
-    createBrickWall(120); // 第二堵墙
 
-    // 4. 起飞坡 (RC Ramp)
-    const rampWidth = 40;
-    const ramp = BABYLON.MeshBuilder.CreateBox("LaunchPad", {width: rampWidth, height: 2, depth: 60}, scene);
-    ramp.position.set(0, 5, 250); // 放在 Z=250 处
-    ramp.rotation.x = -Math.PI / 6; // 30度斜坡，更陡峭
-    
-    const rampMat = new BABYLON.StandardMaterial("rampMat", scene);
-    rampMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
-    ramp.material = rampMat;
-    
-    AddStaticPhysics(ramp, 20);
+    const createObstacleBall = (posX, posZ) => {
+        const radius = 6;
+        const ball = BABYLON.MeshBuilder.CreateSphere("ObstacleBall", { diameter: radius * 2 }, scene);
+        ball.position.set(posX, radius, posZ);
+        
+        const ballBody = new BABYLON.PhysicsBody(ball, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+        const ballShape = new BABYLON.PhysicsShapeSphere(BABYLON.Vector3.Zero(), radius, scene);
+        ballBody.shape = ballShape;
+        ballBody.setMassProperties({ mass: 500 }); // 重球，不容易撞飞
+        ballShape.material = { restitution: 0.5, friction: 0.5 };
+        ballShape.filterMembershipMask = FILTERS.Environment;
+
+        const ballMat = new BABYLON.StandardMaterial("ballMat", scene);
+        ballMat.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
+        ball.material = ballMat;
+    };
+
+    // 4. 循环生成障碍物：每 150 单位放一堵墙，每 100 单位放两个球
+    for (let z = 100; z < trackLength / 2; z += 150) {
+        if (z % 300 === 0) {
+            createBrickWall(z); // 方块墙
+        } else {
+            // 在赛道左右随机放两个大球
+            createObstacleBall(-15, z);
+            createObstacleBall(15, z + 50);
+        }
+    }
+
+    // 5. 终点大坡道
+    const ramp = BABYLON.MeshBuilder.CreateBox("FinalRamp", { width: trackWidth, height: 2, depth: 100 }, scene);
+    ramp.position.set(0, 15, 800); 
+    ramp.rotation.x = -Math.PI / 8;
+    AddStaticPhysics(ramp, 10);
     ramp.physicsBody.shape.filterMembershipMask = FILTERS.Environment;
-
-    // 5. 加速设置：直接在这里注入更高的性能参数 (会覆盖 InitKeyboardControls 里的默认值)
-    // 注意：这里的修改需要配合 InitKeyboardControls 里的变量名
-    scene.onBeforeRenderObservable.addOnce(() => {
-        // 如果你的控制逻辑是在闭包里，可以直接修改全局或车体受力
-        // 这里提供一个简单粗暴的方案：直接让物理引擎整体提速
-        console.log("Environment ready: Max speed boosted!");
-    });
 }
         function AddWheelPhysics(mesh, mass, bounce, friction) {
             const physicsShape = new BABYLON.PhysicsShapeCylinder(new BABYLON.Vector3(-0.8, 0, 0), new BABYLON.Vector3(0.8, 0, 0), 2, scene);
