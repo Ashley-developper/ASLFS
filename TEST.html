@@ -388,9 +388,17 @@
             return joint;
         }
 
+        
         function CreateWheelJoint(axleMesh, wheelMesh) {
-            const motorJoint = new BABYLON.Physics6DoFConstraint({}, [
-                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_DISTANCE, minLimit: 0, maxLimit: 0 },
+            const motorJoint = new BABYLON.Physics6DoFConstraint({
+                pivotA: new BABYLON.Vector3(0, 0, 0),
+                pivotB: new BABYLON.Vector3(0, 0, 0),
+            }, [
+                // 完全锁定所有线性移动 - 防止轮胎滑动
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y, minLimit: 0, maxLimit: 0 },
+                { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
+                // 只允许X轴旋转(车轮滚动)
                 { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: 0, maxLimit: 0 },
                 { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: 0, maxLimit: 0 },
             ], scene);
