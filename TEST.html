@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -207,7 +206,7 @@
             
             // 物理引擎配置 - 使用参考代码的参数
             scene.enablePhysics(new BABYLON.Vector3(0, -240, 0), havokInstance);
-            scene.getPhysicsEngine().setTimeStep(1 / 120);
+            scene.getPhysicsEngine().setTimeStep(1 / 500);
             scene.getPhysicsEngine().setSubTimeStep(4.5);
 
             // 灯光
@@ -249,20 +248,11 @@
             // 创建玩家车辆
             createPlayerCar(new BABYLON.Vector3(0, 5, -60));
 
-            // 1. 定义镂空建筑生成器 (建议放在 createScene 外部或内部开头)
-// --- 极简建筑布局 ---
+            // 创建可破坏建筑群
+            createDestructibleBuilding(new BABYLON.Vector3(0, 0, 20), 6, 8, 6);
+            createDestructibleBuilding(new BABYLON.Vector3(-40, 0, 50), 5, 12, 5);
+            createDestructibleBuilding(new BABYLON.Vector3(40, 0, 50), 8, 5, 8);
 
-// 1. 摩天大楼：由三个垂直堆叠的大方块组成（只有3个物理体）
-createDestructibleBuilding(new BABYLON.Vector3(0, 5, 0), 6, 10, 6);   // 底部
-createDestructibleBuilding(new BABYLON.Vector3(0, 15, 0), 5, 10, 5);  // 中部
-createDestructibleBuilding(new BABYLON.Vector3(0, 25, 0), 4, 10, 4);  // 顶部
-
-// 2. 长条形厂房：横向的一体化长方体（只有1个物理体）
-createDestructibleBuilding(new BABYLON.Vector3(30, 2, 20), 20, 4, 10);
-
-// 3. 极简双子塔：每栋楼就是一个拉长的立方体
-createDestructibleBuilding(new BABYLON.Vector3(-25, 10, -15), 5, 20, 5);
-createDestructibleBuilding(new BABYLON.Vector3(25, 10, -15), 5, 20, 5);
             return scene;
         }
 
