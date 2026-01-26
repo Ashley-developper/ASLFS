@@ -250,6 +250,7 @@
 
             // 创建可破坏建筑群
             createDestructibleBuilding(new BABYLON.Vector3(0, 0, 20), 6, 8, 6);
+            createDestructibleBuilding(new BABYLON.Vector3(0, 10, 20), 6, 20, 6);
             createDestructibleBuilding(new BABYLON.Vector3(-40, 0, 50), 5, 12, 5);
             createDestructibleBuilding(new BABYLON.Vector3(40, 0, 50), 8, 5, 8);
 
@@ -523,7 +524,7 @@
                         brick.position.set(position.x + x * brickSize, position.y + y * brickSize + (brickSize/2), position.z + z * brickSize);
                         brick.material = brickMat;
                         // 砖块质量稍微增加,撞击感更实
-                        const agg = new BABYLON.PhysicsAggregate(brick, BABYLON.PhysicsShapeType.BOX, { mass: 20, restitution: 0.05 }, scene);
+                        const agg = new BABYLON.PhysicsAggregate(brick, BABYLON.PhysicsShapeType.BOX, { mass: 10, restitution: 0.05 }, scene);
                         agg.body.shape.filterMembershipMask = FILTERS.Environment; 
                         brick.metadata = { originalY: brick.position.y, isDestroyed: false };
                         bricksArray.push({ mesh: brick, body: agg.body });
