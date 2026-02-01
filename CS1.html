@@ -1,1602 +1,559 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GTA6 STYLE: OPEN WORLD ACTION</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 10 Experience</title>
     <style>
-        /* =========================================================================
-         * UI BASE & TYPOGRAPHY
-         * ========================================================================= */
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background: #000000; 
-            font-family: 'Rajdhani', sans-serif; 
-            color: #E0FFFF;
-            user-select: none; 
-        }
-        
-        /* =========================================================================
-         * CROSSHAIR (FIRST PERSON VIEW)
-         * ========================================================================= */
-        #crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 30px; height: 30px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 100;
-            display: none; /* Initially hidden */
-        }
-        .crosshair-dot {
-            position: absolute;
-            width: 4px; height: 4px;
-            background: #FF0000;
-            border-radius: 50%;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
-        }
-        .crosshair-line {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.8);
-        }
-        .crosshair-line.horizontal {
-            width: 15px; height: 2px;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .crosshair-line.vertical {
-            width: 2px; height: 15px;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
+        :root {
+            --win-blue: #0078d7;
+            --win-border: rgba(255, 255, 255, 0.4);
+            --win-bg-input: rgba(0, 0, 0, 0.45);
+            --win-grey-trans: rgba(128, 128, 128, 0.3);
         }
 
-        /* =========================================================================
-         * WEAPON HUD
-         * ========================================================================= */
-        #weapon-hud {
-            position: absolute;
-            bottom: 100px; right: 30px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-left: 5px solid #FF4500;
-            backdrop-filter: blur(10px);
-            padding: 15px 25px;
-            border-radius: 4px;
-            display: none; /* Initially hidden */
-            z-index: 11;
-        }
-        #weapon-name {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 16px;
-            color: #FFD700;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        #ammo-count {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 32px;
-            font-weight: 900;
-            color: #FFFFFF;
-            line-height: 1;
-        }
-        #ammo-total {
-            font-size: 14px;
-            color: #AAAAAA;
-            margin-left: 5px;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Segoe UI Light', sans-serif;
         }
 
-        /* =========================================================================
-         * HEALTH & ARMOR BARS
-         * ========================================================================= */
-        #health-hud {
-            position: absolute;
-            bottom: 100px; left: 30px;
-            display: none; /* Initially hidden */
-            flex-direction: column;
-            gap: 10px;
-            z-index: 11;
-        }
-        .bar-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 200px;
-        }
-        .bar-label {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 12px;
-            color: #FFFFFF;
-            width: 60px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .bar-bg {
-            flex: 1;
-            height: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
+        body {
+            height: 100vh;
+            width: 100vw;
+            background: #000;
             overflow: hidden;
-        }
-        .bar-fill {
-            height: 100%;
-            transition: width 0.3s ease;
-        }
-        #health-bar {
-            background: linear-gradient(to right, #FF0000, #FF4500);
-            width: 100%;
-        }
-        #armor-bar {
-            background: linear-gradient(to right, #1E90FF, #00BFFF);
-            width: 50%;
-        }
-
-        /* =========================================================================
-         * WANTED LEVEL
-         * ========================================================================= */
-        #wanted-hud {
-            position: absolute;
-            top: 30px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #FFD700;
-            border-radius: 50px;
-            padding: 10px 30px;
-            display: none;
-            align-items: center;
-            gap: 15px;
-            z-index: 11;
-        }
-        .wanted-star {
-            width: 30px; height: 30px;
-            background: #FFD700;
-            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-            opacity: 0.3;
-        }
-        .wanted-star.active {
-            opacity: 1;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-        #wanted-level {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
-            color: #FFD700;
-            font-weight: 900;
-        }
-
-        /* =========================================================================
-         * HUD (IN-GAME INTERFACE)
-         * ========================================================================= */
-        #hud-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
-            padding: 30px; box-sizing: border-box; z-index: 10;
-        }
-
-        .hud-top-left { display: flex; gap: 20px; flex-wrap: wrap; }
-        .hud-top-right { position: absolute; top: 30px; right: 30px; }
-        
-        .instrument {
-            background: rgba(0, 15, 30, 0.7);
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-left: 5px solid #00FFFF;
-            backdrop-filter: blur(10px);
-            padding: 12px 22px;
-            min-width: 120px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
-            border-radius: 4px;
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
-        }
-        
-        .label {
-            font-family: 'Orbitron', sans-serif; font-size: 10px; color: #00FFFF; 
-            font-weight: 700; letter-spacing: 2px; margin-bottom: 3px; display:block; 
-            text-transform: uppercase; text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
-        }
-        .value {
-            font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; 
-            letter-spacing: -2px; line-height: 1; color: #FFFFFF;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-        }
-        .unit { font-size: 14px; color: #888888; margin-left: 6px; font-weight: 400; }
-
-        .spd-color { border-left-color: #00FFFF !important; }
-        .rpm-color { border-left-color: #FF00FF !important; }
-        .gear-color { border-left-color: #FFD700 !important; }
-        .throttle-color { border-left-color: #00FF00 !important; }
-
-        #hud-coin {
-            background: rgba(35, 18, 0, 0.7);
-            border: 1px solid rgba(255, 215, 0, 0.15);
-            border-left: 5px solid #FFD700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.06);
-            min-width: 140px; margin-bottom: 20px;
-        }
-        #hud-coin .label { color: #FFD700; }
-        #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
-
-        #control-hints {
-            position: absolute; bottom: 30px; left: 30px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-left: 5px solid #00FF00;
-            backdrop-filter: blur(10px); padding: 18px 25px;
-            color: #eee; font-size: 13px; border-radius: 4px;
-            max-width: 300px; line-height: 1.8;
-        }
-        .hint-title { color: #00FF00; font-family: 'Orbitron', sans-serif; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 0, 0.3); padding-bottom: 5px; }
-        .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
-
-        /* =========================================================================
-         * SPLASH / MAIN MENU UI
-         * ========================================================================= */
-        #splash {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.8) 100%);
-            z-index: 999;
-            display: none; /* Initial hidden */
-            cursor: grab;
-            transition: opacity 0.5s;
-        }
-        #splash:active { cursor: grabbing; }
-
-        /* Title Area */
-        .splash-header {
-            position: absolute; top: 60px; left: 0; width: 100%;
-            text-align: center; pointer-events: none;
-        }
-        h1 {
-            font-family: 'Orbitron', sans-serif; font-size: 64px; margin: 0; font-weight: 900;
-            letter-spacing: 12px; text-transform: uppercase;
-            background: linear-gradient(to right, #FF0000, #FFFFFF, #00FFFF);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 35px rgba(255, 0, 0, 0.7), 0 0 5px rgba(255, 255, 255, 0.5);
-        }
-        .splash-subtitle {
-            font-family: 'Rajdhani', sans-serif; font-size: 20px; color: rgba(255, 0, 0, 0.8);
-            letter-spacing: 6px; margin-top: 10px; font-weight: 600;
-        }
-
-        /* Top Right Coin Display */
-        .splash-top-right {
-            position: absolute; top: 40px; right: 40px;
-            text-align: right; pointer-events: none;
-        }
-        .splash-top-right .label { font-size: 12px; color: #FFD700; text-shadow: 0 0 10px #FFD700; margin-bottom: 5px;}
-        .splash-top-right .value { font-size: 42px; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
-
-        /* Left Menu Buttons (SHOP, SETTINGS, INFO) */
-        .splash-left-menu {
-            position: absolute; top: 50%; left: 40px;
-            transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 20px;
-        }
-        .menu-btn {
-            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 700;
-            color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.2); border-left: 3px solid #888;
-            padding: 12px 30px; letter-spacing: 3px; cursor: pointer;
-            transition: 0.3s; width: 200px; text-align: left;
-            clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
-        }
-        .menu-btn:hover {
-            background: rgba(255, 0, 0, 0.2); color: #fff;
-            border-left-color: #FF0000; padding-left: 40px;
-            box-shadow: 0 0 15px rgba(255,0,0,0.3);
-        }
-
-        /* Bottom Button Area */
-        .splash-footer {
-            position: absolute; bottom: 60px; right: 60px;
-            display: flex; gap: 20px; align-items: flex-end;
-            pointer-events: none;
-        }
-        
-        /* Universal Footer Button Style */
-        .splash-footer button { pointer-events: auto; font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.3s; }
-
-        #start-button {
-            padding: 20px 80px; font-size: 24px; font-weight: 900;
-            color: #000000; background: #FF0000; border: none;
-            letter-spacing: 4px; box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
-        }
-        #start-button:hover {
-            background: #00FFFF; box-shadow: 0 0 50px rgba(0, 255, 255, 0.8); color: #fff; transform: scale(1.05);
-        }
-
-        /* Loading Screen */
-        #loading-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #FF0000; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s;
-        }
-        #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; border-radius: 2px; overflow: hidden; }
-        #loading-progress-fill { height: 100%; width: 0%; background: #FF0000; box-shadow: 0 0 10px #FF0000; transition: width 0.3s; }
-
-        /* =========================================================================
-         * MODE SELECTOR
-         * ========================================================================= */
-        #mode-selector {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #FF0000;
-            padding: 30px 50px;
-            z-index: 1001;
-            display: none;
-            backdrop-filter: blur(10px);
-            text-align: center;
-        }
-        .mode-btn {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid #FF0000;
             color: white;
-            padding: 15px 40px;
-            margin: 10px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 18px;
-            cursor: pointer;
-            transition: 0.3s;
-            display: block;
-            width: 200px;
-        }
-        .mode-btn:hover {
-            background: rgba(255, 0, 0, 0.5);
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
         }
 
-        /* =========================================================================
-         * HIT INDICATOR
-         * ========================================================================= */
-        #hit-indicator {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 5;
-            opacity: 0;
-            transition: opacity 0.1s;
-        }
-        .hit-flash {
-            width: 100%; height: 100%;
-            background: radial-gradient(circle, rgba(255,0,0,0.3) 0%, rgba(255,0,0,0) 70%);
-        }
-
-        /* =========================================================================
-         * NPC HEALTH BARS
-         * ========================================================================= */
-        .npc-health-bar {
-            position: absolute;
-            width: 50px; height: 6px;
-            background: rgba(0,0,0,0.7);
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 1px;
-            overflow: hidden;
-            display: none;
-            z-index: 9;
-        }
-        .npc-health-fill {
+        /* --- 1. 启动加载屏幕 (Loading Screen) --- */
+        #boot-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
-            background: linear-gradient(to right, #FF0000, #00FF00);
-            transition: width 0.2s;
-        }
-
-        /* =========================================================================
-         * DEATH SCREEN
-         * ========================================================================= */
-        #death-screen {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 999;
-            display: none;
+            background: #0078d7;
+            display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease;
+        }
+
+        .win-loader {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin-bottom: 30px;
+        }
+
+        .dot {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            animation: orbit 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .dot::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+            width: 7px;
+            height: 7px;
+            background: #fff;
+            border-radius: 50%;
+        }
+
+        .dot:nth-child(1) { animation-delay: 0.2s; }
+        .dot:nth-child(2) { animation-delay: 0.4s; }
+        .dot:nth-child(3) { animation-delay: 0.6s; }
+        .dot:nth-child(4) { animation-delay: 0.8s; }
+        .dot:nth-child(5) { animation-delay: 1.0s; }
+
+        .loading-text {
+            font-size: 24px;
+            font-weight: 350;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes orbit {
+            0% { transform: rotate(225deg); opacity: 1; animation-timing-function: ease-out; }
+            7% { transform: rotate(345deg); animation-timing-function: linear; }
+            30% { transform: rotate(455deg); animation-timing-function: ease-in-out; }
+            39% { transform: rotate(690deg); animation-timing-function: linear; }
+            70% { transform: rotate(815deg); opacity: 1; animation-timing-function: ease-out; }
+            75% { transform: rotate(945deg); opacity: 0; }
+            100% { transform: rotate(945deg); opacity: 0; }
+        }
+
+        /* --- 背景容器 --- */
+        .main-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('win10.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        /* --- 2. 锁屏 (Lock Screen) --- */
+        #lock-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
             flex-direction: column;
-            color: #FF0000;
-            font-family: 'Orbitron', sans-serif;
-        }
-        #death-screen h2 {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        #respawn-btn {
-            padding: 15px 40px;
-            background: #FF0000;
-            color: white;
-            border: none;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 18px;
+            justify-content: flex-end;
+            padding: 0 0 50px 50px;
+            background: rgba(0,0,0,0.1);
+            transition: opacity 0.8s ease, visibility 0.8s;
             cursor: pointer;
-            margin-top: 30px;
         }
+
+        #lock-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .time-display { font-size: 96px; font-weight: 300; line-height: 1; }
+        .date-display { font-size: 42px; font-weight: 300; margin-top: 10px; }
+
+        /* --- 3. 登录界面 (Login Screen) --- */
+        .login-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(0px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: backdrop-filter 0.8s ease, opacity 0.8s ease;
+            opacity: 0;
+            pointer-events: none;
+            padding-bottom: 100px;
+        }
+
+        body.unlocked .login-overlay {
+            backdrop-filter: blur(25px) saturate(125%);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .user-section { text-align: center; width: 320px; }
+        
+        .avatar-container {
+            width: 190px; height: 190px; margin: 0 auto 20px;
+            border-radius: 50%; background: #0078d7;
+            border: 1px solid var(--win-border);
+            display: flex; justify-content: center; align-items: center; 
+            overflow: hidden;
+        }
+        .avatar-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .display-name { font-size: 48px; font-weight: 300; margin-bottom: 24px; }
+
+        .input-group { margin-bottom: 10px; width: 100%; position: relative; }
+        input {
+            width: 100%; padding: 9px 12px; font-size: 15px; outline: none;
+            background: var(--win-bg-input); border: 2px solid var(--win-border); color: white;
+            transition: background 0.2s;
+        }
+        input:focus { background: white !important; color: black !important; border-color: white; }
+
+        .password-controls {
+            position: absolute; right: 0; top: 0; height: 100%;
+            display: flex; align-items: stretch;
+        }
+        .control-btn { background: transparent; border: none; width: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        .eye-toggle svg { width: 18px; fill: white; opacity: 0.7; }
+        input:focus ~ .password-controls .eye-toggle svg { fill: black; }
+
+        .submit-arrow {
+            background: var(--win-grey-trans); border: 2px solid var(--win-border); border-left: 1px solid var(--win-border);
+            transition: all 0.2s;
+        }
+        .submit-arrow svg { width: 20px; fill: white; }
+        input:focus ~ .password-controls .submit-arrow { border-color: #ccc; }
+        input:focus ~ .password-controls .submit-arrow svg { fill: black; }
+
+        .submit-arrow:hover svg { fill: white !important; }
+
+        .domain-text { margin-top: 24px; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+
+        .system-tray { position: absolute; bottom: 32px; right: 48px; display: flex; gap: 24px; }
+        .system-tray svg { width: 24px; height: 24px; fill: white; opacity: 0.85; }
+
+        /* --- 4. 登录后状态 --- */
+        #welcome-section {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        .welcome-msg-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+            height: 40px;
+        }
+        .welcome-text {
+            font-size: 28px;
+            font-weight: 300;
+        }
+        .welcome-loader {
+            transform: scale(0.65);
+            margin-bottom: 0;
+            width: 60px;
+            height: 60px;
+        }
+
+        /* --- 5. 蓝屏 (BSOD) & 碎裂故障 --- */
+        #bsod {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0078d7;
+            color: white;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding: 8% 12%;
+            user-select: none;
+            cursor: none;
+        }
+        #bsod .sad-face { font-size: 120px; margin-bottom: 25px; }
+        #bsod .main-text { font-size: 26px; font-weight: 300; line-height: 1.4; margin-bottom: 20px; max-width: 850px; }
+        #bsod .percent { font-size: 26px; margin-bottom: 40px; }
+        #bsod .footer-section { display: flex; gap: 25px; align-items: flex-start; }
+        #bsod .qr-box { width: 120px; height: 120px; background: white; padding: 8px; display: flex; justify-content: center; align-items: center; }
+        #bsod .qr-box img { width: 100%; height: 100%; }
+        #bsod .info-text { font-size: 14px; line-height: 1.6; font-weight: 300; }
+
+        /* R键：蓝屏碎裂条 */
+        .glitch-bar {
+            position: fixed;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.4);
+            mix-blend-mode: overlay;
+            z-index: 10000;
+            pointer-events: none;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        /* --- 6. E键：严重花屏损坏 (Broken Screen) --- */
+        #broken-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 20000;
+            background: 
+                /* 局部黑色死区 */
+                linear-gradient(90deg, transparent 10%, black 10%, black 15%, transparent 15%),
+                linear-gradient(90deg, transparent 80%, black 80%, black 95%, transparent 95%),
+                /* 彩色竖条 */
+                repeating-linear-gradient(
+                    90deg,
+                    #ff0000 0px, #ff0000 2px,
+                    #00ff00 2px, #00ff00 4px,
+                    #0000ff 4px, #0000ff 6px,
+                    #ffff00 6px, #ffff00 8px,
+                    #00ffff 8px, #00ffff 10px,
+                    #ff00ff 10px, #ff00ff 12px,
+                    #000000 12px, #000000 14px
+                );
+            animation: flicker-hard 0.05s infinite;
+            pointer-events: none;
+            mix-blend-mode: normal;
+        }
+
+        @keyframes flicker-hard {
+            0% { opacity: 0.95; transform: translateX(0); filter: hue-rotate(0deg); }
+            25% { opacity: 1; transform: translateX(-2px); filter: hue-rotate(90deg); }
+            50% { opacity: 0.8; transform: translateX(2px); filter: invert(1); }
+            75% { opacity: 1; transform: translateX(0); filter: hue-rotate(180deg); }
+            100% { opacity: 0.9; transform: translateX(-1px); }
+        }
+
     </style>
 </head>
 <body>
 
-    <!-- Crosshair for First Person -->
-    <div id="crosshair">
-        <div class="crosshair-line horizontal"></div>
-        <div class="crosshair-line vertical"></div>
-        <div class="crosshair-dot"></div>
-    </div>
-
-    <!-- Hit Indicator -->
-    <div id="hit-indicator">
-        <div class="hit-flash"></div>
-    </div>
-
-    <!-- Death Screen -->
-    <div id="death-screen">
-        <h2>YOU ARE DEAD</h2>
-        <p>Mission failed, we'll get 'em next time</p>
-        <button id="respawn-btn">RESPAWN ($500)</button>
-    </div>
-
-    <!-- Mode Selector -->
-    <div id="mode-selector">
-        <h2 style="color:#FF0000; font-family:'Orbitron';">SELECT MODE</h2>
-        <button class="mode-btn" onclick="startMode('drive')">DRIVING MODE</button>
-        <button class="mode-btn" onclick="startMode('fps')">FPS COMBAT MODE</button>
-        <button class="mode-btn" onclick="startMode('both')">GTA MODE (BOTH)</button>
-    </div>
-
-    <div id="loading-screen">
-        <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">LOADING GTA6 STYLE...</h2>
-        <p style="font-family:'Orbitron'; letter-spacing:2px;">OPEN WORLD ACTION</p>
-        <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p>
-    </div>
-
-    <div class="copyright-tag">ZHANYI ZHOU © 2026 | GTA6 STYLE</div>
-
-    <!-- Wanted Level -->
-    <div id="wanted-hud">
-        <div class="wanted-star" id="star1"></div>
-        <div class="wanted-star" id="star2"></div>
-        <div class="wanted-star" id="star3"></div>
-        <div class="wanted-star" id="star4"></div>
-        <div class="wanted-star" id="star5"></div>
-        <div id="wanted-level">WANTED</div>
-    </div>
-
-    <!-- Health/Armor Bars -->
-    <div id="health-hud">
-        <div class="bar-container">
-            <div class="bar-label">HEALTH</div>
-            <div class="bar-bg">
-                <div class="bar-fill" id="health-bar"></div>
-            </div>
+    <div id="boot-loader">
+        <div class="win-loader">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
         </div>
-        <div class="bar-container">
-            <div class="bar-label">ARMOR</div>
-            <div class="bar-bg">
-                <div class="bar-fill" id="armor-bar"></div>
+        <div class="loading-text">Patientez...</div>
+    </div>
+
+    <div id="bsod">
+        <div class="sad-face">:(</div>
+        <div class="main-text">
+            Votre ordinateur a rencontré un problème et doit redémarrer. Nous collectons simplement des informations relatives aux erreurs, puis nous allons redémarrer l'ordinateur pour vous.
+        </div>
+        <div class="percent">100% complété</div>
+        <div class="footer-section">
+            <div class="qr-box">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://windows.com/stopcode" alt="QR">
+            </div>
+            <div class="info-text">
+                Pour plus d'informations sur ce problème et les solutions possibles, consultez https://www.windows.com/stopcode<br><br>
+                Si vous appelez un technicien, donnez-lui ces informations :<br>
+                Code d'arrêt : <span style="font-weight: 600;">CRITICAL_PROCESS_DIED</span><br>
+                Élément ayant échoué : ntoskrnl.exe
             </div>
         </div>
     </div>
 
-    <!-- Weapon HUD -->
-    <div id="weapon-hud">
-        <div id="weapon-name">PISTOL</div>
-        <div id="ammo-count">12<span id="ammo-total">/100</span></div>
+    <div id="broken-screen"></div>
+
+    <div class="main-background">
+        <div id="lock-screen">
+            <div class="time-display" id="time">00:00</div>
+            <div class="date-display" id="date">Loading...</div>
+        </div>
+
+        <div class="login-overlay">
+            <div class="user-section" id="login-fields">
+                <div class="avatar-container">
+                    <img src="avatar.jpg" alt="Avatar">
+                </div>
+                <div class="display-name">Autre utilisateur</div>
+                <form id="loginForm">
+                    <div class="input-group">
+                        <input type="text" placeholder="Nom d'utilisateur" spellcheck="false">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="passwordInput" placeholder="Mot de passe">
+                        <div class="password-controls">
+                            <button type="button" class="control-btn eye-toggle" id="togglePassword">
+                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                            </button>
+                            <button type="submit" class="control-btn submit-arrow">
+                                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="domain-text">Se connecter à : PED</div>
+            </div>
+
+            <div class="user-section" id="welcome-section">
+                <div class="avatar-container">
+                    <img src="avatar.jpg" alt="Avatar">
+                </div>
+                <div class="display-name">Zhou, Z</div>
+                <div class="welcome-msg-container">
+                    <div class="welcome-text">Bienvenue</div>
+                    <div class="win-loader welcome-loader">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="system-tray">
+                <svg viewBox="0 0 24 24"><path d="M15.91 13.34L12 17.25l-3.91-3.91a5.5 5.5 0 1 1 7.82 0z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+            </div>
+        </div>
     </div>
-
-    <!-- Main HUD -->
-    <div id="hud-layer" style="display:none;">
-        <div class="hud-top-left">
-            <div class="instrument spd-color">
-                <span class="label">Speed</span> <span class="value" id="hud-spd">0</span> <span class="unit">KM/H</span>
-            </div>
-            <div class="instrument rpm-color">
-                <span class="label">RPM</span> <span class="value" id="hud-rpm">0</span> <span class="unit">x100</span>
-            </div>
-            <div class="instrument gear-color">
-                <span class="label">Gear</span> <span class="value" id="hud-gear">P</span> <span class="unit">MODE</span>
-            </div>
-            <div class="instrument" id="hud-coin">
-                <span class="label">CASH</span> <span class="value" id="coin-count">$5000</span>
-            </div>
-        </div>
-
-        <div id="control-hints">
-            <div class="hint-title">GTA CONTROLS</div>
-            <div>[F] Enter/Exit Vehicle</div>
-            <div>[1-3] Switch Weapons</div>
-            <div>[MOUSE] Aim & Shoot</div>
-            <div>[R] Reload Weapon</div>
-            <div>[Q] Take Cover</div>
-            <div>[SPACE] Jump/Sprint</div>
-        </div>
-    </div>
-
-    <div id="splash">
-        <div class="splash-header">
-            <h1>GTA6 STYLE<br>OPEN WORLD</h1>
-            <p class="splash-subtitle">ACTION - DRIVING - COMBAT</p>
-        </div>
-
-        <div class="splash-footer">
-            <button id="start-button" onclick="showModeSelector()">START GAME</button>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 
     <script>
-    // =============================================================================
-    // ** GTA6 STYLE CORE VARIABLES **
-    // =============================================================================
-    let scene, renderer;
-    let cameraChase, cameraCockpit, cameraFPS, activeCamera;
-    let world, vehicle, chassisBody;
-    let wheelMeshes = [];
-    let lastTime = undefined;
+        // 键盘锁定功能检测与实现
+        const supportsKeyboardLock = ('keyboard' in navigator) && ('lock' in navigator.keyboard);
+        
+        if (supportsKeyboardLock) {
+            document.addEventListener('fullscreenchange', async () => {
+                if (document.fullscreenElement) {
+                    // 锁定 ESC 键
+                    await navigator.keyboard.lock(['Escape']);
+                    console.log('Keyboard locked.');
+                    return;
+                }
+                navigator.keyboard.unlock();
+                console.log('Keyboard unlocked.');
+            });
+        }
+        
+        let currentState = 'patientez'; 
+        let escPressTime = 0;
+        let escTimer = null;
+        let secretInput = '';
+        const secretCode = 'agocrate';
+        
+        function triggerGlitch() {
+            for(let i = 0; i < 8; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'glitch-bar';
+                const height = Math.random() * 50 + 2;
+                bar.style.height = height + 'px';
+                bar.style.top = Math.random() * 100 + '%';
+                bar.style.opacity = Math.random();
+                bar.style.left = (Math.random() * 10 - 5) + 'px';
+                document.body.appendChild(bar);
+                
+                setTimeout(() => bar.remove(), Math.random() * 150 + 50);
+            }
+        }
 
-    // Game State
-    let isGameRunning = false; 
-    let currentMode = 'both'; // 'drive', 'fps', or 'both'
-    let isInVehicle = true;
-    let isPlayerDead = false;
-    
-    // Player Stats
-    let playerHealth = 100;
-    let playerArmor = 50;
-    let playerCash = 5000;
-    let wantedLevel = 0;
-    
-    // First Person Controls
-    let mouseX = 0, mouseY = 0;
-    let pitch = 0, yaw = 0;
-    let isMouseLocked = false;
-    
-    // Weapons
-    let currentWeapon = 'pistol';
-    let weapons = {
-        pistol: { ammo: 12, maxAmmo: 100, damage: 25, range: 100 },
-        shotgun: { ammo: 6, maxAmmo: 30, damage: 60, range: 30 },
-        assault: { ammo: 30, maxAmmo: 150, damage: 15, range: 150 }
-    };
-    
-    // NPC System
-    let npcs = [];
-    let npcMeshes = [];
-    let npcBodies = [];
-    const NPC_COUNT = 15;
-    const NPC_SPAWN_RADIUS = 800;
-    
-    // Input State
-    const inputState = { 
-        keyW: false, keyS: false, keyA: false, keyD: false, 
-        keySpace: false, keyShift: false, keyR: false,
-        keyF: false, keyQ: false,
-        key1: false, key2: false, key3: false
-    };
-    
-    // UI Elements
-    const crosshairEl = document.getElementById('crosshair');
-    const weaponHudEl = document.getElementById('weapon-hud');
-    const healthHudEl = document.getElementById('health-hud');
-    const wantedHudEl = document.getElementById('wanted-hud');
-    const healthBarEl = document.getElementById('health-bar');
-    const armorBarEl = document.getElementById('armor-bar');
-    const weaponNameEl = document.getElementById('weapon-name');
-    const ammoCountEl = document.getElementById('ammo-count');
-    const ammoTotalEl = document.getElementById('ammo-total');
-    const wantedStars = [1,2,3,4,5].map(i => document.getElementById(`star${i}`));
-    const deathScreenEl = document.getElementById('death-screen');
-    const respawnBtnEl = document.getElementById('respawn-btn');
-    const hitIndicatorEl = document.getElementById('hit-indicator');
-    
-    // Physics
-    const daySkyColor = new THREE.Color(0x87CEEB);
-    const dayHemiSky = new THREE.Color(0xffffff);
-    const dayHemiGround = new THREE.Color(0x3b4c5a);
-    const maxEngineForce = 9000; 
-    const brakeForce = 40;
-    const maxSteerVal = 0.7;
-    const VISUAL_Y_OFFSET = -0.9;
-    const initialCarPosition = new CANNON.Vec3(-3320, 1, -20);
-    
-    let staticBodies = [];
-    let carMesh = null;
-    let tireMeshPrototype = null;
-    let gltfLoader = null;
-    let dracoLoader = null;
-    let engineForce = 0;
-    let steeringValue = 0;
-    
-    // =============================================================================
-    // ** MODE SELECTOR **
-    // =============================================================================
-    function showModeSelector() {
-        document.getElementById('mode-selector').style.display = 'block';
-    }
-    
-    function startMode(mode) {
-        currentMode = mode;
-        document.getElementById('mode-selector').style.display = 'none';
-        enterGame();
-        
-        if (mode === 'fps') {
-            exitVehicle();
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            const dateStr = now.toLocaleDateString('fr-FR', options);
+            document.getElementById('time').textContent = timeStr;
+            document.getElementById('date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
         }
-    }
-    
-    // =============================================================================
-    // ** FIRST PERSON CONTROLS **
-    // =============================================================================
-    function initFPSCamera() {
-        cameraFPS = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
-        cameraFPS.position.set(initialCarPosition.x, initialCarPosition.y + 1.8, initialCarPosition.z);
-        
-        // Pointer lock for mouse control
-        document.addEventListener('click', () => {
-            if (isGameRunning && !isInVehicle) {
-                document.body.requestPointerLock();
-            }
-        });
-        
-        document.addEventListener('pointerlockchange', () => {
-            isMouseLocked = document.pointerLockElement === document.body;
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            if (!isMouseLocked || !isGameRunning || isInVehicle) return;
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
             
-            const movementX = e.movementX || 0;
-            const movementY = e.movementY || 0;
-            
-            // Adjust sensitivity
-            const sensitivity = 0.002;
-            yaw -= movementX * sensitivity;
-            pitch -= movementY * sensitivity;
-            
-            // Clamp pitch
-            pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
-        });
-    }
-    
-    // =============================================================================
-    // ** WEAPON SYSTEM **
-    // =============================================================================
-    function initWeaponSystem() {
-        document.addEventListener('mousedown', (e) => {
-            if (!isGameRunning || isInVehicle || isPlayerDead) return;
-            
-            if (e.button === 0) { // Left click
-                shootWeapon();
-            }
-        });
-        
-        document.addEventListener('keydown', (e) => {
-            if (!isGameRunning || isPlayerDead) return;
-            
-            if (e.key === '1') {
-                switchWeapon('pistol');
-            } else if (e.key === '2') {
-                switchWeapon('shotgun');
-            } else if (e.key === '3') {
-                switchWeapon('assault');
-            } else if (e.key === 'r') {
-                reloadWeapon();
-            } else if (e.key === 'f') {
-                if (currentMode !== 'fps') {
-                    if (isInVehicle) {
-                        exitVehicle();
-                    } else {
-                        enterVehicle();
-                    }
+            // ESC 长按处理（2秒后退出全屏）
+            if (key === 'escape') {
+                if (escPressTime === 0) {
+                    escPressTime = Date.now();
+                    escTimer = setTimeout(() => {
+                        const elapsed = Date.now() - escPressTime;
+                        if (elapsed >= 2000) {
+                            // ESC 长按 2 秒后退出全屏并解锁键盘
+                            if (document.fullscreenElement) {
+                                document.exitFullscreen();
+                            }
+                            if (supportsKeyboardLock) {
+                                navigator.keyboard.unlock();
+                            }
+                        }
+                        escPressTime = 0;
+                    }, 2100);
                 }
-            } else if (e.key === 'q') {
-                takeCover();
+                return;
             }
-        });
-        
-        updateWeaponHUD();
-    }
-    
-    function switchWeapon(weaponName) {
-        if (weapons[weaponName]) {
-            currentWeapon = weaponName;
-            weaponNameEl.textContent = weaponName.toUpperCase();
-            updateWeaponHUD();
             
-            // Add weapon switch animation here
-        }
-    }
-    
-    function reloadWeapon() {
-        const weapon = weapons[currentWeapon];
-        const ammoNeeded = weapon.maxAmmo - weapon.ammo;
-        weapon.ammo = weapon.maxAmmo;
-        updateWeaponHUD();
-    }
-    
-    function shootWeapon() {
-        const weapon = weapons[currentWeapon];
-        
-        if (weapon.ammo <= 0) {
-            reloadWeapon();
-            return;
-        }
-        
-        weapon.ammo--;
-        updateWeaponHUD();
-        
-        // Create muzzle flash
-        const muzzleFlash = new THREE.PointLight(0xFF4500, 2, 5);
-        muzzleFlash.position.copy(cameraFPS.position);
-        muzzleFlash.position.add(cameraFPS.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.5));
-        scene.add(muzzleFlash);
-        
-        setTimeout(() => scene.remove(muzzleFlash), 50);
-        
-        // Raycast for shooting
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), cameraFPS);
-        
-        // Check for NPC hits
-        let hitNPC = false;
-        for (let i = 0; i < npcMeshes.length; i++) {
-            const npc = npcMeshes[i];
-            const intersects = raycaster.intersectObject(npc, true);
-            
-            if (intersects.length > 0) {
-                hitNPC = true;
-                damageNPC(i, weapon.damage);
-                increaseWantedLevel(1);
-                break;
-            }
-        }
-        
-        // If no NPC hit, create bullet impact on environment
-        if (!hitNPC) {
-            const intersects = raycaster.intersectObjects(scene.children, true);
-            if (intersects.length > 0) {
-                const point = intersects[0].point;
-                createBulletImpact(point);
-            }
-        }
-    }
-    
-    function damageNPC(npcIndex, damage) {
-        if (npcs[npcIndex]) {
-            npcs[npcIndex].health -= damage;
-            
-            if (npcs[npcIndex].health <= 0) {
-                eliminateNPC(npcIndex);
-                playerCash += 100; // Reward for killing NPC
-                updateCashHUD();
-            } else {
-                // NPC shoots back
-                setTimeout(() => npcShootBack(npcIndex), 500);
-            }
-        }
-    }
-    
-    function eliminateNPC(npcIndex) {
-        // Remove NPC from scene
-        if (npcMeshes[npcIndex]) {
-            scene.remove(npcMeshes[npcIndex]);
-        }
-        if (npcBodies[npcIndex]) {
-            world.removeBody(npcBodies[npcIndex]);
-        }
-        
-        // Remove from arrays
-        npcMeshes.splice(npcIndex, 1);
-        npcBodies.splice(npcIndex, 1);
-        npcs.splice(npcIndex, 1);
-    }
-    
-    function npcShootBack(npcIndex) {
-        if (!npcs[npcIndex] || isPlayerDead) return;
-        
-        const npc = npcMeshes[npcIndex];
-        const playerPos = isInVehicle ? chassisBody.position : cameraFPS.position;
-        const npcPos = npc.position;
-        
-        // Check if player is visible
-        const direction = new THREE.Vector3().subVectors(playerPos, npcPos).normalize();
-        const distance = npcPos.distanceTo(playerPos);
-        
-        if (distance < 50) { // NPC shooting range
-            // Chance to hit player
-            if (Math.random() > 0.5) {
-                damagePlayer(20);
+            // 特殊按键序列检测
+            if (key.length === 1 && key.match(/[a-z]/i)) {
+                secretInput += key;
                 
-                // NPC shooting effect
-                const muzzleFlash = new THREE.PointLight(0xFF0000, 2, 5);
-                muzzleFlash.position.copy(npcPos);
-                scene.add(muzzleFlash);
-                setTimeout(() => scene.remove(muzzleFlash), 100);
-            }
-        }
-    }
-    
-    function createBulletImpact(position) {
-        const geometry = new THREE.CircleGeometry(0.1, 8);
-        const material = new THREE.MeshBasicMaterial({ 
-            color: 0x333333,
-            side: THREE.DoubleSide
-        });
-        const impact = new THREE.Mesh(geometry, material);
-        
-        // Orient impact to face camera
-        impact.lookAt(cameraFPS.position);
-        impact.position.copy(position);
-        impact.position.add(new THREE.Vector3(0, 0.01, 0)); // Slight offset
-        
-        scene.add(impact);
-        setTimeout(() => scene.remove(impact), 3000);
-    }
-    
-    function updateWeaponHUD() {
-        const weapon = weapons[currentWeapon];
-        ammoCountEl.textContent = weapon.ammo;
-        ammoTotalEl.textContent = '/' + weapon.maxAmmo;
-    }
-    
-    // =============================================================================
-    // ** PLAYER HEALTH & DAMAGE **
-    // =============================================================================
-    function damagePlayer(amount) {
-        if (playerArmor > 0) {
-            playerArmor -= amount;
-            if (playerArmor < 0) {
-                playerHealth += playerArmor; // Excess damage goes to health
-                playerArmor = 0;
-            }
-        } else {
-            playerHealth -= amount;
-        }
-        
-        // Show hit indicator
-        hitIndicatorEl.style.opacity = '0.7';
-        setTimeout(() => hitIndicatorEl.style.opacity = '0', 100);
-        
-        updateHealthHUD();
-        
-        if (playerHealth <= 0) {
-            playerDeath();
-        }
-    }
-    
-    function playerDeath() {
-        isPlayerDead = true;
-        deathScreenEl.style.display = 'flex';
-        
-        // Reset wanted level
-        wantedLevel = 0;
-        updateWantedHUD();
-    }
-    
-    function respawnPlayer() {
-        if (playerCash >= 500) {
-            playerCash -= 500;
-            playerHealth = 100;
-            playerArmor = 50;
-            isPlayerDead = false;
-            deathScreenEl.style.display = 'none';
-            
-            // Reset position
-            if (isInVehicle) {
-                respawnCar();
-            } else {
-                cameraFPS.position.set(initialCarPosition.x, initialCarPosition.y + 1.8, initialCarPosition.z);
-            }
-            
-            updateHealthHUD();
-            updateCashHUD();
-        }
-    }
-    
-    function updateHealthHUD() {
-        healthBarEl.style.width = playerHealth + '%';
-        armorBarEl.style.width = playerArmor + '%';
-    }
-    
-    // =============================================================================
-    // ** WANTED SYSTEM **
-    // =============================================================================
-    function increaseWantedLevel(amount) {
-        wantedLevel = Math.min(5, wantedLevel + amount);
-        updateWantedHUD();
-        
-        // Spawn police NPCs at high wanted levels
-        if (wantedLevel >= 3) {
-            spawnPolice();
-        }
-    }
-    
-    function updateWantedHUD() {
-        if (wantedLevel > 0) {
-            wantedHudEl.style.display = 'flex';
-            wantedStars.forEach((star, index) => {
-                star.classList.toggle('active', index < wantedLevel);
-            });
-        } else {
-            wantedHudEl.style.display = 'none';
-        }
-    }
-    
-    function spawnPolice() {
-        // Spawn police NPCs near player
-        const playerPos = isInVehicle ? chassisBody.position : cameraFPS.position;
-        
-        for (let i = 0; i < 2; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 50 + Math.random() * 30;
-            const x = playerPos.x + Math.cos(angle) * distance;
-            const z = playerPos.z + Math.sin(angle) * distance;
-            
-            createNPC(x, 1, z, 'police');
-        }
-    }
-    
-    // =============================================================================
-    // ** NPC SYSTEM **
-    // =============================================================================
-    function createNPC(x, y, z, type = 'civilian') {
-        // Create NPC body
-        const npcShape = new CANNON.Sphere(0.5);
-        const npcBody = new CANNON.Body({
-            mass: 70,
-            shape: npcShape,
-            position: new CANNON.Vec3(x, y + 1, z)
-        });
-        
-        // Create NPC visual
-        const npcGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
-        const npcMaterial = new THREE.MeshStandardMaterial({ 
-            color: type === 'police' ? 0x0000FF : 0xFFA500 
-        });
-        const npcMesh = new THREE.Mesh(npcGeometry, npcMaterial);
-        npcMesh.castShadow = true;
-        
-        // Add to scene
-        scene.add(npcMesh);
-        world.addBody(npcBody);
-        
-        // Store NPC data
-        npcs.push({
-            health: 100,
-            type: type,
-            state: 'patrol', // patrol, chase, attack
-            patrolTarget: new THREE.Vector3(
-                x + (Math.random() - 0.5) * 50,
-                y,
-                z + (Math.random() - 0.5) * 50
-            ),
-            lastShotTime: 0
-        });
-        
-        npcMeshes.push(npcMesh);
-        npcBodies.push(npcBody);
-    }
-    
-    function updateNPCs() {
-        const playerPos = isInVehicle ? chassisBody.position : cameraFPS.position;
-        
-        for (let i = 0; i < npcs.length; i++) {
-            const npc = npcs[i];
-            const npcMesh = npcMeshes[i];
-            const npcBody = npcBodies[i];
-            
-            if (!npc || npc.health <= 0) continue;
-            
-            const npcPos = npcBody.position;
-            const distanceToPlayer = npcPos.distanceTo(playerPos);
-            
-            // AI Behavior
-            if (npc.type === 'police' || wantedLevel > 0) {
-                // Police or hostile NPCs chase player
-                if (distanceToPlayer < 100) {
-                    const direction = new CANNON.Vec3();
-                    direction.x = playerPos.x - npcPos.x;
-                    direction.z = playerPos.z - npcPos.z;
-                    direction.normalize();
-                    
-                    // Move towards player
-                    npcBody.velocity.x = direction.x * 3;
-                    npcBody.velocity.z = direction.z * 3;
-                    
-                    // Face player
-                    const angle = Math.atan2(direction.x, direction.z);
-                    npcMesh.rotation.y = angle;
-                    
-                    // Shoot at player
-                    if (distanceToPlayer < 30 && Math.random() > 0.99) {
-                        npcShootBack(i);
-                    }
-                }
-            } else {
-                // Civilian NPCs patrol
-                const distanceToTarget = npcPos.distanceTo(npc.patrolTarget);
-                
-                if (distanceToTarget < 5) {
-                    // New patrol target
-                    npc.patrolTarget.set(
-                        npcPos.x + (Math.random() - 0.5) * 50,
-                        npcPos.y,
-                        npcPos.z + (Math.random() - 0.5) * 50
-                    );
+                // 检查是否匹配秘密代码
+                if (secretInput.includes(secretCode)) {
+                    // 匹配成功，关闭页面
+                    window.open('', '_self').close();
+                    return;
                 }
                 
-                // Move towards target
-                const direction = new CANNON.Vec3();
-                direction.x = npc.patrolTarget.x - npcPos.x;
-                direction.z = npc.patrolTarget.z - npcPos.z;
-                direction.normalize();
-                
-                npcBody.velocity.x = direction.x * 2;
-                npcBody.velocity.z = direction.z * 2;
-                
-                // Face movement direction
-                if (Math.abs(direction.x) > 0.1 || Math.abs(direction.z) > 0.1) {
-                    const angle = Math.atan2(direction.x, direction.z);
-                    npcMesh.rotation.y = angle;
+                // 限制输入长度，避免过长
+                if (secretInput.length > 20) {
+                    secretInput = secretInput.slice(-20);
                 }
             }
-            
-            // Sync visual position
-            npcMesh.position.copy(npcBody.position);
-            npcMesh.position.y -= 0.9;
-        }
-    }
-    
-    // =============================================================================
-    // ** VEHICLE SYSTEM **
-    // =============================================================================
-    function enterVehicle() {
-        if (!chassisBody || isPlayerDead) return;
-        
-        const playerPos = cameraFPS.position;
-        const carPos = chassisBody.position;
-        const distance = playerPos.distanceTo(carPos);
-        
-        if (distance < 5) {
-            isInVehicle = true;
-            crosshairEl.style.display = 'none';
-            weaponHudEl.style.display = 'none';
-            healthHudEl.style.display = 'none';
-        }
-    }
-    
-    function exitVehicle() {
-        if (!chassisBody || isPlayerDead) return;
-        
-        isInVehicle = false;
-        
-        // Position player next to vehicle
-        const offset = new THREE.Vector3(2, 0, 0);
-        offset.applyQuaternion(chassisBody.quaternion);
-        cameraFPS.position.set(
-            chassisBody.position.x + offset.x,
-            chassisBody.position.y + 1.8,
-            chassisBody.position.z + offset.z
-        );
-        
-        // Show FPS UI
-        if (currentMode !== 'drive') {
-            crosshairEl.style.display = 'block';
-            weaponHudEl.style.display = 'block';
-            healthHudEl.style.display = 'flex';
-        }
-    }
-    
-    function takeCover() {
-        // Simple cover system - crouch
-        if (!isInVehicle) {
-            cameraFPS.position.y = 1.0;
-            setTimeout(() => {
-                cameraFPS.position.y = 1.8;
-            }, 1000);
-        }
-    }
-    
-    // =============================================================================
-    // ** UPDATE FUNCTIONS **
-    // =============================================================================
-    function updateFirstPerson() {
-        if (!isInVehicle && !isPlayerDead) {
-            // Update camera rotation
-            cameraFPS.rotation.order = 'YXZ';
-            cameraFPS.rotation.y = yaw;
-            cameraFPS.rotation.x = pitch;
-            
-            // Movement
-            const speed = inputState.keyShift ? 10 : 5;
-            const direction = new THREE.Vector3();
-            
-            if (inputState.keyW) direction.z -= 1;
-            if (inputState.keyS) direction.z += 1;
-            if (inputState.keyA) direction.x -= 1;
-            if (inputState.keyD) direction.x += 1;
-            
-            direction.normalize();
-            direction.applyEuler(new THREE.Euler(0, yaw, 0));
-            
-            cameraFPS.position.x += direction.x * speed * 0.1;
-            cameraFPS.position.z += direction.z * speed * 0.1;
-            
-            // Jump
-            if (inputState.keySpace) {
-                cameraFPS.position.y += 0.2;
+
+            // 全屏
+            if (key === 'o') {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                }
+                return;
             }
-        }
-    }
-    
-    function updateVehicle() {
-        if (!chassisBody || !isGameRunning || !isInVehicle) return;
-        
-        // Existing vehicle controls
-        engineForce = 0; steeringValue = 0; 
-        let brake = 0;
-        
-        const v = chassisBody.velocity;
-        const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
-        const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
-        const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
-        const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
-        const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
-        
-        if (inputState.keyA) steeringValue = maxSteerVal;
-        else if (inputState.keyD) steeringValue = -maxSteerVal;
-        
-        if (inputState.keyW) {
-            if (isMovingBackward) brake = maxEngineForce * 0.5;
-            else { engineForce = -maxEngineForce; }
-        } else if (inputState.keyS) {
-            if (isMovingForward) brake = maxEngineForce * 0.5;
-            else { engineForce = maxEngineForce * 0.5; }
-        }
-        
-        if (inputState.keyShift && engineForce !== 0) {
-            engineForce *= 2.5;
-        }
-        
-        vehicle.setSteeringValue(steeringValue, 0); 
-        vehicle.setSteeringValue(steeringValue, 1);
-        vehicle.applyEngineForce(engineForce, 0); 
-        vehicle.applyEngineForce(engineForce, 1); 
-        vehicle.applyEngineForce(engineForce, 2); 
-        vehicle.applyEngineForce(engineForce, 3);
-        
-        if (inputState.keySpace) {
-            brake = maxEngineForce * 0.8;
-        }
-        
-        vehicle.setBrake(brake, 0); 
-        vehicle.setBrake(brake, 1);
-        vehicle.setBrake(brake, 2); 
-        vehicle.setBrake(brake, 3);
-    }
-    
-    // =============================================================================
-    // ** GAME INITIALIZATION **
-    // =============================================================================
-    function initGame() {
-        // Load saved cash
-        const savedCash = localStorage.getItem('playerCash');
-        if (savedCash) {
-            playerCash = parseInt(savedCash);
-        }
-        
-        // Initialize systems
-        initThree();
-        initCannon();
-        initGround();
-        initCameraAndLights();
-        initFPSCamera();
-        initLoaders();
-        initWeaponSystem();
-        
-        // Load assets
-        loadCarModel();
-        loadTireModel();
-        loadCity();
-        
-        // Setup event listeners
-        setupEventListeners();
-        
-        // Spawn NPCs
-        spawnNPCs();
-        
-        // Start game loop
-        requestAnimationFrame(animate);
-    }
-    
-    function spawnNPCs() {
-        for (let i = 0; i < NPC_COUNT; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * NPC_SPAWN_RADIUS;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            
-            createNPC(x, 1, z, Math.random() > 0.8 ? 'police' : 'civilian');
-        }
-    }
-    
-    function setupEventListeners() {
-        // Keyboard input
-        window.addEventListener('keydown', (event) => {
-            if (!isGameRunning) return;
-            const k = event.key.toLowerCase();
-            if(k==='w') inputState.keyW = true;
-            if(k==='s') inputState.keyS = true;
-            if(k==='a') inputState.keyA = true;
-            if(k==='d') inputState.keyD = true;
-            if(k===' ') { inputState.keySpace = true; event.preventDefault(); }
-            if(k==='shift') inputState.keyShift = true;
-            if(k==='f') inputState.keyF = true;
-            if(k==='q') inputState.keyQ = true;
-            if(k==='r') respawnCar();
-        });
-        
-        window.addEventListener('keyup', (event) => {
-            const k = event.key.toLowerCase();
-            if(k==='w') inputState.keyW = false;
-            if(k==='s') inputState.keyS = false;
-            if(k==='a') inputState.keyA = false;
-            if(k==='d') inputState.keyD = false;
-            if(k===' ') inputState.keySpace = false;
-            if(k==='shift') inputState.keyShift = false;
-            if(k==='f') inputState.keyF = false;
-            if(k==='q') inputState.keyQ = false;
-        });
-        
-        // Respawn button
-        respawnBtnEl.addEventListener('click', respawnPlayer);
-    }
-    
-    // =============================================================================
-    // ** EXISTING FUNCTIONS (modified) **
-    // =============================================================================
-    function initThree() {
-        scene = new THREE.Scene();
-        scene.background = daySkyColor.clone();
-        scene.fog = new THREE.Fog(daySkyColor, 500, 800);
-        
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.body.appendChild(renderer.domElement);
-    }
-    
-    function initCannon() {
-        world = new CANNON.World();
-        world.gravity.set(0, -9.82, 0);
-        world.broadphase = new CANNON.SAPBroadphase(world);
-        world.allowSleep = true;
-        
-        const defaultMaterial = new CANNON.Material('default');
-        const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
-            friction: 1.0, restitution: 0.0
-        });
-        world.defaultContactMaterial = contactMaterial;
-        world.addContactMaterial(contactMaterial);
-    }
-    
-    function initGround() {
-        const groundShape = new CANNON.Plane();
-        const groundBody = new CANNON.Body({ mass: 0 });
-        groundBody.addShape(groundShape);
-        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        world.addBody(groundBody);
-        
-        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
-        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-        groundMesh.rotation.x = -Math.PI / 2;
-        groundMesh.position.y = -0.05;
-        groundMesh.receiveShadow = true;
-        scene.add(groundMesh);
-    }
-    
-    function initCameraAndLights() {
-        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000);
-        cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
-        activeCamera = cameraChase;
-        
-        const hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
-        scene.add(hemiLight);
-        
-        const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
-        dirLight.position.set(50,100,50);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 1000;
-        dirLight.shadow.camera.left = -200;
-        dirLight.shadow.camera.right = 200;
-        dirLight.shadow.camera.top = 200;
-        dirLight.shadow.camera.bottom = -200;
-        scene.add(dirLight);
-    }
-    
-    function initVehicle() {
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.9, 2.2));
-        chassisBody = new CANNON.Body({
-            mass: 2500,
-            shape: chassisShape,
-            position: initialCarPosition.clone()
-        });
-        
-        const antiTunnelSphere = new CANNON.Sphere(1.2); 
-        chassisBody.addShape(antiTunnelSphere, new CANNON.Vec3(0, 0, 0));
-        chassisBody.angularDamping = 0.98;
-        chassisBody.linearDamping = 0.1;
-        
-        world.addBody(chassisBody);
-        
-        vehicle = new CANNON.RaycastVehicle({
-            chassisBody: chassisBody,
-            indexRightAxis: 0,
-            indexUpAxis: 1,
-            indexForwardAxis: 2
-        });
-        
-        const axleWidth = 1.0;
-        const wheelBase = 1.5;
-        
-        function makeWheelOptions(x, y, z) {
-            return {
-                radius: 0.5,
-                directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150,
-                suspensionRestLength: 0.8,
-                frictionSlip: 5.0,
-                dampingRelaxation: 5.0,
-                dampingCompression: 5.0,
-                maxSuspensionForce: 500000,
-                rollInfluence: 0.01,
-                maxSuspensionTravel: 0.4,
-                customSlidingRotationalSpeed: -30,
-                useCustomSlidingRotationalSpeed: true,
-                axleLocal: new CANNON.Vec3(1, 0, 0),
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.4, z)
-            };
-        }
-        
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase));
-        vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
-        vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase));
-        
-        vehicle.addToWorld(world);
-        
-        wheelMeshes = [];
-        if (typeof tireMeshPrototype !== 'undefined' && tireMeshPrototype) {
-            for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-                const wheelMesh = tireMeshPrototype.clone();
-                if(i === 0 || i === 2) wheelMesh.rotation.y = Math.PI; 
-                wheelMeshes.push(wheelMesh);
-                scene.add(wheelMesh);
+
+            // M: 加载 -> 登录
+            if (key === 'm' && currentState === 'patientez') {
+                setTimeout(() => {
+                    document.getElementById('boot-loader').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('boot-loader').style.display = 'none';
+                        currentState = 'login';
+                    }, 1000);
+                }, 3000);
             }
-        }
-    }
-    
-    function respawnCar() {
-        if (!chassisBody) return;
-        chassisBody.position.copy(initialCarPosition); 
-        chassisBody.quaternion.set(0, 0, 0, 1);
-        chassisBody.velocity.set(0, 0, 0);
-        chassisBody.angularVelocity.set(0, 0, 0);
-        vehicle.applyEngineForce(0, 0); 
-        vehicle.applyEngineForce(0, 1); 
-        vehicle.applyEngineForce(0, 2); 
-        vehicle.applyEngineForce(0, 3); 
-        vehicle.setSteeringValue(0, 0); 
-        vehicle.setSteeringValue(0, 1);
-        vehicle.setBrake(0, 0); 
-        vehicle.setBrake(0, 1); 
-        vehicle.setBrake(0, 2); 
-        vehicle.setBrake(0, 3);
-    }
-    
-    function initLoaders() {
-        dracoLoader = new THREE.DRACOLoader();
-        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+
+            // N: 欢迎 -> 蓝屏
+            if (key === 'n' && currentState === 'bienvenue') {
+                setTimeout(() => {
+                    document.getElementById('bsod').style.display = 'flex';
+                    currentState = 'bsod';
+                }, 3000);
+            }
+
+            // R: 蓝屏下小故障
+            if (key === 'r' && currentState === 'bsod') {
+                triggerGlitch();
+            }
+
+            // E: 3秒后彻底花屏 
+            if (key === 'e') {
+                setTimeout(() => {
+                    document.getElementById('broken-screen').style.display = 'block';
+                    currentState = 'broken';
+                }, 3000);
+            }
+
+            if (currentState === 'login') {
+                unlock();
+            }
+        });
         
-        const loadingManager = new THREE.LoadingManager();
-        loadingManager.onProgress = function(itemUrl, itemsLoaded, itemsTotal) {
-            const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
-            document.getElementById('loading-progress-fill').style.width = percent + '%';
-            document.getElementById('loading-status').innerText = `(${percent}%) Loading...`;
+        // ESC 键释放处理
+        document.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'escape') {
+                clearTimeout(escTimer);
+                escPressTime = 0;
+            }
+        });
+
+        const lockScreen = document.getElementById('lock-screen');
+        const unlock = () => {
+            lockScreen.classList.add('hidden');
+            document.body.classList.add('unlocked');
         };
-        
-        loadingManager.onLoad = function() {
-            const loadingScreen = document.getElementById('loading-screen');
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                document.getElementById('splash').style.display = 'block';
-            }, 500);
-            
-            initVehicle();
-        };
-        
-        gltfLoader = new THREE.GLTFLoader(loadingManager);
-        gltfLoader.setDRACOLoader(dracoLoader);
-    }
-    
-    function loadCarModel() {
-        gltfLoader.load('car1.glb', (gltf) => {
-            carMesh = gltf.scene;
-            carMesh.scale.set(104.7, 104.7, 104.7);
-            carMesh.rotation.y = Math.PI;
-            carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
-            scene.add(carMesh);
+        lockScreen.addEventListener('click', unlock);
+
+        const passwordInput = document.getElementById('passwordInput');
+        const toggleBtn = document.getElementById('togglePassword');
+        const showPass = () => passwordInput.type = 'text';
+        const hidePass = () => passwordInput.type = 'password';
+        toggleBtn.addEventListener('mousedown', showPass);
+        toggleBtn.addEventListener('mouseup', hidePass);
+        toggleBtn.addEventListener('mouseleave', hidePass);
+
+        const loginForm = document.getElementById('loginForm');
+        const loginFields = document.getElementById('login-fields');
+        const welcomeSection = document.getElementById('welcome-section');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginFields.style.display = 'none';
+            welcomeSection.style.display = 'flex';
+            currentState = 'bienvenue';
         });
-    }
-    
-    function loadTireModel() {
-        gltfLoader.load('tire1.glb', (gltf) => {
-            tireMeshPrototype = gltf.scene;
-            tireMeshPrototype.scale.set(0.75, 0.75, 0.75);
-            tireMeshPrototype.rotation.x = Math.PI / 2;
-            tireMeshPrototype.traverse((node) => { if (node.isMesh) node.castShadow = true; });
-        });
-    }
-    
-    function loadCity() {
-        gltfLoader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
-            const city = gltf.scene;
-            city.scale.set(4, 4, 4);
-            city.traverse((node) => {
-                if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
-                }
-            });
-            scene.add(city);
-        });
-    }
-    
-    // =============================================================================
-    // ** UPDATE CASH HUD **
-    // =============================================================================
-    function updateCashHUD() {
-        document.getElementById('coin-count').textContent = '$' + playerCash;
-        localStorage.setItem('playerCash', playerCash.toString());
-    }
-    
-    // =============================================================================
-    // ** MAIN GAME LOOP **
-    // =============================================================================
-    function animate(time) {
-        requestAnimationFrame(animate);
-        
-        if (!isGameRunning) return;
-        
-        // Update physics
-        const fixedTimeStep = 1 / 60;
-        const maxSubSteps = 10;
-        if (lastTime !== undefined) {
-            const dt = (time - lastTime) / 1000;
-            const limitedDt = Math.min(dt, 0.1);
-            world.step(fixedTimeStep, limitedDt, maxSubSteps);
-        } else {
-            world.step(fixedTimeStep);
-        }
-        lastTime = time;
-        
-        // Update systems
-        updateFirstPerson();
-        updateVehicle();
-        updateNPCs();
-        
-        // Sync visuals
-        if (carMesh && chassisBody && isInVehicle) {
-            carMesh.position.copy(chassisBody.position);
-            carMesh.quaternion.copy(chassisBody.quaternion);
-            carMesh.position.y += -1.2;
-        }
-        
-        // Sync wheels
-        for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-            vehicle.updateWheelTransform(i);
-            const t = vehicle.wheelInfos[i].worldTransform;
-            if (wheelMeshes[i]) {
-                wheelMeshes[i].position.copy(t.position);
-                wheelMeshes[i].quaternion.copy(t.quaternion);
-            }
-        }
-        
-        // Update camera
-        updateCamera();
-        
-        // Render
-        renderer.render(scene, activeCamera);
-    }
-    
-    function updateCamera() {
-        if (!chassisBody) return;
-        
-        if (isInVehicle) {
-            const chassisPos = new THREE.Vector3().copy(chassisBody.position);
-            if (activeCamera === cameraChase) {
-                const idealOffset = new THREE.Vector3(0, 3, -7);
-                idealOffset.applyQuaternion(chassisBody.quaternion);
-                idealOffset.add(chassisPos);
-                if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
-                cameraChase.position.lerp(idealOffset, 0.1);
-                cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
-            } else if (activeCamera === cameraCockpit) {
-                const offset = new THREE.Vector3(0, 0.8, 1.5);
-                offset.applyQuaternion(chassisBody.quaternion);
-                offset.add(chassisPos);
-                cameraCockpit.position.copy(offset);
-                cameraCockpit.quaternion.copy(chassisBody.quaternion);
-            }
-            activeCamera = cameraCockpit;
-        } else {
-            activeCamera = cameraFPS;
-        }
-    }
-    
-    // =============================================================================
-    // ** START GAME **
-    // =============================================================================
-    window.enterGame = function() {
-        document.getElementById('splash').style.opacity = '0';
-        setTimeout(() => {
-            document.getElementById('splash').style.display = 'none';
-            document.getElementById('hud-layer').style.display = 'flex';
-        }, 500);
-        
-        isGameRunning = true;
-        
-        // Show appropriate UI
-        if (currentMode === 'both' || currentMode === 'drive') {
-            isInVehicle = true;
-        } else {
-            isInVehicle = false;
-            crosshairEl.style.display = 'block';
-            weaponHudEl.style.display = 'block';
-            healthHudEl.style.display = 'flex';
-        }
-        
-        updateHealthHUD();
-        updateCashHUD();
-        updateWeaponHUD();
-    };
-    
-    window.addEventListener('resize', () => {
-        if (renderer && cameraChase && cameraCockpit && cameraFPS) {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            const aspect = window.innerWidth / window.innerHeight;
-            cameraChase.aspect = aspect;
-            cameraChase.updateProjectionMatrix();
-            cameraCockpit.aspect = aspect;
-            cameraCockpit.updateProjectionMatrix();
-            cameraFPS.aspect = aspect;
-            cameraFPS.updateProjectionMatrix();
-        }
-    });
-    
-    document.addEventListener('DOMContentLoaded', initGame);
     </script>
 </body>
 </html>
