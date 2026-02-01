@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OPEN WORLD HYPER DRIVE</title>
+    <title>GTA6 STYLE: OPEN WORLD ACTION</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* =========================================================================
@@ -18,6 +18,162 @@
             user-select: none; 
         }
         
+        /* =========================================================================
+         * CROSSHAIR (FIRST PERSON VIEW)
+         * ========================================================================= */
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 30px; height: 30px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 100;
+            display: none; /* Initially hidden */
+        }
+        .crosshair-dot {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: #FF0000;
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+        }
+        .crosshair-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .crosshair-line.horizontal {
+            width: 15px; height: 2px;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .crosshair-line.vertical {
+            width: 2px; height: 15px;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* =========================================================================
+         * WEAPON HUD
+         * ========================================================================= */
+        #weapon-hud {
+            position: absolute;
+            bottom: 100px; right: 30px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 5px solid #FF4500;
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 4px;
+            display: none; /* Initially hidden */
+            z-index: 11;
+        }
+        #weapon-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            color: #FFD700;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #ammo-count {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 900;
+            color: #FFFFFF;
+            line-height: 1;
+        }
+        #ammo-total {
+            font-size: 14px;
+            color: #AAAAAA;
+            margin-left: 5px;
+        }
+
+        /* =========================================================================
+         * HEALTH & ARMOR BARS
+         * ========================================================================= */
+        #health-hud {
+            position: absolute;
+            bottom: 100px; left: 30px;
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            gap: 10px;
+            z-index: 11;
+        }
+        .bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 200px;
+        }
+        .bar-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            color: #FFFFFF;
+            width: 60px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .bar-bg {
+            flex: 1;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        #health-bar {
+            background: linear-gradient(to right, #FF0000, #FF4500);
+            width: 100%;
+        }
+        #armor-bar {
+            background: linear-gradient(to right, #1E90FF, #00BFFF);
+            width: 50%;
+        }
+
+        /* =========================================================================
+         * WANTED LEVEL
+         * ========================================================================= */
+        #wanted-hud {
+            position: absolute;
+            top: 30px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #FFD700;
+            border-radius: 50px;
+            padding: 10px 30px;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            z-index: 11;
+        }
+        .wanted-star {
+            width: 30px; height: 30px;
+            background: #FFD700;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            opacity: 0.3;
+        }
+        .wanted-star.active {
+            opacity: 1;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        #wanted-level {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            color: #FFD700;
+            font-weight: 900;
+        }
+
         /* =========================================================================
          * HUD (IN-GAME INTERFACE)
          * ========================================================================= */
@@ -39,7 +195,6 @@
             min-width: 120px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
             border-radius: 4px;
-            /* Improved clipping for a sci-fi look */
             clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
         }
         
@@ -70,28 +225,6 @@
         #hud-coin .label { color: #FFD700; }
         #coin-count { font-size: 40px; letter-spacing: 2px; color: #FFD700; }
 
-        /* ** Delivery HUD Style ** */
-        #delivery-hud {
-            position: absolute; top: 180px; left: 30px;
-            background: rgba(0, 30, 0, 0.7);
-            border: 1px solid rgba(0, 255, 0, 0.2);
-            border-left: 5px solid #00FF00;
-            backdrop-filter: blur(10px);
-            padding: 15px 20px;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
-            border-radius: 4px;
-            min-width: 250px;
-            display: none; /* Initial hidden */
-        }
-        #delivery-hud .mission-title { 
-            font-family: 'Orbitron', sans-serif; font-size: 14px; color: #00FF00; 
-            margin-bottom: 8px; font-weight: 700; border-bottom: 1px dashed rgba(0, 255, 0, 0.3);
-            padding-bottom: 5px;
-        }
-        #delivery-hud .mission-detail { font-size: 16px; color: #E0FFE0; margin-bottom: 5px; }
-        #delivery-distance-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #FFFFFF; }
-        #delivery-timer-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 24px; color: #FFD700; }
-
         #control-hints {
             position: absolute; bottom: 30px; left: 30px;
             background: rgba(0, 0, 0, 0.8);
@@ -99,9 +232,8 @@
             border-left: 5px solid #00FF00;
             backdrop-filter: blur(10px); padding: 18px 25px;
             color: #eee; font-size: 13px; border-radius: 4px;
-            max-width: 250px; line-height: 1.8;
+            max-width: 300px; line-height: 1.8;
         }
-        .respawn-hint { color: #FFD700; font-weight: bold; }
         .hint-title { color: #00FF00; font-family: 'Orbitron', sans-serif; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 0, 0.3); padding-bottom: 5px; }
         .copyright-tag { position: fixed; bottom: 15px; right: 15px; font-size: 12px; color: rgba(255, 255, 255, 0.3); z-index: 10; }
 
@@ -114,7 +246,7 @@
             z-index: 999;
             display: none; /* Initial hidden */
             cursor: grab;
-            transition: opacity 0.5s; /* UX: Smooth transition when fading out */
+            transition: opacity 0.5s;
         }
         #splash:active { cursor: grabbing; }
 
@@ -126,13 +258,12 @@
         h1 {
             font-family: 'Orbitron', sans-serif; font-size: 64px; margin: 0; font-weight: 900;
             letter-spacing: 12px; text-transform: uppercase;
-            background: linear-gradient(to right, #00FFFF, #FFFFFF, #FF00FF);
+            background: linear-gradient(to right, #FF0000, #FFFFFF, #00FFFF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            /* UX: More vibrant shadow */
-            text-shadow: 0 0 35px rgba(0, 255, 255, 0.7), 0 0 5px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 35px rgba(255, 0, 0, 0.7), 0 0 5px rgba(255, 255, 255, 0.5);
         }
         .splash-subtitle {
-            font-family: 'Rajdhani', sans-serif; font-size: 20px; color: rgba(0, 255, 255, 0.8);
+            font-family: 'Rajdhani', sans-serif; font-size: 20px; color: rgba(255, 0, 0, 0.8);
             letter-spacing: 6px; margin-top: 10px; font-weight: 600;
         }
 
@@ -159,16 +290,16 @@
             clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
         }
         .menu-btn:hover {
-            background: rgba(0, 255, 255, 0.2); color: #fff;
-            border-left-color: #00FFFF; padding-left: 40px;
-            box-shadow: 0 0 15px rgba(0,255,255,0.3);
+            background: rgba(255, 0, 0, 0.2); color: #fff;
+            border-left-color: #FF0000; padding-left: 40px;
+            box-shadow: 0 0 15px rgba(255,0,0,0.3);
         }
 
         /* Bottom Button Area */
         .splash-footer {
             position: absolute; bottom: 60px; right: 60px;
             display: flex; gap: 20px; align-items: flex-end;
-            pointer-events: none; /* Container penetration */
+            pointer-events: none;
         }
         
         /* Universal Footer Button Style */
@@ -176,148 +307,195 @@
 
         #start-button {
             padding: 20px 80px; font-size: 24px; font-weight: 900;
-            color: #000000; background: #00FFFF; border: none;
-            letter-spacing: 4px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
-            /* UX: More aggressive clip-path for a sharper look */
+            color: #000000; background: #FF0000; border: none;
+            letter-spacing: 4px; box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
             clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
         }
         #start-button:hover {
-            background: #FF00FF; box-shadow: 0 0 50px rgba(255, 0, 255, 0.8); color: #fff; transform: scale(1.05);
-        }
-
-        /* Delivery Button */
-        #delivery-mode-btn { 
-            padding: 15px 40px; font-size: 16px; font-weight: 700;
-            color: #00FFFF; background: rgba(0, 20, 40, 0.8);
-            border: 1px solid #00FFFF; letter-spacing: 2px;
-            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 20%);
-        }
-        #delivery-mode-btn:hover {
-            background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: #00FFFF; box-shadow: 0 0 50px rgba(0, 255, 255, 0.8); color: #fff; transform: scale(1.05);
         }
 
         /* Loading Screen */
         #loading-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #00FFFF; z-index: 1000;
+            background: #000; color: #FF0000; z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.5s;
         }
         #loading-progress-bar { width: 400px; height: 5px; background: #222; margin-top: 20px; border-radius: 2px; overflow: hidden; }
-        #loading-progress-fill { height: 100%; width: 0%; background: #00FFFF; box-shadow: 0 0 10px #00FFFF; transition: width 0.3s; } /* UX: Smooth progress bar fill */
+        #loading-progress-fill { height: 100%; width: 0%; background: #FF0000; box-shadow: 0 0 10px #FF0000; transition: width 0.3s; }
 
         /* =========================================================================
-         * New Menu Pages (Shop, Settings, Info)
+         * MODE SELECTOR
          * ========================================================================= */
-        .menu-page {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.95); /* UX: Slightly darker overlay */
-            z-index: 9999;
-            display: none; /* Initial hidden */
-            align-items: center; justify-content: center;
-            flex-direction: column;
-            padding: 40px;
-            box-sizing: border-box;
-            backdrop-filter: blur(8px); /* UX: Increased blur */
-            opacity: 0; /* UX: Fade-in animation setup */
-            transition: opacity 0.4s;
+        #mode-selector {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #FF0000;
+            padding: 30px 50px;
+            z-index: 1001;
+            display: none;
+            backdrop-filter: blur(10px);
+            text-align: center;
         }
-        .menu-page.active { opacity: 1; display: flex; } /* UX: Use active class for visibility */
-        .menu-page h2 {
-            font-family: 'Orbitron', sans-serif; font-size: 48px; color: #FF00FF;
-            text-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
-            margin-bottom: 40px;
-            text-transform: uppercase;
-        }
-        .menu-page p {
-            font-size: 20px; color: #E0FFFF; line-height: 1.6;
-            max-width: 600px; text-align: center;
-        }
-        .menu-page .detail-line {
-            font-family: 'Rajdhani', sans-serif; font-size: 22px; margin: 10px 0;
-            text-align: left; width: 100%; max-width: 400px;
-            border-bottom: 1px dotted rgba(255, 255, 255, 0.2);
-            padding-bottom: 5px;
-        }
-        .menu-page .detail-line strong {
-            color: #00FFFF; margin-right: 15px; font-weight: 700;
-        }
-        #menu-close-btn {
-            position: absolute; top: 40px; right: 40px;
-            background: #FF00FF; color: #000; border: none;
-            padding: 12px 25px; /* UX: Larger close button */
+        .mode-btn {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #FF0000;
+            color: white;
+            padding: 15px 40px;
+            margin: 10px;
             font-family: 'Orbitron', sans-serif;
-            font-weight: 700; cursor: pointer; transition: 0.2s;
-            clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: block;
+            width: 200px;
         }
-        #menu-close-btn:hover {
-            background: #00FFFF; box-shadow: 0 0 15px #00FFFF; transform: scale(1.05);
+        .mode-btn:hover {
+            background: rgba(255, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
         }
 
+        /* =========================================================================
+         * HIT INDICATOR
+         * ========================================================================= */
+        #hit-indicator {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        .hit-flash {
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,0,0,0.3) 0%, rgba(255,0,0,0) 70%);
+        }
+
+        /* =========================================================================
+         * NPC HEALTH BARS
+         * ========================================================================= */
+        .npc-health-bar {
+            position: absolute;
+            width: 50px; height: 6px;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 1px;
+            overflow: hidden;
+            display: none;
+            z-index: 9;
+        }
+        .npc-health-fill {
+            height: 100%;
+            background: linear-gradient(to right, #FF0000, #00FF00);
+            transition: width 0.2s;
+        }
+
+        /* =========================================================================
+         * DEATH SCREEN
+         * ========================================================================= */
+        #death-screen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #FF0000;
+            font-family: 'Orbitron', sans-serif;
+        }
+        #death-screen h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        #respawn-btn {
+            padding: 15px 40px;
+            background: #FF0000;
+            color: white;
+            border: none;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 30px;
+        }
     </style>
 </head>
 <body>
 
+    <!-- Crosshair for First Person -->
+    <div id="crosshair">
+        <div class="crosshair-line horizontal"></div>
+        <div class="crosshair-line vertical"></div>
+        <div class="crosshair-dot"></div>
+    </div>
+
+    <!-- Hit Indicator -->
+    <div id="hit-indicator">
+        <div class="hit-flash"></div>
+    </div>
+
+    <!-- Death Screen -->
+    <div id="death-screen">
+        <h2>YOU ARE DEAD</h2>
+        <p>Mission failed, we'll get 'em next time</p>
+        <button id="respawn-btn">RESPAWN ($500)</button>
+    </div>
+
+    <!-- Mode Selector -->
+    <div id="mode-selector">
+        <h2 style="color:#FF0000; font-family:'Orbitron';">SELECT MODE</h2>
+        <button class="mode-btn" onclick="startMode('drive')">DRIVING MODE</button>
+        <button class="mode-btn" onclick="startMode('fps')">FPS COMBAT MODE</button>
+        <button class="mode-btn" onclick="startMode('both')">GTA MODE (BOTH)</button>
+    </div>
+
     <div id="loading-screen">
-        <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">SYSTEM INITIALIZING</h2>
-        <p style="font-family:'Orbitron'; letter-spacing:2px;">HOTWHEELS</p>
+        <h2 style="margin:0; font-size:32px; color:white; font-family:'Orbitron';">LOADING GTA6 STYLE...</h2>
+        <p style="font-family:'Orbitron'; letter-spacing:2px;">OPEN WORLD ACTION</p>
         <div id="loading-progress-bar"><div id="loading-progress-fill"></div></div>
-        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p> </div>
-
-    <div id="shop-page" class="menu-page">
-        <button id="menu-close-btn" onclick="hideMenuPages()">MAIN MENU</button>
-        <h2>SHOP & UPGRADES</h2>
-        <p style="color: #00FFFF; font-size: 24px;">COME BACK AGIN FOR FUTURE UPDATES :)</p>
-        <p>Unlock new cars, new maps, and performance upgrades in the next major patch!</p>
+        <p id="loading-status" style="margin-top:10px; font-size:14px; font-family:'Rajdhani';">(0%) Loading Assets...</p>
     </div>
 
-    <div id="settings-page" class="menu-page">
-        <button id="menu-close-btn" onclick="hideMenuPages()">BACK TO MENU</button>
-        <h2>GAME SETTINGS</h2>
-        <p style="color: #00FFFF; font-size: 24px;">COME BACK FOR FUTURE UPDATES :)</p>
-        <p>Configure graphics, controls, and sound options when settings are implemented.</p>
+    <div class="copyright-tag">ZHANYI ZHOU © 2026 | GTA6 STYLE</div>
+
+    <!-- Wanted Level -->
+    <div id="wanted-hud">
+        <div class="wanted-star" id="star1"></div>
+        <div class="wanted-star" id="star2"></div>
+        <div class="wanted-star" id="star3"></div>
+        <div class="wanted-star" id="star4"></div>
+        <div class="wanted-star" id="star5"></div>
+        <div id="wanted-level">WANTED</div>
     </div>
 
-    <div id="info-page" class="menu-page">
-        <button id="menu-close-btn" onclick="hideMenuPages()">MAIN MENU</button>
-        <h2>SYSTEM INFO</h2>
-        <div style="margin-top: 20px;">
-            <div class="detail-line"><strong>AUTHOR:</strong> ZHANYI ZHOU</div>
-            <div class="detail-line"><strong>EMAIL</strong> z03640940@gmail.com</div>
-            <div class="detail-line"><strong>GAME NAME:</strong> OPEN WORLD HYPER DRIVE</div>
-            <div class="detail-line"><strong>ENGINE:</strong> HTML5 (THREE.js + CANNON.js)</div>
-            <div class="detail-line"><strong>VERSION</strong> V 1.0</div>
+    <!-- Health/Armor Bars -->
+    <div id="health-hud">
+        <div class="bar-container">
+            <div class="bar-label">HEALTH</div>
+            <div class="bar-bg">
+                <div class="bar-fill" id="health-bar"></div>
+            </div>
         </div>
-        <p style="margin-top: 40px; font-size: 18px; color: #00FF00;">
-            CONTACT ME!! <br>IF YOU HAVE ANY QUESTIONS, ANY PROBLEMS, ISSUES, OR IDEAS FOR FUTURE VERSION, DON'T FORGET TO REACH ME BY EMAIL!!
-        </p>
-    </div>
-
-    <div id="splash">
-        <div class="splash-header">
-            <h1>OPEN WORLD<br>HYPER DRIVE</h1>
-            <p class="splash-subtitle">MADE BY ZHANYI ZHOU</p>
-        </div>
-
-        <div class="splash-top-right">
-            <span class="label">GOLD COINS</span><br>
-            <span class="value" id="splash-coin-count">0</span>
-        </div>
-
-        <div class="splash-left-menu">
-            <button class="menu-btn" onclick="showMenuPage('shop-page')">SHOP</button>
-            <button class="menu-btn" onclick="showMenuPage('settings-page')">SETTINGS</button>
-            <button class="menu-btn" onclick="showMenuPage('info-page')">INFO</button>
-        </div>
-
-        <div class="splash-footer">
-            <button id="delivery-mode-btn" onclick="startDeliveryMode()">DELIVERY MODE</button>
-            <button id="start-button" onclick="enterGame()">PLAY NOW</button>
+        <div class="bar-container">
+            <div class="bar-label">ARMOR</div>
+            <div class="bar-bg">
+                <div class="bar-fill" id="armor-bar"></div>
+            </div>
         </div>
     </div>
 
-    <div class="copyright-tag">ZHANYI ZHOU DESIGN © 2025</div>
+    <!-- Weapon HUD -->
+    <div id="weapon-hud">
+        <div id="weapon-name">PISTOL</div>
+        <div id="ammo-count">12<span id="ammo-total">/100</span></div>
+    </div>
 
+    <!-- Main HUD -->
     <div id="hud-layer" style="display:none;">
         <div class="hud-top-left">
             <div class="instrument spd-color">
@@ -329,37 +507,30 @@
             <div class="instrument gear-color">
                 <span class="label">Gear</span> <span class="value" id="hud-gear">P</span> <span class="unit">MODE</span>
             </div>
-            <div class="instrument throttle-color">
-                <span class="label">Throttle</span> <span class="value" id="hud-throttle">0%</span>
-            </div>
-            <div class="instrument">
-                <span class="label">Altitude</span> <span class="value" id="hud-alt">0</span> <span class="unit">M</span>
-            </div>
-            <div class="instrument">
-                <span class="label">Heading</span> <span class="value" id="hud-hdg">000</span> <span class="unit">DEG</span>
+            <div class="instrument" id="hud-coin">
+                <span class="label">CASH</span> <span class="value" id="coin-count">$5000</span>
             </div>
         </div>
 
-        <div class="hud-top-right">
-            <div class="instrument" id="hud-coin">
-                <span class="label">GOLD COIN</span> <span class="value" id="coin-count">0</span>
-            </div>
+        <div id="control-hints">
+            <div class="hint-title">GTA CONTROLS</div>
+            <div>[F] Enter/Exit Vehicle</div>
+            <div>[1-3] Switch Weapons</div>
+            <div>[MOUSE] Aim & Shoot</div>
+            <div>[R] Reload Weapon</div>
+            <div>[Q] Take Cover</div>
+            <div>[SPACE] Jump/Sprint</div>
         </div>
-        
-        <div id="delivery-hud">
-            <div class="mission-title" id="mission-status-text">MISSION: OFFLINE</div>
-            <div class="mission-detail">DISTANCE: <span id="delivery-distance-value">0</span> M</div>
-            <div class="mission-detail">TIME LEFT: <span id="delivery-timer-value">--:--</span></div>
+    </div>
+
+    <div id="splash">
+        <div class="splash-header">
+            <h1>GTA6 STYLE<br>OPEN WORLD</h1>
+            <p class="splash-subtitle">ACTION - DRIVING - COMBAT</p>
         </div>
-        <div class="hud-bottom">
-            <div id="control-hints">
-                <div class="hint-title">SYSTEM CONTROLS</div>
-                <div>[SHIFT] NITRO BOOST</div>
-                <div>[SPACE] DRIFT / BRAKE</div>
-                <div>[V] CHANGE CAMERA</div>
-                <div class="respawn-hint">[R] RESPAWN CAR</div>
-                <div>[WASD] DRIVE</div>
-            </div>
+
+        <div class="splash-footer">
+            <button id="start-button" onclick="showModeSelector()">START GAME</button>
         </div>
     </div>
 
@@ -370,372 +541,754 @@
 
     <script>
     // =============================================================================
-    // ** CORE VARIABLES **
+    // ** GTA6 STYLE CORE VARIABLES **
     // =============================================================================
     let scene, renderer;
-    let cameraChase, cameraCockpit, activeCamera;
+    let cameraChase, cameraCockpit, cameraFPS, activeCamera;
     let world, vehicle, chassisBody;
     let wheelMeshes = [];
     let lastTime = undefined;
 
+    // Game State
     let isGameRunning = false; 
-    let splashCameraAngle = 0; 
-    let isDragging = false;
-    let previousMouseX = 0;
-
+    let currentMode = 'both'; // 'drive', 'fps', or 'both'
+    let isInVehicle = true;
+    let isPlayerDead = false;
+    
+    // Player Stats
+    let playerHealth = 100;
+    let playerArmor = 50;
+    let playerCash = 5000;
+    let wantedLevel = 0;
+    
+    // First Person Controls
+    let mouseX = 0, mouseY = 0;
+    let pitch = 0, yaw = 0;
+    let isMouseLocked = false;
+    
+    // Weapons
+    let currentWeapon = 'pistol';
+    let weapons = {
+        pistol: { ammo: 12, maxAmmo: 100, damage: 25, range: 100 },
+        shotgun: { ammo: 6, maxAmmo: 30, damage: 60, range: 30 },
+        assault: { ammo: 30, maxAmmo: 150, damage: 15, range: 150 }
+    };
+    
+    // NPC System
+    let npcs = [];
+    let npcMeshes = [];
+    let npcBodies = [];
+    const NPC_COUNT = 15;
+    const NPC_SPAWN_RADIUS = 800;
+    
+    // Input State
+    const inputState = { 
+        keyW: false, keyS: false, keyA: false, keyD: false, 
+        keySpace: false, keyShift: false, keyR: false,
+        keyF: false, keyQ: false,
+        key1: false, key2: false, key3: false
+    };
+    
+    // UI Elements
+    const crosshairEl = document.getElementById('crosshair');
+    const weaponHudEl = document.getElementById('weapon-hud');
+    const healthHudEl = document.getElementById('health-hud');
+    const wantedHudEl = document.getElementById('wanted-hud');
+    const healthBarEl = document.getElementById('health-bar');
+    const armorBarEl = document.getElementById('armor-bar');
+    const weaponNameEl = document.getElementById('weapon-name');
+    const ammoCountEl = document.getElementById('ammo-count');
+    const ammoTotalEl = document.getElementById('ammo-total');
+    const wantedStars = [1,2,3,4,5].map(i => document.getElementById(`star${i}`));
+    const deathScreenEl = document.getElementById('death-screen');
+    const respawnBtnEl = document.getElementById('respawn-btn');
+    const hitIndicatorEl = document.getElementById('hit-indicator');
+    
+    // Physics
     const daySkyColor = new THREE.Color(0x87CEEB);
     const dayHemiSky = new THREE.Color(0xffffff);
     const dayHemiGround = new THREE.Color(0x3b4c5a);
-
     const maxEngineForce = 9000; 
     const brakeForce = 40;
     const maxSteerVal = 0.7;
-    const VISUAL_Y_OFFSET = -0.9; 
-
-    // ** Initial Vehicle Position **
-    const initialCarPosition = new CANNON.Vec3(6, 7, -116);
-
+    const VISUAL_Y_OFFSET = -0.9;
+    const initialCarPosition = new CANNON.Vec3(-3320, 1, -20);
+    
     let staticBodies = [];
     let carMesh = null;
     let tireMeshPrototype = null;
-    let flameMesh = null;
-    let targetArrowMesh = null; // ** Target Indicator Arrow Mesh **
     let gltfLoader = null;
     let dracoLoader = null;
-
-    const inputState = { keyW: false, keyS: false, keyA: false, keyD: false, keySpace: false, keyShift: false, keyR: false };
-
-    // UI Elements
-    const speedEl = document.getElementById('hud-spd');
-    const altitudeEl = document.getElementById('hud-alt');
-    const headingEl = document.getElementById('hud-hdg');
-    const rpmEl = document.getElementById('hud-rpm');
-    const gearEl = document.getElementById('hud-gear');
-    const throttleEl = document.getElementById('hud-throttle');
-    const coinCountEl = document.getElementById('coin-count');
-    const splashCoinCountEl = document.getElementById('splash-coin-count');
-    const loadingStatusEl = document.getElementById('loading-status'); // UX: Added reference
-    const loadingProgressFillEl = document.getElementById('loading-progress-fill'); // UX: Added reference
-
-    // ** Delivery Mode Elements **
-    const deliveryHudEl = document.getElementById('delivery-hud');
-    const missionStatusEl = document.getElementById('mission-status-text');
-    const distanceEl = document.getElementById('delivery-distance-value');
-    const timerEl = document.getElementById('delivery-timer-value');
-
     let engineForce = 0;
     let steeringValue = 0;
-
-    // Coin Vars
-    let coinProto = null;
-    let coinMeshes = [];
-    let coinBodies = [];
-    let coinCount = 0;
-    const COIN_MIN = 50;
-    const COIN_MAX = 80;
-    const COIN_SPAWN_RADIUS = 1500; 
-    const COIN_HEIGHT = 0.7;
-
-    // ** Predefined Delivery Points **
-    const DELIVERY_POINTS = [
-        { name: "Sandiago's house", x: 94, y: 1.0, z: 20 },
-        { name: "West Dock", x: -500, y: 1.0, z: 300 },
-        { name: "Pizza Pizza", x: -3300, y: 1.0, z: -500 },
-        { name: "Andrew's house", x: -3200, y: 1.0, z: -200 },
-        { name: "International Airport", x: -3850, y: 1.0, z: 650 },
-        { name: "Gaz station supermarket", x: 250, y: 1.0, z: -150 }, 
-        { name: "Southern Freeway", x: 90, y: 3.0, z: 400 }, 
-        { name: "City Police station", x: -3000, y: 3.0, z: 400 }, 
-        { name: "Zhanyi's house", x: -2200, y: 3.0, z: 400 }, 
-    ];
-
-    // ** Delivery Mode Variables **
-    let isDeliveryModeActive = false;
-    const MAX_MISSION_TIME = 240; 
-    const TARGET_RADIUS = 5; 
-    let currentMission = {
-        status: 'none', 
-        pickupPoint: null, 
-        deliveryTarget: null, 
-        timeStarted: 0,
-        timeLimit: 0,
-        pickupMesh: null, 
-        deliveryMesh: null, 
-        pickupName: '',
-        deliveryName: '',
-    };
     
     // =============================================================================
-    // ** INTERACTION: Splash Screen Drag Rotation **
+    // ** MODE SELECTOR **
     // =============================================================================
-    document.addEventListener('mousedown', (e) => {
-        if (!isGameRunning) {
-            isDragging = true;
-            previousMouseX = e.clientX;
-            document.body.style.cursor = 'grabbing';
-            document.getElementById('splash').style.cursor = 'grabbing';
-        }
-    });
-
-    document.addEventListener('mouseup', () => {
-        isDragging = false;
-        document.body.style.cursor = 'default';
-        document.getElementById('splash').style.cursor = 'grab';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (isDragging && !isGameRunning) {
-            const deltaX = e.clientX - previousMouseX;
-            splashCameraAngle -= deltaX * 0.005;
-            previousMouseX = e.clientX;
-        }
-    });
-
-    // =============================================================================
-    // ** NEW: Menu Page Show/Hide Logic (UX Enhanced) **
-    // =============================================================================
-    function showMenuPage(pageId) {
-        // Find the page element and apply the active class for fade-in
-        const page = document.getElementById(pageId);
-        if (page) {
-            document.getElementById('splash').style.opacity = '0'; // Start fading splash
-            setTimeout(() => {
-                document.getElementById('splash').style.display = 'none'; // Hide splash when faded
-                page.style.display = 'flex'; // Show page container
-                setTimeout(() => {
-                    page.classList.add('active'); // Start fade-in animation
-                }, 10); // Small delay to trigger CSS transition
-            }, 400); // Match splash opacity transition time
-        }
+    function showModeSelector() {
+        document.getElementById('mode-selector').style.display = 'block';
     }
-
-    function hideMenuPages() {
-        const pages = document.querySelectorAll('.menu-page');
-        pages.forEach(page => page.classList.remove('active')); // Start fade-out
-
-        document.getElementById('splash').style.display = 'block'; // Show splash container
-        setTimeout(() => {
-            document.getElementById('splash').style.opacity = '1'; // Fade splash in
-            // Wait for fade-out, then hide the page
-            setTimeout(() => {
-                 pages.forEach(page => page.style.display = 'none');
-            }, 400);
-        }, 10);
-    }
-
-
-    // =============================================================================
-    // ** DELIVERY MODE CORE LOGIC **
-    // =============================================================================
-
-    window.startDeliveryMode = function() {
-        if (!chassisBody) {
-            // UX: Translated alert message
-            alert("Please wait for assets to load or enter the game first."); 
-            return;
-        }
-
-        if (!isGameRunning) {
-            enterGame();
-        }
-
-        isDeliveryModeActive = true;
-        deliveryHudEl.style.display = 'block';
-
-        respawnCar();
-        generateNewMission();
-    }
-
-    function generateNewMission() {
-        if (DELIVERY_POINTS.length < 2) {
-            // UX: Translated status text
-            missionStatusEl.textContent = 'MISSION ERROR: Not enough mission points (Need at least 2).';
-            return;
-        }
-
-        // Cleanup previous mission (if any)
-        if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
-        if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
-        if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
-        if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
-        chassisBody.removeEventListener('collide', handleMissionCollision); 
-
-        // 1. Randomly select pickup and delivery points
-        let idx1 = Math.floor(Math.random() * DELIVERY_POINTS.length);
-        let idx2;
-        do {
-            idx2 = Math.floor(Math.random() * DELIVERY_POINTS.length);
-        } while (idx1 === idx2);
-
-        const pickupData = DELIVERY_POINTS[idx1];
-        const deliveryData = DELIVERY_POINTS[idx2];
+    
+    function startMode(mode) {
+        currentMode = mode;
+        document.getElementById('mode-selector').style.display = 'none';
+        enterGame();
         
-        const pickupPos = new CANNON.Vec3(pickupData.x, pickupData.y, pickupData.z);
-        const deliveryPos = new CANNON.Vec3(deliveryData.x, deliveryData.y, deliveryData.z);
-
-        // 2. Create Pickup Point physics body
-        const targetShape = new CANNON.Sphere(TARGET_RADIUS);
-        const pickupBody = new CANNON.Body({ mass: 0, position: pickupPos, shape: targetShape });
-        pickupBody.collisionResponse = 0; 
-        world.addBody(pickupBody);
-
-        // 3. Create Delivery Target physics body
-        const deliveryBody = new CANNON.Body({ mass: 0, position: deliveryPos, shape: targetShape });
-        deliveryBody.collisionResponse = 0;
-        world.addBody(deliveryBody);
-
-        // 4. Create visual meshes 
-        const pickupMesh = createTargetMesh(0x00FFFF);
-        pickupMesh.position.copy(pickupPos);
-        scene.add(pickupMesh);
-        
-        const deliveryMesh = createTargetMesh(0x00FF00);
-        deliveryMesh.position.copy(deliveryPos);
-        deliveryMesh.visible = false; 
-        scene.add(deliveryMesh); 
-
-        // 5. Update mission state
-        currentMission = {
-            status: 'pickup',
-            pickupPoint: pickupBody,
-            deliveryTarget: deliveryBody,
-            timeStarted: performance.now(),
-            timeLimit: MAX_MISSION_TIME,
-            pickupMesh: pickupMesh,
-            deliveryMesh: deliveryMesh,
-            pickupName: pickupData.name,
-            deliveryName: deliveryData.name,
-        };
-
-        // UX: Translated mission status template
-        missionStatusEl.textContent = `MISSION: Go to ${pickupData.name} for Pickup`;
-        missionStatusEl.style.color = '#00FFFF';
-
-        // 6. Add collision listener
-        chassisBody.addEventListener('collide', handleMissionCollision);
-    }
-
-    function createTargetMesh(color) {
-        const geometry = new THREE.CylinderGeometry(TARGET_RADIUS / 2, TARGET_RADIUS / 2, TARGET_RADIUS, 16);
-        const material = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.7 });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.y += TARGET_RADIUS / 2; 
-        return mesh;
-    }
-
-    function handleMissionCollision(e) {
-        if (!isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') return;
-
-        const otherBody = (e.body === chassisBody) ? e.target : e.body;
-
-        if (currentMission.status === 'pickup' && otherBody === currentMission.pickupPoint) {
-            // Mission Stage 1: Pickup Complete
-            currentMission.status = 'delivering';
-            // UX: Translated mission status template
-            missionStatusEl.textContent = `MISSION: Deliver cargo to ${currentMission.deliveryName}`;
-            missionStatusEl.style.color = '#00FF00';
-            
-            currentMission.pickupMesh.visible = false;
-            currentMission.deliveryMesh.visible = true;
-
-        } else if (currentMission.status === 'delivering' && otherBody === currentMission.deliveryTarget) {
-            // Mission Stage 2: Delivery Complete
-            completeMission(true);
-        }
-    }
-
-    function completeMission(success) {
-        const timeElapsed = (performance.now() - currentMission.timeStarted) / 1000;
-        let reward = 100;
-
-        chassisBody.removeEventListener('collide', handleMissionCollision);
-
-        if (success) {
-            const timeBonus = Math.max(0, currentMission.timeLimit - timeElapsed);
-            reward += Math.floor(timeBonus * 2); 
-            coinCount += reward;
-            localStorage.setItem('goldCoinCount', coinCount);
-            splashCoinCountEl.textContent = coinCount;
-            coinCountEl.textContent = coinCount;
-
-            // UX: Translated success message
-            missionStatusEl.textContent = `MISSION SUCCESS! (+${reward} GOLD)`;
-            missionStatusEl.style.color = '#FFD700';
-            
-            if (currentMission.deliveryMesh) scene.remove(currentMission.deliveryMesh);
-            if (currentMission.pickupMesh) scene.remove(currentMission.pickupMesh);
-            
-            // UX: Shorter delay after success to start next mission
-            setTimeout(generateNewMission, 3000); 
-
-        } else {
-            // UX: Translated failure message
-            missionStatusEl.textContent = 'MISSION FAILED! Time Expired.';
-            missionStatusEl.style.color = '#FF0000';
-            setTimeout(generateNewMission, 3000); // UX: Shorter delay after failure
-        }
-        
-        // Cleanup target physics bodies
-        if (currentMission.pickupPoint) world.removeBody(currentMission.pickupPoint);
-        if (currentMission.deliveryTarget) world.removeBody(currentMission.deliveryTarget);
-        currentMission.status = 'completed';
-    }
-
-
-    function updateDeliveryMode() {
-        if (!isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') return;
-
-        const now = performance.now();
-        const timeElapsed = (now - currentMission.timeStarted) / 1000;
-        const timeLeft = currentMission.timeLimit - timeElapsed;
-
-        if (timeLeft <= 0) {
-            return completeMission(false); 
-        }
-
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = Math.floor(timeLeft % 60).toString().padStart(2, '0');
-        timerEl.textContent = `${minutes}:${seconds}`;
-
-        // Calculate distance
-        let targetBody = null;
-        if (currentMission.status === 'pickup') {
-            targetBody = currentMission.pickupPoint;
-        } else if (currentMission.status === 'delivering') {
-            targetBody = currentMission.deliveryTarget;
-        }
-
-        if (targetBody) {
-            const dist = chassisBody.position.distanceTo(targetBody.position);
-            distanceEl.textContent = dist.toFixed(0);
-        } else {
-            distanceEl.textContent = '0';
+        if (mode === 'fps') {
+            exitVehicle();
         }
     }
     
     // =============================================================================
-    // ** THREE.js/Cannon.js BASIC SETUP **
+    // ** FIRST PERSON CONTROLS **
+    // =============================================================================
+    function initFPSCamera() {
+        cameraFPS = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+        cameraFPS.position.set(initialCarPosition.x, initialCarPosition.y + 1.8, initialCarPosition.z);
+        
+        // Pointer lock for mouse control
+        document.addEventListener('click', () => {
+            if (isGameRunning && !isInVehicle) {
+                document.body.requestPointerLock();
+            }
+        });
+        
+        document.addEventListener('pointerlockchange', () => {
+            isMouseLocked = document.pointerLockElement === document.body;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isMouseLocked || !isGameRunning || isInVehicle) return;
+            
+            const movementX = e.movementX || 0;
+            const movementY = e.movementY || 0;
+            
+            // Adjust sensitivity
+            const sensitivity = 0.002;
+            yaw -= movementX * sensitivity;
+            pitch -= movementY * sensitivity;
+            
+            // Clamp pitch
+            pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+        });
+    }
+    
+    // =============================================================================
+    // ** WEAPON SYSTEM **
+    // =============================================================================
+    function initWeaponSystem() {
+        document.addEventListener('mousedown', (e) => {
+            if (!isGameRunning || isInVehicle || isPlayerDead) return;
+            
+            if (e.button === 0) { // Left click
+                shootWeapon();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (!isGameRunning || isPlayerDead) return;
+            
+            if (e.key === '1') {
+                switchWeapon('pistol');
+            } else if (e.key === '2') {
+                switchWeapon('shotgun');
+            } else if (e.key === '3') {
+                switchWeapon('assault');
+            } else if (e.key === 'r') {
+                reloadWeapon();
+            } else if (e.key === 'f') {
+                if (currentMode !== 'fps') {
+                    if (isInVehicle) {
+                        exitVehicle();
+                    } else {
+                        enterVehicle();
+                    }
+                }
+            } else if (e.key === 'q') {
+                takeCover();
+            }
+        });
+        
+        updateWeaponHUD();
+    }
+    
+    function switchWeapon(weaponName) {
+        if (weapons[weaponName]) {
+            currentWeapon = weaponName;
+            weaponNameEl.textContent = weaponName.toUpperCase();
+            updateWeaponHUD();
+            
+            // Add weapon switch animation here
+        }
+    }
+    
+    function reloadWeapon() {
+        const weapon = weapons[currentWeapon];
+        const ammoNeeded = weapon.maxAmmo - weapon.ammo;
+        weapon.ammo = weapon.maxAmmo;
+        updateWeaponHUD();
+    }
+    
+    function shootWeapon() {
+        const weapon = weapons[currentWeapon];
+        
+        if (weapon.ammo <= 0) {
+            reloadWeapon();
+            return;
+        }
+        
+        weapon.ammo--;
+        updateWeaponHUD();
+        
+        // Create muzzle flash
+        const muzzleFlash = new THREE.PointLight(0xFF4500, 2, 5);
+        muzzleFlash.position.copy(cameraFPS.position);
+        muzzleFlash.position.add(cameraFPS.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.5));
+        scene.add(muzzleFlash);
+        
+        setTimeout(() => scene.remove(muzzleFlash), 50);
+        
+        // Raycast for shooting
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), cameraFPS);
+        
+        // Check for NPC hits
+        let hitNPC = false;
+        for (let i = 0; i < npcMeshes.length; i++) {
+            const npc = npcMeshes[i];
+            const intersects = raycaster.intersectObject(npc, true);
+            
+            if (intersects.length > 0) {
+                hitNPC = true;
+                damageNPC(i, weapon.damage);
+                increaseWantedLevel(1);
+                break;
+            }
+        }
+        
+        // If no NPC hit, create bullet impact on environment
+        if (!hitNPC) {
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                createBulletImpact(point);
+            }
+        }
+    }
+    
+    function damageNPC(npcIndex, damage) {
+        if (npcs[npcIndex]) {
+            npcs[npcIndex].health -= damage;
+            
+            if (npcs[npcIndex].health <= 0) {
+                eliminateNPC(npcIndex);
+                playerCash += 100; // Reward for killing NPC
+                updateCashHUD();
+            } else {
+                // NPC shoots back
+                setTimeout(() => npcShootBack(npcIndex), 500);
+            }
+        }
+    }
+    
+    function eliminateNPC(npcIndex) {
+        // Remove NPC from scene
+        if (npcMeshes[npcIndex]) {
+            scene.remove(npcMeshes[npcIndex]);
+        }
+        if (npcBodies[npcIndex]) {
+            world.removeBody(npcBodies[npcIndex]);
+        }
+        
+        // Remove from arrays
+        npcMeshes.splice(npcIndex, 1);
+        npcBodies.splice(npcIndex, 1);
+        npcs.splice(npcIndex, 1);
+    }
+    
+    function npcShootBack(npcIndex) {
+        if (!npcs[npcIndex] || isPlayerDead) return;
+        
+        const npc = npcMeshes[npcIndex];
+        const playerPos = isInVehicle ? chassisBody.position : cameraFPS.position;
+        const npcPos = npc.position;
+        
+        // Check if player is visible
+        const direction = new THREE.Vector3().subVectors(playerPos, npcPos).normalize();
+        const distance = npcPos.distanceTo(playerPos);
+        
+        if (distance < 50) { // NPC shooting range
+            // Chance to hit player
+            if (Math.random() > 0.5) {
+                damagePlayer(20);
+                
+                // NPC shooting effect
+                const muzzleFlash = new THREE.PointLight(0xFF0000, 2, 5);
+                muzzleFlash.position.copy(npcPos);
+                scene.add(muzzleFlash);
+                setTimeout(() => scene.remove(muzzleFlash), 100);
+            }
+        }
+    }
+    
+    function createBulletImpact(position) {
+        const geometry = new THREE.CircleGeometry(0.1, 8);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x333333,
+            side: THREE.DoubleSide
+        });
+        const impact = new THREE.Mesh(geometry, material);
+        
+        // Orient impact to face camera
+        impact.lookAt(cameraFPS.position);
+        impact.position.copy(position);
+        impact.position.add(new THREE.Vector3(0, 0.01, 0)); // Slight offset
+        
+        scene.add(impact);
+        setTimeout(() => scene.remove(impact), 3000);
+    }
+    
+    function updateWeaponHUD() {
+        const weapon = weapons[currentWeapon];
+        ammoCountEl.textContent = weapon.ammo;
+        ammoTotalEl.textContent = '/' + weapon.maxAmmo;
+    }
+    
+    // =============================================================================
+    // ** PLAYER HEALTH & DAMAGE **
+    // =============================================================================
+    function damagePlayer(amount) {
+        if (playerArmor > 0) {
+            playerArmor -= amount;
+            if (playerArmor < 0) {
+                playerHealth += playerArmor; // Excess damage goes to health
+                playerArmor = 0;
+            }
+        } else {
+            playerHealth -= amount;
+        }
+        
+        // Show hit indicator
+        hitIndicatorEl.style.opacity = '0.7';
+        setTimeout(() => hitIndicatorEl.style.opacity = '0', 100);
+        
+        updateHealthHUD();
+        
+        if (playerHealth <= 0) {
+            playerDeath();
+        }
+    }
+    
+    function playerDeath() {
+        isPlayerDead = true;
+        deathScreenEl.style.display = 'flex';
+        
+        // Reset wanted level
+        wantedLevel = 0;
+        updateWantedHUD();
+    }
+    
+    function respawnPlayer() {
+        if (playerCash >= 500) {
+            playerCash -= 500;
+            playerHealth = 100;
+            playerArmor = 50;
+            isPlayerDead = false;
+            deathScreenEl.style.display = 'none';
+            
+            // Reset position
+            if (isInVehicle) {
+                respawnCar();
+            } else {
+                cameraFPS.position.set(initialCarPosition.x, initialCarPosition.y + 1.8, initialCarPosition.z);
+            }
+            
+            updateHealthHUD();
+            updateCashHUD();
+        }
+    }
+    
+    function updateHealthHUD() {
+        healthBarEl.style.width = playerHealth + '%';
+        armorBarEl.style.width = playerArmor + '%';
+    }
+    
+    // =============================================================================
+    // ** WANTED SYSTEM **
+    // =============================================================================
+    function increaseWantedLevel(amount) {
+        wantedLevel = Math.min(5, wantedLevel + amount);
+        updateWantedHUD();
+        
+        // Spawn police NPCs at high wanted levels
+        if (wantedLevel >= 3) {
+            spawnPolice();
+        }
+    }
+    
+    function updateWantedHUD() {
+        if (wantedLevel > 0) {
+            wantedHudEl.style.display = 'flex';
+            wantedStars.forEach((star, index) => {
+                star.classList.toggle('active', index < wantedLevel);
+            });
+        } else {
+            wantedHudEl.style.display = 'none';
+        }
+    }
+    
+    function spawnPolice() {
+        // Spawn police NPCs near player
+        const playerPos = isInVehicle ? chassisBody.position : cameraFPS.position;
+        
+        for (let i = 0; i < 2; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 50 + Math.random() * 30;
+            const x = playerPos.x + Math.cos(angle) * distance;
+            const z = playerPos.z + Math.sin(angle) * distance;
+            
+            createNPC(x, 1, z, 'police');
+        }
+    }
+    
+    // =============================================================================
+    // ** NPC SYSTEM **
+    // =============================================================================
+    function createNPC(x, y, z, type = 'civilian') {
+        // Create NPC body
+        const npcShape = new CANNON.Sphere(0.5);
+        const npcBody = new CANNON.Body({
+            mass: 70,
+            shape: npcShape,
+            position: new CANNON.Vec3(x, y + 1, z)
+        });
+        
+        // Create NPC visual
+        const npcGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
+        const npcMaterial = new THREE.MeshStandardMaterial({ 
+            color: type === 'police' ? 0x0000FF : 0xFFA500 
+        });
+        const npcMesh = new THREE.Mesh(npcGeometry, npcMaterial);
+        npcMesh.castShadow = true;
+        
+        // Add to scene
+        scene.add(npcMesh);
+        world.addBody(npcBody);
+        
+        // Store NPC data
+        npcs.push({
+            health: 100,
+            type: type,
+            state: 'patrol', // patrol, chase, attack
+            patrolTarget: new THREE.Vector3(
+                x + (Math.random() - 0.5) * 50,
+                y,
+                z + (Math.random() - 0.5) * 50
+            ),
+            lastShotTime: 0
+        });
+        
+        npcMeshes.push(npcMesh);
+        npcBodies.push(npcBody);
+    }
+    
+    function updateNPCs() {
+        const playerPos = isInVehicle ? chassisBody.position : cameraFPS.position;
+        
+        for (let i = 0; i < npcs.length; i++) {
+            const npc = npcs[i];
+            const npcMesh = npcMeshes[i];
+            const npcBody = npcBodies[i];
+            
+            if (!npc || npc.health <= 0) continue;
+            
+            const npcPos = npcBody.position;
+            const distanceToPlayer = npcPos.distanceTo(playerPos);
+            
+            // AI Behavior
+            if (npc.type === 'police' || wantedLevel > 0) {
+                // Police or hostile NPCs chase player
+                if (distanceToPlayer < 100) {
+                    const direction = new CANNON.Vec3();
+                    direction.x = playerPos.x - npcPos.x;
+                    direction.z = playerPos.z - npcPos.z;
+                    direction.normalize();
+                    
+                    // Move towards player
+                    npcBody.velocity.x = direction.x * 3;
+                    npcBody.velocity.z = direction.z * 3;
+                    
+                    // Face player
+                    const angle = Math.atan2(direction.x, direction.z);
+                    npcMesh.rotation.y = angle;
+                    
+                    // Shoot at player
+                    if (distanceToPlayer < 30 && Math.random() > 0.99) {
+                        npcShootBack(i);
+                    }
+                }
+            } else {
+                // Civilian NPCs patrol
+                const distanceToTarget = npcPos.distanceTo(npc.patrolTarget);
+                
+                if (distanceToTarget < 5) {
+                    // New patrol target
+                    npc.patrolTarget.set(
+                        npcPos.x + (Math.random() - 0.5) * 50,
+                        npcPos.y,
+                        npcPos.z + (Math.random() - 0.5) * 50
+                    );
+                }
+                
+                // Move towards target
+                const direction = new CANNON.Vec3();
+                direction.x = npc.patrolTarget.x - npcPos.x;
+                direction.z = npc.patrolTarget.z - npcPos.z;
+                direction.normalize();
+                
+                npcBody.velocity.x = direction.x * 2;
+                npcBody.velocity.z = direction.z * 2;
+                
+                // Face movement direction
+                if (Math.abs(direction.x) > 0.1 || Math.abs(direction.z) > 0.1) {
+                    const angle = Math.atan2(direction.x, direction.z);
+                    npcMesh.rotation.y = angle;
+                }
+            }
+            
+            // Sync visual position
+            npcMesh.position.copy(npcBody.position);
+            npcMesh.position.y -= 0.9;
+        }
+    }
+    
+    // =============================================================================
+    // ** VEHICLE SYSTEM **
+    // =============================================================================
+    function enterVehicle() {
+        if (!chassisBody || isPlayerDead) return;
+        
+        const playerPos = cameraFPS.position;
+        const carPos = chassisBody.position;
+        const distance = playerPos.distanceTo(carPos);
+        
+        if (distance < 5) {
+            isInVehicle = true;
+            crosshairEl.style.display = 'none';
+            weaponHudEl.style.display = 'none';
+            healthHudEl.style.display = 'none';
+        }
+    }
+    
+    function exitVehicle() {
+        if (!chassisBody || isPlayerDead) return;
+        
+        isInVehicle = false;
+        
+        // Position player next to vehicle
+        const offset = new THREE.Vector3(2, 0, 0);
+        offset.applyQuaternion(chassisBody.quaternion);
+        cameraFPS.position.set(
+            chassisBody.position.x + offset.x,
+            chassisBody.position.y + 1.8,
+            chassisBody.position.z + offset.z
+        );
+        
+        // Show FPS UI
+        if (currentMode !== 'drive') {
+            crosshairEl.style.display = 'block';
+            weaponHudEl.style.display = 'block';
+            healthHudEl.style.display = 'flex';
+        }
+    }
+    
+    function takeCover() {
+        // Simple cover system - crouch
+        if (!isInVehicle) {
+            cameraFPS.position.y = 1.0;
+            setTimeout(() => {
+                cameraFPS.position.y = 1.8;
+            }, 1000);
+        }
+    }
+    
+    // =============================================================================
+    // ** UPDATE FUNCTIONS **
+    // =============================================================================
+    function updateFirstPerson() {
+        if (!isInVehicle && !isPlayerDead) {
+            // Update camera rotation
+            cameraFPS.rotation.order = 'YXZ';
+            cameraFPS.rotation.y = yaw;
+            cameraFPS.rotation.x = pitch;
+            
+            // Movement
+            const speed = inputState.keyShift ? 10 : 5;
+            const direction = new THREE.Vector3();
+            
+            if (inputState.keyW) direction.z -= 1;
+            if (inputState.keyS) direction.z += 1;
+            if (inputState.keyA) direction.x -= 1;
+            if (inputState.keyD) direction.x += 1;
+            
+            direction.normalize();
+            direction.applyEuler(new THREE.Euler(0, yaw, 0));
+            
+            cameraFPS.position.x += direction.x * speed * 0.1;
+            cameraFPS.position.z += direction.z * speed * 0.1;
+            
+            // Jump
+            if (inputState.keySpace) {
+                cameraFPS.position.y += 0.2;
+            }
+        }
+    }
+    
+    function updateVehicle() {
+        if (!chassisBody || !isGameRunning || !isInVehicle) return;
+        
+        // Existing vehicle controls
+        engineForce = 0; steeringValue = 0; 
+        let brake = 0;
+        
+        const v = chassisBody.velocity;
+        const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
+        const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
+        const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
+        const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
+        const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
+        
+        if (inputState.keyA) steeringValue = maxSteerVal;
+        else if (inputState.keyD) steeringValue = -maxSteerVal;
+        
+        if (inputState.keyW) {
+            if (isMovingBackward) brake = maxEngineForce * 0.5;
+            else { engineForce = -maxEngineForce; }
+        } else if (inputState.keyS) {
+            if (isMovingForward) brake = maxEngineForce * 0.5;
+            else { engineForce = maxEngineForce * 0.5; }
+        }
+        
+        if (inputState.keyShift && engineForce !== 0) {
+            engineForce *= 2.5;
+        }
+        
+        vehicle.setSteeringValue(steeringValue, 0); 
+        vehicle.setSteeringValue(steeringValue, 1);
+        vehicle.applyEngineForce(engineForce, 0); 
+        vehicle.applyEngineForce(engineForce, 1); 
+        vehicle.applyEngineForce(engineForce, 2); 
+        vehicle.applyEngineForce(engineForce, 3);
+        
+        if (inputState.keySpace) {
+            brake = maxEngineForce * 0.8;
+        }
+        
+        vehicle.setBrake(brake, 0); 
+        vehicle.setBrake(brake, 1);
+        vehicle.setBrake(brake, 2); 
+        vehicle.setBrake(brake, 3);
+    }
+    
+    // =============================================================================
+    // ** GAME INITIALIZATION **
+    // =============================================================================
+    function initGame() {
+        // Load saved cash
+        const savedCash = localStorage.getItem('playerCash');
+        if (savedCash) {
+            playerCash = parseInt(savedCash);
+        }
+        
+        // Initialize systems
+        initThree();
+        initCannon();
+        initGround();
+        initCameraAndLights();
+        initFPSCamera();
+        initLoaders();
+        initWeaponSystem();
+        
+        // Load assets
+        loadCarModel();
+        loadTireModel();
+        loadCity();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Spawn NPCs
+        spawnNPCs();
+        
+        // Start game loop
+        requestAnimationFrame(animate);
+    }
+    
+    function spawnNPCs() {
+        for (let i = 0; i < NPC_COUNT; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * NPC_SPAWN_RADIUS;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            createNPC(x, 1, z, Math.random() > 0.8 ? 'police' : 'civilian');
+        }
+    }
+    
+    function setupEventListeners() {
+        // Keyboard input
+        window.addEventListener('keydown', (event) => {
+            if (!isGameRunning) return;
+            const k = event.key.toLowerCase();
+            if(k==='w') inputState.keyW = true;
+            if(k==='s') inputState.keyS = true;
+            if(k==='a') inputState.keyA = true;
+            if(k==='d') inputState.keyD = true;
+            if(k===' ') { inputState.keySpace = true; event.preventDefault(); }
+            if(k==='shift') inputState.keyShift = true;
+            if(k==='f') inputState.keyF = true;
+            if(k==='q') inputState.keyQ = true;
+            if(k==='r') respawnCar();
+        });
+        
+        window.addEventListener('keyup', (event) => {
+            const k = event.key.toLowerCase();
+            if(k==='w') inputState.keyW = false;
+            if(k==='s') inputState.keyS = false;
+            if(k==='a') inputState.keyA = false;
+            if(k==='d') inputState.keyD = false;
+            if(k===' ') inputState.keySpace = false;
+            if(k==='shift') inputState.keyShift = false;
+            if(k==='f') inputState.keyF = false;
+            if(k==='q') inputState.keyQ = false;
+        });
+        
+        // Respawn button
+        respawnBtnEl.addEventListener('click', respawnPlayer);
+    }
+    
+    // =============================================================================
+    // ** EXISTING FUNCTIONS (modified) **
     // =============================================================================
     function initThree() {
         scene = new THREE.Scene();
         scene.background = daySkyColor.clone();
         scene.fog = new THREE.Fog(daySkyColor, 500, 800);
-
+        
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        // ** MODIFICATION 1: Reduce Pixel Ratio by half **
-        renderer.setPixelRatio(window.devicePixelRatio / 1.2); 
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
     }
-
+    
     function initCannon() {
         world = new CANNON.World();
         world.gravity.set(0, -9.82, 0);
         world.broadphase = new CANNON.SAPBroadphase(world);
         world.allowSleep = true;
-
+        
         const defaultMaterial = new CANNON.Material('default');
         const contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
             friction: 1.0, restitution: 0.0
@@ -743,15 +1296,15 @@
         world.defaultContactMaterial = contactMaterial;
         world.addContactMaterial(contactMaterial);
     }
-
+    
     function initGround() {
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 });
         groundBody.addShape(groundShape);
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
-
-        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10); // Enlarge ground
+        
+        const groundGeo = new THREE.PlaneGeometry(3000, 3000, 10, 10);
         const groundMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
@@ -759,137 +1312,135 @@
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
     }
-
+    
     function initCameraAndLights() {
-        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000); // Increase field of view distance
+        cameraChase = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 3000);
         cameraCockpit = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
         activeCamera = cameraChase;
-
-        hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
+        
+        const hemiLight = new THREE.HemisphereLight(dayHemiSky.clone(), dayHemiGround.clone(), 0.8);
         scene.add(hemiLight);
-
-        dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
+        
+        const dirLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
         dirLight.position.set(50,100,50);
         dirLight.castShadow = true;
-        // ** MODIFICATION 2: Reduce Shadow Map Size by half **
-        dirLight.shadow.mapSize.width = 2048; 
+        dirLight.shadow.mapSize.width = 2048;
         dirLight.shadow.mapSize.height = 2048;
         dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 1000; // Increase shadow distance
+        dirLight.shadow.camera.far = 1000;
         dirLight.shadow.camera.left = -200;
         dirLight.shadow.camera.right = 200;
         dirLight.shadow.camera.top = 200;
         dirLight.shadow.camera.bottom = -200;
         scene.add(dirLight);
     }
-
+    
     function initVehicle() {
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(1, 0.5, 2));
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.9, 2.2));
         chassisBody = new CANNON.Body({
-            mass: 2500, 
+            mass: 2500,
             shape: chassisShape,
             position: initialCarPosition.clone()
         });
-        chassisBody.angularDamping = 0.9; 
-        chassisBody.linearDamping = 0.05;
+        
+        const antiTunnelSphere = new CANNON.Sphere(1.2); 
+        chassisBody.addShape(antiTunnelSphere, new CANNON.Vec3(0, 0, 0));
+        chassisBody.angularDamping = 0.98;
+        chassisBody.linearDamping = 0.1;
+        
         world.addBody(chassisBody);
-
+        
         vehicle = new CANNON.RaycastVehicle({
             chassisBody: chassisBody,
-            indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2
+            indexRightAxis: 0,
+            indexUpAxis: 1,
+            indexForwardAxis: 2
         });
-
+        
         const axleWidth = 1.0;
         const wheelBase = 1.5;
-        function makeWheelOptions(x,y,z) {
+        
+        function makeWheelOptions(x, y, z) {
             return {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, -1, 0),
-                suspensionStiffness: 150, suspensionRestLength: 0.3,
-                frictionSlip: 4.0, dampingRelaxation: 8.0, dampingCompression: 10.0,
-                maxSuspensionForce: 100000, rollInfluence: 0.05, maxSuspensionTravel: 0.3,
-                customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true,
+                suspensionStiffness: 150,
+                suspensionRestLength: 0.8,
+                frictionSlip: 5.0,
+                dampingRelaxation: 5.0,
+                dampingCompression: 5.0,
+                maxSuspensionForce: 500000,
+                rollInfluence: 0.01,
+                maxSuspensionTravel: 0.4,
+                customSlidingRotationalSpeed: -30,
+                useCustomSlidingRotationalSpeed: true,
                 axleLocal: new CANNON.Vec3(1, 0, 0),
-                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.3, z)
+                chassisConnectionPointLocal: new CANNON.Vec3(x, -0.4, z)
             };
         }
-
+        
         vehicle.addWheel(makeWheelOptions(-axleWidth, 0, wheelBase));
         vehicle.addWheel(makeWheelOptions( axleWidth, 0, wheelBase));
         vehicle.addWheel(makeWheelOptions(-axleWidth, 0, -wheelBase));
         vehicle.addWheel(makeWheelOptions( axleWidth, 0, -wheelBase));
-
+        
         vehicle.addToWorld(world);
-
+        
         wheelMeshes = [];
-        if (tireMeshPrototype) {
+        if (typeof tireMeshPrototype !== 'undefined' && tireMeshPrototype) {
             for (let i = 0; i < vehicle.wheelInfos.length; i++) {
                 const wheelMesh = tireMeshPrototype.clone();
-                if(i===0 || i===2) wheelMesh.rotation.y = Math.PI; 
-                wheelMeshes.push(wheelMesh);
-                scene.add(wheelMesh);
-            }
-        } else {
-            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-            for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-                const wheel = vehicle.wheelInfos[i];
-                const cylinderGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, 0.2, 32);
-                cylinderGeometry.rotateZ(Math.PI / 2);
-                const wheelMesh = new THREE.Mesh(cylinderGeometry, wheelMat);
+                if(i === 0 || i === 2) wheelMesh.rotation.y = Math.PI; 
                 wheelMeshes.push(wheelMesh);
                 scene.add(wheelMesh);
             }
         }
     }
-
+    
     function respawnCar() {
         if (!chassisBody) return;
         chassisBody.position.copy(initialCarPosition); 
         chassisBody.quaternion.set(0, 0, 0, 1);
         chassisBody.velocity.set(0, 0, 0);
         chassisBody.angularVelocity.set(0, 0, 0);
-        vehicle.applyEngineForce(0, 0); vehicle.applyEngineForce(0, 1); 
-        vehicle.applyEngineForce(0, 2); vehicle.applyEngineForce(0, 3); 
-        vehicle.setSteeringValue(0, 0); vehicle.setSteeringValue(0, 1);
-        vehicle.setBrake(0, 0); vehicle.setBrake(0, 1); vehicle.setBrake(0, 2); vehicle.setBrake(0, 3);
-        gearEl.textContent = 'P';
+        vehicle.applyEngineForce(0, 0); 
+        vehicle.applyEngineForce(0, 1); 
+        vehicle.applyEngineForce(0, 2); 
+        vehicle.applyEngineForce(0, 3); 
+        vehicle.setSteeringValue(0, 0); 
+        vehicle.setSteeringValue(0, 1);
+        vehicle.setBrake(0, 0); 
+        vehicle.setBrake(0, 1); 
+        vehicle.setBrake(0, 2); 
+        vehicle.setBrake(0, 3);
     }
     
-    // =============================================================================
-    // ** ASSET LOADING **
-    // =============================================================================
     function initLoaders() {
         dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-
-        const loadingManager = new THREE.LoadingManager();
         
+        const loadingManager = new THREE.LoadingManager();
         loadingManager.onProgress = function(itemUrl, itemsLoaded, itemsTotal) {
             const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
-            loadingProgressFillEl.style.width = percent + '%';
-            // UX: More detailed loading status
-            loadingStatusEl.innerText = `(${percent}%) Loading asset: ${itemUrl.substring(itemUrl.lastIndexOf('/') + 1)}...`;
+            document.getElementById('loading-progress-fill').style.width = percent + '%';
+            document.getElementById('loading-status').innerText = `(${percent}%) Loading...`;
         };
         
         loadingManager.onLoad = function() {
             const loadingScreen = document.getElementById('loading-screen');
             loadingScreen.style.opacity = '0';
-            loadingStatusEl.innerText = `(100%) READY.`; // UX: Final ready status
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
-                document.getElementById('splash').style.display = 'block'; 
-                document.getElementById('splash').style.opacity = '1'; // UX: Fade in splash
+                document.getElementById('splash').style.display = 'block';
             }, 500);
-
+            
             initVehicle();
-            spawnCoinsWhenReady();
-            requestAnimationFrame(animate);
         };
-
+        
         gltfLoader = new THREE.GLTFLoader(loadingManager);
         gltfLoader.setDRACOLoader(dracoLoader);
     }
-
+    
     function loadCarModel() {
         gltfLoader.load('car1.glb', (gltf) => {
             carMesh = gltf.scene;
@@ -897,55 +1448,9 @@
             carMesh.rotation.y = Math.PI;
             carMesh.traverse((node) => { if (node.isMesh) node.castShadow = true; });
             scene.add(carMesh);
-
-            const flameGeometry = new THREE.ConeGeometry(0.3, 1, 16);
-            const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.75 });
-            flameMesh = new THREE.Mesh(flameGeometry, flameMaterial);
-            flameMesh.rotation.x = -Math.PI / 2;
-            flameMesh.position.set(0, 0, 2.5);
-            flameMesh.visible = false;
-            carMesh.add(flameMesh);
         });
     }
     
-    // MODIFICATION 1: Adjust arrow size
-    function loadArrowModel() {
-        gltfLoader.load('arrow.glb', (gltf) => {
-            targetArrowMesh = gltf.scene;
-
-            // Reduce scale to 1.0
-            targetArrowMesh.scale.set(1.0, 1.0, 1.0); 
-            
-            // Set material and shadows
-            targetArrowMesh.traverse((node) => { 
-                if (node.isMesh) {
-                    node.castShadow = true; 
-                    node.material = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8, depthTest: false });
-                } 
-            });
-
-            targetArrowMesh.visible = false; // Initial hidden
-            scene.add(targetArrowMesh);
-            
-            // Cache mission colors
-            targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);  // Cyan
-            targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00); // Green
-
-        }, undefined, (error) => {
-            console.error('Failed to load arrow.glb:', error);
-            // Fallback: Use ConeGeometry if arrow.glb fails to load
-            if (!targetArrowMesh) {
-                const arrowGeometry = new THREE.ConeGeometry(0.4, 2.0, 8); 
-                const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0.8 });
-                targetArrowMesh = new THREE.Mesh(arrowGeometry, arrowMaterial);
-                targetArrowMesh.visible = false;
-                scene.add(targetArrowMesh);
-                targetArrowMesh.userData.pickupColor = new THREE.Color(0x00FFFF);
-                targetArrowMesh.userData.deliveryColor = new THREE.Color(0x00FF00);
-            }
-        });
-    }
-
     function loadTireModel() {
         gltfLoader.load('tire1.glb', (gltf) => {
             tireMeshPrototype = gltf.scene;
@@ -954,371 +1459,62 @@
             tireMeshPrototype.traverse((node) => { if (node.isMesh) node.castShadow = true; });
         });
     }
-
-    // MODIFICATION 3: Reduce city model scale and collision activation range
+    
     function loadCity() {
-        gltfLoader.load('/ASLFS/blender.glb', (gltf) => {
+        gltfLoader.load('https://ashley-developper.github.io/ASLFS/city.glb', (gltf) => {
             const city = gltf.scene;
-            // Scale down city model to match the COIN_SPAWN_RADIUS = 1500
-            city.scale.set(4, 4, 4); 
+            city.scale.set(4, 4, 4);
             city.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
-                    if (node.material) {
-                        const mat = node.material.clone ? node.material.clone() : node.material;
-                        if (mat.emissive !== undefined) {
-                            mat.emissive = new THREE.Color(0x000000);
-                            mat.emissiveIntensity = 0;
-                        }
-                        node.material = mat;
-                    }
                 }
             });
             scene.add(city);
-
-            city.updateMatrixWorld(true);
-            city.traverse((node) => {
-                if (node.isMesh) {
-                    const geometry = node.geometry.clone();
-                    geometry.applyMatrix4(node.matrixWorld);
-                    geometry.computeBoundingSphere();
-                    const vertices = Array.from(geometry.attributes.position.array);
-                    let indices = [];
-                    if (geometry.index) {
-                        indices = Array.from(geometry.index.array);
-                    } else {
-                        for (let i = 0; i < vertices.length/3; i++) indices.push(i);
-                    }
-                    const shape = new CANNON.Trimesh(vertices, indices);
-                    const body = new CANNON.Body({ mass: 0 });
-                    body.addShape(shape);
-                    staticBodies.push({
-                        body: body,
-                        center: new THREE.Vector3().copy(geometry.boundingSphere.center),
-                        radius: geometry.boundingSphere.radius,
-                        // Reduce activation range from 300 to 200
-                        added: false
-                    });
-                }
-            });
         });
     }
-
+    
     // =============================================================================
-    // ** Target Arrow Update - Fixed Pointing Logic **
-    // Change: Arrow rotated 90 degrees left
+    // ** UPDATE CASH HUD **
     // =============================================================================
-    const _tempDirectionVector = new THREE.Vector3();
-    const _tempCarPosition = new THREE.Vector3();
-
-    function updateTargetArrow() {
-        if (!targetArrowMesh || !isDeliveryModeActive || currentMission.status === 'none' || currentMission.status === 'completed') {
-            if(targetArrowMesh) targetArrowMesh.visible = false;
-            return;
-        }
-
-        let targetPos = null;
-        let targetColor = null;
-
-        // 1. Determine target position and color
-        if (currentMission.status === 'pickup') {
-            targetPos = currentMission.pickupPoint.position; 
-            targetColor = targetArrowMesh.userData.pickupColor;
-        } else if (currentMission.status === 'delivering') {
-            targetPos = currentMission.deliveryTarget.position; 
-            targetColor = targetArrowMesh.userData.deliveryColor;
-        } else {
-            targetArrowMesh.visible = false;
-            return;
-        }
-        
-        targetArrowMesh.visible = true;
-
-        // Color update
-        targetArrowMesh.traverse((node) => {
-            if (node.isMesh && node.material.color) {
-                node.material.color.copy(targetColor);
-            }
-        });
-
-        // 2. Update arrow position in world space
-        _tempCarPosition.copy(chassisBody.position);
-        targetArrowMesh.position.set(_tempCarPosition.x, _tempCarPosition.y + 2.5, _tempCarPosition.z); 
-        
-        // 3. Rotation Logic: lookAt + 180 flip + extra rotation
-        const lookAtTarget = new THREE.Vector3(targetPos.x, targetArrowMesh.position.y, targetPos.z);
-        
-        // Reset rotation (crucial step to prevent extra rotations from GLB model)
-        targetArrowMesh.rotation.set(0, 0, 0); 
-        
-        // lookAt() makes the object's -Z axis point to the target.
-        targetArrowMesh.lookAt(lookAtTarget); 
-
-        // 1. Rotate 180 degrees around Y-axis (makes +Z axis point to the target)
-        targetArrowMesh.rotateY(Math.PI); 
-        
-        // 2. New: Rotate an extra +90 degrees around Y-axis (Rotate 90 degrees left)
-        targetArrowMesh.rotateY(Math.PI / 2); 
-        
-        // 3. Rotate 45 degrees around X-axis (Tilt forward/downward)
-        targetArrowMesh.rotateX(Math.PI / 4); 
-        
-        // 4. Slightly raise the arrow for better visibility
-        targetArrowMesh.position.y += 0.5;
+    function updateCashHUD() {
+        document.getElementById('coin-count').textContent = '$' + playerCash;
+        localStorage.setItem('playerCash', playerCash.toString());
     }
-
+    
     // =============================================================================
-    // ** CONTROLS AND UPDATE **
-    // =============================================================================
-    window.addEventListener('keydown', (event) => {
-        if (!isGameRunning) return;
-        const k = event.key.toLowerCase();
-        if(k==='w') inputState.keyW = true;
-        if(k==='s') inputState.keyS = true;
-        if(k==='a') inputState.keyA = true;
-        if(k==='d') inputState.keyD = true;
-        if(k===' ') { inputState.keySpace = true; event.preventDefault(); }
-        if(k==='shift') inputState.keyShift = true;
-        if(k==='v') toggleCamera();
-        if(k==='r') { inputState.keyR = true; respawnCar(); }
-    });
-    window.addEventListener('keyup', (event) => {
-        const k = event.key.toLowerCase();
-        if(k==='w') inputState.keyW = false;
-        if(k==='s') inputState.keyS = false;
-        if(k==='a') inputState.keyA = false;
-        if(k==='d') inputState.keyD = false;
-        if(k===' ') inputState.keySpace = false;
-        if(k==='shift') inputState.keyShift = false;
-        if(k==='r') inputState.keyR = false;
-    });
-
-    function toggleCamera() {
-        activeCamera = (activeCamera === cameraChase) ? cameraCockpit : cameraChase;
-    }
-
-    function updateControls() {
-        if (!chassisBody || !isGameRunning) return;
-        if (inputState.keyW || inputState.keyS || inputState.keyA || inputState.keyD) {
-            if (chassisBody.sleepState === CANNON.Body.SLEEPING) chassisBody.wakeUp(); 
-        }
-        engineForce = 0; steeringValue = 0; let brake = 0;
-
-        const v = chassisBody.velocity;
-        const chassisQuaternion = new THREE.Quaternion(chassisBody.quaternion.x, chassisBody.quaternion.y, chassisBody.quaternion.z, chassisBody.quaternion.w);
-        const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisQuaternion);
-        const velocityVector = new THREE.Vector3(v.x, v.y, v.z);
-        const isMovingForward = velocityVector.dot(forwardVector) > 0.5;
-        const isMovingBackward = velocityVector.dot(forwardVector) < -0.5;
-
-        if (inputState.keyA) steeringValue = maxSteerVal;
-        else if (inputState.keyD) steeringValue = -maxSteerVal;
-
-        if (inputState.keyW) {
-            if (isMovingBackward) brake = maxEngineForce * 0.5;
-            else { engineForce = -maxEngineForce; gearEl.textContent = 'D'; }
-        } else if (inputState.keyS) {
-            if (isMovingForward) brake = maxEngineForce * 0.5;
-            else { engineForce = maxEngineForce * 0.5; gearEl.textContent = 'R'; }
-        } else if (!inputState.keySpace) {
-            gearEl.textContent = (v.length()*3.6 < 1) ? 'P' : 'N';
-        }
-
-        if (inputState.keyShift && engineForce !== 0) {
-            engineForce *= 2.5;
-            if (flameMesh) flameMesh.visible = true;
-        } else {
-            if (flameMesh) flameMesh.visible = false;
-        }
-
-        vehicle.setSteeringValue(steeringValue, 0); vehicle.setSteeringValue(steeringValue, 1);
-        vehicle.applyEngineForce(engineForce, 0); vehicle.applyEngineForce(engineForce, 1); 
-        vehicle.applyEngineForce(engineForce, 2); vehicle.applyEngineForce(engineForce, 3); 
-
-        let finalBrakeRL = brake, finalBrakeRR = brake;
-        if (inputState.keySpace) {
-            finalBrakeRL = maxEngineForce * 0.8; finalBrakeRR = maxEngineForce * 0.8;
-            gearEl.textContent = 'E';
-        } else if (brake === 0) {
-            vehicle.setBrake(0, 0); vehicle.setBrake(0, 1); vehicle.setBrake(0, 2); vehicle.setBrake(0, 3);
-        }
-        vehicle.setBrake(brake, 0); vehicle.setBrake(brake, 1);
-        vehicle.setBrake(finalBrakeRL, 2); vehicle.setBrake(finalBrakeRR, 3);
-    }
-
-    function updateCamera() {
-        if (!chassisBody) return;
-        const chassisPos = new THREE.Vector3().copy(chassisBody.position);
-        
-        if (isGameRunning) {
-            const q = chassisBody.quaternion;
-            if (activeCamera === cameraChase) {
-                const idealOffset = new THREE.Vector3(0, 3, -7);
-                idealOffset.applyQuaternion(q);
-                idealOffset.add(chassisPos);
-                if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
-                cameraChase.position.lerp(idealOffset, 0.1);
-                cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
-            } else {
-                const offset = new THREE.Vector3(0, 0.8, 1.5);
-                offset.applyQuaternion(q);
-                offset.add(chassisPos);
-                cameraCockpit.position.copy(offset);
-                cameraCockpit.quaternion.copy(q);
-                const rotation180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI);
-                cameraCockpit.quaternion.multiply(rotation180);
-            }
-        } 
-        else {
-            if (!isDragging) {
-                splashCameraAngle += 0.002; 
-            }
-            const radius = 6.0;
-            const height = 2.0;
-            const x = chassisPos.x + Math.sin(splashCameraAngle) * radius;
-            const z = chassisPos.z + Math.cos(splashCameraAngle) * radius;
-            
-            cameraChase.position.set(x, chassisPos.y + height, z);
-            cameraChase.lookAt(chassisPos.x, chassisPos.y, chassisPos.z);
-        }
-    }
-
-    function updateHUD(time) {
-        if (!chassisBody) return;
-        const v = chassisBody.velocity;
-        speedEl.textContent = (v.length() * 3.6).toFixed(0);
-        altitudeEl.textContent = chassisBody.position.y.toFixed(0);
-        
-        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(chassisBody.quaternion);
-        const heading = Math.atan2(forward.x, forward.z) * 180 / Math.PI;
-        headingEl.textContent = ((heading + 360) % 360).toFixed(0).padStart(3, '0');
-        
-        rpmEl.textContent = Math.min(99, Math.floor(v.length() * 3.6 * 1.5));
-        
-        let throttlePercent = 0;
-        if (engineForce !== 0) throttlePercent = Math.abs((engineForce / (maxEngineForce * 2.5)) * 100);
-        throttleEl.textContent = Math.min(100, throttlePercent).toFixed(0) + '%';
-
-        coinCountEl.textContent = coinCount;
-    }
-
-    function updateColliders() {
-        if (!chassisBody) return;
-        const chassisPos = new THREE.Vector3(chassisBody.position.x, chassisBody.position.y, chassisBody.position.z);
-        staticBodies.forEach(obj => {
-            const d = chassisPos.distanceTo(obj.center);
-            // Reduce activation range to match smaller city model
-            if (!obj.added && d <= obj.radius + 200) { 
-                world.addBody(obj.body);
-                obj.added = true;
-            } else if (obj.added && d > obj.radius + 200) {
-                world.removeBody(obj.body);
-                obj.added = false;
-            }
-        });
-    }
-
-    function loadCoinPrototype(callback) {
-        const stored = localStorage.getItem('goldCoinCount');
-        coinCount = stored ? parseInt(stored, 10) : 0;
-        splashCoinCountEl.textContent = coinCount;
-        coinCountEl.textContent = coinCount;
-
-        const coinLoader = new THREE.GLTFLoader();
-        coinLoader.load('gold_coin.glb', (gltf) => {
-            coinProto = gltf.scene;
-            coinProto.traverse(node => { if (node.isMesh) node.castShadow = true; });
-            if (callback) callback();
-        }, undefined, (err) => {
-            console.warn('gold_coin.glb load failed', err);
-            if (callback) callback();
-        });
-    }
-
-    function spawnCoinsWhenReady() {
-        if (!chassisBody) {
-            setTimeout(spawnCoinsWhenReady, 200);
-            return;
-        }
-        if (!coinProto) {
-            loadCoinPrototype(() => spawnCoins(Math.floor(Math.random()*(COIN_MAX-COIN_MIN+1))+COIN_MIN));
-        } else {
-            spawnCoins(Math.floor(Math.random()*(COIN_MAX-COIN_MIN+1))+COIN_MIN);
-        }
-    }
-
-    function spawnCoins(num) {
-        if (!coinProto) return;
-        for (let i = 0; i < num; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * COIN_SPAWN_RADIUS;
-            const x = Math.cos(angle) * radius + (Math.random()-0.5)*20;
-            const z = Math.sin(angle) * radius + (Math.random()-0.5)*20;
-            const y = COIN_HEIGHT + (Math.random()*0.3 - 0.15); 
-
-            const coinMesh = coinProto.clone(true);
-            coinMesh.scale.set(1.0,1.0,1.0);
-            coinMesh.position.set(x, y, z);
-            coinMesh.rotation.y = Math.random()*Math.PI*2;
-            scene.add(coinMesh);
-            coinMeshes.push(coinMesh);
-
-            const coinBody = new CANNON.Body({ mass: 0 });
-            coinBody.addShape(new CANNON.Sphere(0.4));
-            coinBody.position.set(x, y, z);
-            coinBody.collisionResponse = 0;
-            coinBody.addEventListener('collide', (e) => {
-                const hitByChassis = (e.body === chassisBody) || (e.contact && (e.contact.bi === chassisBody || e.contact.bj === chassisBody));
-                if (hitByChassis) {
-                    const bIdx = coinBodies.indexOf(coinBody);
-                    if (bIdx !== -1) {
-                        const mesh = coinMeshes[bIdx];
-                        if (mesh) scene.remove(mesh);
-                        coinMeshes.splice(bIdx, 1);
-                        coinBodies.splice(bIdx, 1);
-                        try { world.removeBody(coinBody); } catch (err) {}
-                        coinCount += 1;
-                        localStorage.setItem('goldCoinCount', coinCount);
-                        coinCountEl.textContent = coinCount;
-                    }
-                }
-            });
-            coinBodies.push(coinBody);
-            world.addBody(coinBody);
-        }
-    }
-
-    // =============================================================================
-    // ** MAIN LOOP **
+    // ** MAIN GAME LOOP **
     // =============================================================================
     function animate(time) {
         requestAnimationFrame(animate);
-        if (!chassisBody || !world) return;
         
-        if (isGameRunning) {
-            const fixedTimeStep = 1/60;
-            const maxSubSteps = 1;
-            
-            if (lastTime !== undefined) {
-                const dt = (time - lastTime) / 1000;
-                world.step(fixedTimeStep, dt, maxSubSteps);
-            } else {
-                world.step(fixedTimeStep);
-            }
-            lastTime = time;
-            
-            updateControls();
-            updateColliders();
-            if (isDeliveryModeActive) {
-                updateDeliveryMode(); 
-                updateTargetArrow(); 
-            } else if (targetArrowMesh) {
-                targetArrowMesh.visible = false;
-            }
+        if (!isGameRunning) return;
+        
+        // Update physics
+        const fixedTimeStep = 1 / 60;
+        const maxSubSteps = 10;
+        if (lastTime !== undefined) {
+            const dt = (time - lastTime) / 1000;
+            const limitedDt = Math.min(dt, 0.1);
+            world.step(fixedTimeStep, limitedDt, maxSubSteps);
+        } else {
+            world.step(fixedTimeStep);
         }
-
-        // Model position synchronization
+        lastTime = time;
+        
+        // Update systems
+        updateFirstPerson();
+        updateVehicle();
+        updateNPCs();
+        
+        // Sync visuals
+        if (carMesh && chassisBody && isInVehicle) {
+            carMesh.position.copy(chassisBody.position);
+            carMesh.quaternion.copy(chassisBody.quaternion);
+            carMesh.position.y += -1.2;
+        }
+        
+        // Sync wheels
         for (let i = 0; i < vehicle.wheelInfos.length; i++) {
             vehicle.updateWheelTransform(i);
             const t = vehicle.wheelInfos[i].worldTransform;
@@ -1327,72 +1523,80 @@
                 wheelMeshes[i].quaternion.copy(t.quaternion);
             }
         }
-        if (carMesh && chassisBody) {
-            carMesh.position.copy(chassisBody.position);
-            carMesh.quaternion.copy(chassisBody.quaternion);
-            carMesh.position.y += VISUAL_Y_OFFSET; 
-        }
-
-        for (let i = 0; i < coinMeshes.length; i++) {
-            if (coinBodies[i]) {
-                coinMeshes[i].position.copy(coinBodies[i].position);
-                coinMeshes[i].quaternion.copy(coinBodies[i].quaternion);
-                coinMeshes[i].rotation.y += 0.02;
-            }
-        }
-
+        
+        // Update camera
         updateCamera();
-        if (isGameRunning) updateHUD(time);
-
+        
+        // Render
         renderer.render(scene, activeCamera);
     }
-
-    // =============================================================================
-    // ** STARTUP LOGIC **
-    // =============================================================================
     
-    function initSystem() {
-        const stored = localStorage.getItem('goldCoinCount');
-        coinCount = stored ? parseInt(stored, 10) : 0;
-        splashCoinCountEl.textContent = coinCount;
-
-        initThree();
-        initCannon();
-        initGround();
-        initCameraAndLights();
-        initLoaders();
-        loadCarModel();
-        loadTireModel();
-        loadCity();
-        loadCoinPrototype();
-        loadArrowModel(); 
+    function updateCamera() {
+        if (!chassisBody) return;
+        
+        if (isInVehicle) {
+            const chassisPos = new THREE.Vector3().copy(chassisBody.position);
+            if (activeCamera === cameraChase) {
+                const idealOffset = new THREE.Vector3(0, 3, -7);
+                idealOffset.applyQuaternion(chassisBody.quaternion);
+                idealOffset.add(chassisPos);
+                if(idealOffset.y < chassisPos.y + 0.5) idealOffset.y = chassisPos.y + 0.5;
+                cameraChase.position.lerp(idealOffset, 0.1);
+                cameraChase.lookAt(chassisPos.x, chassisPos.y + 1, chassisPos.z);
+            } else if (activeCamera === cameraCockpit) {
+                const offset = new THREE.Vector3(0, 0.8, 1.5);
+                offset.applyQuaternion(chassisBody.quaternion);
+                offset.add(chassisPos);
+                cameraCockpit.position.copy(offset);
+                cameraCockpit.quaternion.copy(chassisBody.quaternion);
+            }
+            activeCamera = cameraCockpit;
+        } else {
+            activeCamera = cameraFPS;
+        }
     }
-
-    window.enterGame = function() { 
+    
+    // =============================================================================
+    // ** START GAME **
+    // =============================================================================
+    window.enterGame = function() {
         document.getElementById('splash').style.opacity = '0';
-        // UX: Increased delay for smoother transition
         setTimeout(() => {
             document.getElementById('splash').style.display = 'none';
             document.getElementById('hud-layer').style.display = 'flex';
         }, 500);
         
-        isGameRunning = true; 
-        if(isDeliveryModeActive) deliveryHudEl.style.display = 'block';
-    }
-
+        isGameRunning = true;
+        
+        // Show appropriate UI
+        if (currentMode === 'both' || currentMode === 'drive') {
+            isInVehicle = true;
+        } else {
+            isInVehicle = false;
+            crosshairEl.style.display = 'block';
+            weaponHudEl.style.display = 'block';
+            healthHudEl.style.display = 'flex';
+        }
+        
+        updateHealthHUD();
+        updateCashHUD();
+        updateWeaponHUD();
+    };
+    
     window.addEventListener('resize', () => {
-        if (renderer && cameraChase && cameraCockpit) {
+        if (renderer && cameraChase && cameraCockpit && cameraFPS) {
             renderer.setSize(window.innerWidth, window.innerHeight);
             const aspect = window.innerWidth / window.innerHeight;
             cameraChase.aspect = aspect;
             cameraChase.updateProjectionMatrix();
             cameraCockpit.aspect = aspect;
             cameraCockpit.updateProjectionMatrix();
+            cameraFPS.aspect = aspect;
+            cameraFPS.updateProjectionMatrix();
         }
     });
-
-    document.addEventListener('DOMContentLoaded', initSystem);
-
+    
+    document.addEventListener('DOMContentLoaded', initGame);
     </script>
 </body>
 </html>
