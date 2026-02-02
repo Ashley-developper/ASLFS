@@ -143,7 +143,23 @@
      
       window.addEventListener('resize', resize);
       resize();
-     
+     document.addEventListener('keydown', (event) => {
+  // Check if the pressed key is "o" or "O"
+  if (event.key.toLowerCase() === 'o') {
+    const elem = document.documentElement; // Targets the whole page
+
+    if (!document.fullscreenElement) {
+      // Enter Fullscreen
+      elem.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      // Exit Fullscreen if already active
+      document.exitFullscreen();
+    }
+  }
+});
+
       let mouseTimer = null;
       window.addEventListener('mousemove', () => {
         if (!mouseVisible) {
@@ -481,6 +497,7 @@
         askGemini(val);
       });
     })();
+    
   </script>
 </body>
 </html>
